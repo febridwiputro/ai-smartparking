@@ -15,17 +15,17 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
     
+    BASE_DIR = "D:/engine/smart_parking/repository/github"
+    # BASE_DIR = Path(__file__).parent.parent.resolve()
     
-    BASE_DIR = Path(__file__).parent.parent.resolve()
-    
-    MODEL_PATH = BASE_DIR / "weights/yolov8n.pt"
-    MODEL_PATH_PLAT = BASE_DIR / "weights/license_plate_detector.pt"
-    MODEL_PATH_PLAT_v2 = BASE_DIR / "weights/license_plat.pt"
+    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
+    MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
 
     # CHARACTER RECOGNITION MODEL
-    MODEL_CHAR_RECOGNITION_PATH = BASE_DIR / 'weights/ocr_model/new_model/20240925-11-01-14/character_recognition.json'
-    WEIGHT_CHAR_RECOGNITION_PATH = BASE_DIR / 'weights/ocr_model/new_model/20240925-11-01-14/models_cnn.h5'
-    LABEL_CHAR_RECOGNITION_PATH = BASE_DIR / 'weights/ocr_model/new_model/20240925-11-01-14/character_classes.npy'
+    MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_recognition.json')
+    WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/models_cnn.h5')
+    LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_classes.npy')
     
     LINK_CAM_PREFIX = os.getenv("CAMERA_RTSP")
 
