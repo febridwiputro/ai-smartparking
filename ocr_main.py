@@ -38,9 +38,9 @@ def main():
     IS_DEBUG = True
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_PC
         # video_source = config.VIDEO_SOURCE_LAPTOP
-        # video_source = config.VIDEO_SOURCE_20241004
+        video_source = config.VIDEO_SOURCE_20241004
         print(video_source)
         # video_source = config.VIDEO_SOURCE_LAPTOP
         caps = [CameraV1(video, is_video=True) for video in video_source]
@@ -83,7 +83,7 @@ def main():
                     print(f"Successfully sent total_slot {total_slot} to matrix_controller for camera {i}.")
 
                 _, frames[i] = caps[i].read()
-                # frames[i] = cv2.resize(frames[i], (1080, 720))                
+                frames[i] = cv2.resize(frames[i], (1080, 720))                
                 if frames[i] is not None:
                     vehicle_detected = plat_detects[i].car_direct(frames[i], arduino_idx=arduino_text, cam_idx=i)
 
