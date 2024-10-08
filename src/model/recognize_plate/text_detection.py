@@ -70,7 +70,7 @@ class TextDetector:
         image = cv2.resize(image, (80, 80))
         image = np.stack((image,) * 3, axis=-1)
 
-        predictions = self.model.predict(image[np.newaxis, :])
+        predictions = self.model.predict(image[np.newaxis, :], verbose=False)
         max_prob = np.max(predictions)
         predicted_class = np.argmax(predictions)
 

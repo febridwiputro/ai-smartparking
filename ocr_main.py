@@ -35,14 +35,14 @@ def check_floor(cam_idx):
 
 def main():
     db_floor = FloorController()
-    IS_DEBUG = True
+    IS_DEBUG = False
 
     if IS_DEBUG:
         video_source = config.VIDEO_SOURCE_20241004
         # video_source = config.VIDEO_SOURCE_LAPTOP
         caps = [CameraV1(video, is_video=True) for video in video_source]
     else:
-        video_source = config.CAM_SOURCE
+        video_source = config.CAM_SOURCE_LT
         caps = [CameraV1(video, is_video=False) for video in video_source]
 
     plat_detects = [None for _ in range(len(video_source))]

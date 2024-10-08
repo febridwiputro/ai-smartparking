@@ -182,8 +182,14 @@ class TextRecognition:
             if height_f not in filtered_heights:
                 continue
 
-            cropped_image = image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+            top_left_y, bottom_right_y = int(max(top_left[1], 0)), int(min(bottom_right[1], image.shape[0]))
+            top_left_x, bottom_right_x = int(max(top_left[0], 0)), int(min(bottom_right[0], image.shape[1]))
+
+            cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
             cropped_images.append(cropped_image)
+
+            # cropped_image = image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
+            # cropped_images.append(cropped_image)
 
         minimal_height = max(height)
         index_height = height.index(minimal_height)

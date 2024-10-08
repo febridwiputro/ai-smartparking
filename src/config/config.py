@@ -15,8 +15,8 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
     
-    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -41,6 +41,17 @@ class Config:
     CAM_SOURCE_LT4_OUT = fr'{LINK_CAM_PREFIX}192.168.1.15'
     CAM_SOURCE_LT5_IN = fr'{LINK_CAM_PREFIX}192.168.1.16'
     CAM_SOURCE_LT5_OUT = fr'{LINK_CAM_PREFIX}192.168.1.17'
+
+    CAM_SOURCE_LT = [
+        'rtsp://admin:Passw0rd@192.168.1.10',
+        'rtsp://admin:Passw0rd@192.168.1.11', 
+        'rtsp://admin:Passw0rd@192.168.1.12',
+        'rtsp://admin:Passw0rd@192.168.1.13',
+        'rtsp://admin:Passw0rd@192.168.1.14',
+        'rtsp://admin:Passw0rd@192.168.1.15',
+        'rtsp://admin:Passw0rd@192.168.1.16',
+        'rtsp://admin:Passw0rd@192.168.1.17'
+]
 
     # VIDEO_SOURCE_LT2_IN = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4'
     # VIDEO_SOURCE_LT2_OUT = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\keluar_lt_2_out.mp4'
