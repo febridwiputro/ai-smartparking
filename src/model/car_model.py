@@ -38,6 +38,10 @@ class VehicleDetector:
     def predict(self, image: np.ndarray):
         preprocessed_image = self.preprocess(image)
         results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose = False, classes=config.CLASS_NAMES)
+        for result in results:
+            self.draw_boxes(frame=image, results=result)
+        
+        # self.get_vehicle_image(image=image, results=results)
         return results
 
     def tracking(self, image: np.ndarray):
@@ -90,6 +94,10 @@ class VehicleDetector:
         car = image[max(y1, 0): min(y2, image.shape[0]), max(x1, 0): min(x2, image.shape[1])]
         # print("car.shape", car.shape)
         # cv2.imshow("Car", car)
+        color = (255, 255, 255)
+
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 5)
+
         return car
 
 

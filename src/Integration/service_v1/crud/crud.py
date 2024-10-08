@@ -9,7 +9,7 @@ from src.Integration.service_v1.models.camera import MasterCamera, TabelCamera a
 from src.Integration.service_v1.models.plat_car import TblPlatMobilSatnusa as tpm
 from src.Integration.service_v1.models.slot import MasterSlot
 from src.Integration.service_v1.models.floor_model import TblFloorModel
-
+from src.Integration.service_v1.models.vehicle_history_model import TblVehicleHistoryModel
 '''
 get data all, area slot status
 get data by lnt, slot status
@@ -17,6 +17,53 @@ get data by slot and status
 
 
 '''
+
+def create_vehicle_history(db: Session, plate_no: str, floor_id: int, camera: str):
+    try:
+        new_vehicle_history = TblVehicleHistoryModel(
+            plate_no=plate_no,
+            floor_id=floor_id,
+            camera=camera
+        )
+
+        db.add(new_vehicle_history)
+        db.commit()
+        db.refresh(new_vehicle_history)
+
+        return new_vehicle_history
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error occurred: {e}")
+        return None
+
+
+def get_plate_no_by_floor_id(db:Session, plate_no: str):
+    return db.query(TblVehicleHistoryModel.id,
+                    TblVehicleHistoryModel.floor_id, 
+                    TblVehicleHistoryModel.camera, 
+                    TblVehicleHistoryModel.plate_no).filter(TblVehicleHistoryModel.plate_no==plate_no).all()
+
+def update_floor_by_plate_no(db: Session, plate_no: str, floor_id: int, camera: str):
+    try:
+        floor_record = db.query(TblVehicleHistoryModel).filter(TblVehicleHistoryModel.plate_no == plate_no).first()
+
+        if not floor_record:
+            return None
+
+        floor_record.floor_id = floor_id  # Corrected the assignment operator
+        floor_record.camera = camera
+
+        db.commit()
+        db.refresh(floor_record)
+
+        return floor_record
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error occurred: {e}")
+        return None
+
 
 def get_total_slot_by_id(db: Session, id: int):
     return db.query(TblFloorModel.id, TblFloorModel.slot, TblFloorModel.max_slot, TblFloorModel.vehicle_total).filter(TblFloorModel.id==id).all()

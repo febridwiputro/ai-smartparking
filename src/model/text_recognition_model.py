@@ -186,6 +186,11 @@ class TextRecognition:
             top_left_x, bottom_right_x = int(max(top_left[0], 0)), int(min(bottom_right[0], image.shape[1]))
 
             cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+
+            if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
+                logging.warning(f"Skipped empty cropped image with shape: {cropped_image.shape}")
+                continue
+
             cropped_images.append(cropped_image)
 
             # cropped_image = image[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
