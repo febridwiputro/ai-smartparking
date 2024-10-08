@@ -208,6 +208,54 @@ class TextDetector:
 
         result = re.sub(pattern, replace, plate)
         return result
+    
+    def filter_height_bbox(self, bounding_boxes, verbose=False):
+        converted_bboxes = []
+        w_h = []
+        for bbox_group in bounding_boxes:
+            for bbox in bbox_group:
+                if len(bbox) == 4:
+                    x_min, x_max, y_min, y_max = bbox
+                    top_left = [x_min, y_min]
+                    top_right = [x_max, y_min]
+                    bottom_right = [x_max, y_max]
+                    bottom_left = [x_min, y_max]
+                    converted_bboxes.append([top_left, top_right, bottom_right, bottom_left])
+
+                    width_bbox = x_max - x_min
+                    height_bbox = y_max - y_min 
+
+                    if height_bbox >= 10:
+                        w_h.append(height_bbox)
+
+        if len(w_h) == 1:
+            list_of_height = w_h
+            filtered_heights = w_h
+            sorted_heights = w_h
+
+        elif len(w_h) == 2:
+            list_of_height = w_h
+            filtered_heights = [max(w_h)]
+            sorted_heights = sorted(w_h, reverse=True)
+
+        elif len(w_h) > 2:
+            list_of_height = w_h
+            sorted_heights = sorted(w_h, reverse=True)
+            # sorted_heights = sorted([h for w, h in w_h], reverse=True)
+            highest_height_f = sorted_heights[0]
+            avg_height = sum(sorted_heights) / len(sorted_heights)
+
+            filtered_heights = [highest_height_f]
+            filtered_heights += [h for h in sorted_heights[1:] if abs(highest_height_f - h) < 20]
+
+        else:
+            filtered_heights = w_h
+
+        if verbose:
+            logging.info('>' * 25 + f' BORDER ' + '>' * 25)
+            logging.info(f'LIST OF HEIGHT: {list_of_height}, SORTED HEIGHT: {sorted_heights}, FILTERED HEIGHTS: {filtered_heights}, AVG HEIGHT: {avg_height}')
+
+        return filtered_heights      
 
     def filter_text_frame(self, texts: list, verbose=False) -> str:
         w_h = []
@@ -256,6 +304,7 @@ class TextDetector:
 
     def process_image(self, cropped_images, image):
         bg_color = ""
+        final_plate = ""
         resized_images = []
 
         min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)

@@ -150,12 +150,21 @@ class OCRController:
         if frame.shape[0] == 0 or frame.shape[1] == 0:
             return "", []
         
-        text, results, box = self.ocr.recognition_image_text(frame)
-        if not text:
-            return "", box
-        
-        return self.ocr.filter_text(text), box
-    
+        td_method = "easyocr_readtext"
+        if td_method == "easyocr_readtext":
+            text, results, box = self.ocr.recognition_image_text(frame)
+            if not text:
+                return "", box
+            
+            return self.ocr.filter_text(text), box
+
+        elif td_method == "easyocr_detect":
+            text = self.ocr.text_detect_and_recognize(frame)
+            if not text:
+                return "", []
+            
+            return self.ocr.filter_text(text), []
+
     def crop_frame(self, frame, cam_idx):
         # polygons_point = [ config.POINTS_BACKGROUND_LT2_OUT]
 
@@ -214,7 +223,6 @@ class OCRController:
         floor_id = floor_position
         slot = self.db_floor.get_slot_by_id(floor_id)
         total_slot = slot["slot"]
-        max_slot = slot["max_slot"]
         
         poly_points, frame, _, _ = self.crop_frame(frame, cam_idx)
         car, results = self.get_car_image(frame)
@@ -229,12 +237,12 @@ class OCRController:
         show_line(frame, poly_points[2], poly_points[3])
         show_cam(str(cam_idx), frame)
         
-        # cv2.setMouseCallback(str(cam_idx), self.mouse_event)
+        cv2.setMouseCallback(str(cam_idx), self.mouse_event)
         
         if car.shape[0] == 0 or car.shape[1] == 0:
             return []
         self.mobil_masuk = True
-        cv2.imwrite(fr"D:\car\car_{time.time()}.jpg", car)
+        # cv2.imwrite(fr"D:\car\car_{time.time()}.jpg", car)
         self.centroids = self.get_centroid(results, line_pos=True)
         direction = self.is_car_out_v2(results[0].boxes.xyxy.cpu().tolist())
         if direction is not None or self.car_direction is None:
@@ -318,24 +326,7 @@ class OCRController:
 
         return self.db_mysn.send_data_to_mysn(params, send_date)
 
-    def processing_logic_car(self, arduino_idx, cam_idx, status_car):
-        if not (self.passed == 2):
-            self.passed = 0
-            return
-
-        if len(self.container_plate_no) == 0:
-            self.passed = 0
-            return
-        
-        self.status_register = True
-        if len(self.container_plate_no) >= 1:
-            plate_no = most_freq(self.container_plate_no)
-            plate_no_detected = plate_no
-            status_plate_no = self.check_db(plate_no_detected)
-            if not status_plate_no:
-                logger.write(f"Warning, plat is unregistered, reading container text !! : {plate_no}", logger.WARN)
-                self.status_register = False
-
+    def vehicle_counter_1(self, cam_idx, arduino_idx, status_car, plate_no):
         current_floor_position, current_cam_position = self.check_floor(cam_idx=cam_idx)
         current_data = self.db_floor.get_slot_by_id(current_floor_position)
         current_slot = current_data["slot"]
@@ -362,6 +353,8 @@ class OCRController:
 
         # NAIK / MASUK
         if not status_car:
+            print("VEHICLE - IN")
+            print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
             if current_slot == 0:
                 print("UPDATE 0")
                 current_slot_update = current_slot
@@ -378,70 +371,83 @@ class OCRController:
 
                             prev_vehicle_total_update = prev_vehicle_total - 1
                             self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
-                    elif prev_slot > 0 and prev_slot < prev_max_slot:
-                        prev_slot_update = prev_slot + 1
-                        self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
-
-                        prev_vehicle_total_update = prev_vehicle_total - 1
-                        self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
-                    elif prev_slot > prev_max_slot:
-                        prev_slot_update = prev_slot
-                        self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
-
-                        prev_vehicle_total_update = prev_vehicle_total - 1
-                        self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
-
-            elif current_slot > 0 and current_slot < current_max_slot:
-                current_slot_update = current_slot - 1
-                self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
-
-                current_vehicle_total_update = current_vehicle_total + 1
-                self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
-
-                if prev_floor_position > 1:
-                    if prev_slot == 0:
-                        if prev_vehicle_total > prev_max_slot:
-                            prev_slot_update = prev_slot
+                        else:
+                            prev_slot_update = prev_slot + 1
                             self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
 
                             prev_vehicle_total_update = prev_vehicle_total - 1
-                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
+
                     elif prev_slot > 0 and prev_slot < prev_max_slot:
                         prev_slot_update = prev_slot + 1
                         self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
 
                         prev_vehicle_total_update = prev_vehicle_total - 1
                         self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
-                    elif prev_slot > prev_max_slot:
-                        prev_slot_update = prev_slot
-                        self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
+
+            elif current_slot > 0 and current_slot <= current_max_slot:
+                current_slot_update = current_slot - 1
+                print("current_slot_update: ", current_slot_update)
+                self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                current_vehicle_total_update = current_vehicle_total + 1
+                print("current_vehicle_total_update: ", current_vehicle_total_update)
+                self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                if prev_floor_position > 1:
+                    print("IN 1")
+                    if prev_slot == 0:
+                        if prev_vehicle_total > prev_max_slot:
+                            prev_slot_update = prev_slot
+                            self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+                        else:
+                            
+                            prev_slot_update = prev_slot + 1
+                            self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
+
+                    elif prev_slot > 0 and prev_slot < prev_max_slot:
+                        print("IN 2")
+                        prev_slot_update = prev_slot + 1
+                        print("prev_slot_update: ", prev_slot_update)
+                        print("prev_slot_update: ", prev_slot_update)
+
+                        self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
 
                         prev_vehicle_total_update = prev_vehicle_total - 1
+                        print("prev_vehicle_total_update: ", prev_vehicle_total_update)
                         self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
 
         # TURUN / KELUAR
         else:
+            print("VEHICLE - OUT")
+            print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
             if current_slot == 0:
-                if current_vehicle_total == 0:
-                    current_slot_update = current_slot
-                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+                # if current_vehicle_total == 0:
+                #     current_slot_update = current_slot
+                #     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
-                    current_vehicle_total_update = current_vehicle_total - 1
-                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+                #     current_vehicle_total_update = current_vehicle_total - 1
+                #     self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
 
-                    if next_floor_position > 1:
-                        if next_slot == 0:
-                            if next_vehicle_total >= next_max_slot:
-                                next_vehicle_total_update = next_vehicle_total_update + 1
-                                self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
-                        elif next_slot > 0 and next_slot < next_max_slot:
-                            next_slot_update = next_slot - 1
-                            self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+                #     if next_floor_position > 1:
+                #         if next_slot == 0:
+                #             if next_vehicle_total >= next_max_slot:
+                #                 next_vehicle_total_update = next_vehicle_total_update + 1
+                #                 self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                #         elif next_slot > 0 and next_slot < next_max_slot:
+                #             next_slot_update = next_slot - 1
+                #             self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
-                            next_vehicle_total_update = next_vehicle_total_update + 1
-                            self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                #             next_vehicle_total_update = next_vehicle_total_update + 1
+                #             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
-                elif current_vehicle_total > 0 and current_vehicle_total < current_max_slot:
+                if current_vehicle_total > 0 and current_vehicle_total < current_max_slot:
                     current_slot_update = current_slot + 1
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -479,43 +485,271 @@ class OCRController:
                             next_vehicle_total_update = next_vehicle_total_update + 1
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
-            elif current_slot > 0 and current_slot < current_max_slot:
-                current_slot_update = current_slot + 1
-                self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+            elif current_slot > 0 and current_slot <= current_max_slot:
+                if current_slot == 18:
+                    current_slot_update = current_slot
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+                else:
+                    current_slot_update = current_slot + 1
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
-                current_vehicle_total_update = current_vehicle_total - 1
-                self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+                if current_vehicle_total == 0:
+                    current_vehicle_total_update = current_vehicle_total
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+                else:
+                    current_vehicle_total_update = current_vehicle_total - 1
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
 
                 if next_floor_position > 1:
                     if next_slot == 0:
                         if next_vehicle_total > next_max_slot:
                             next_slot_update = next_slot
-                            self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=next_slot_update)
+                            self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                             next_vehicle_total_update = next_vehicle_total + 1
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > 0 and next_slot < next_max_slot:
                         next_slot_update = next_slot + 1
-                        self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=next_slot_update)
+                        self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > next_max_slot:
                         next_slot_update = next_slot
-                        self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=next_slot_update)
+                        self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
-
 
         matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
         available_space = matrix_update.get_total()
         self.total_slot = current_max_slot - available_space
         self.plate_no = plate_no
 
-        print(f"PLAT_NO : {plate_no}, AVAILABLE PARKING SPACES : {available_space}, STATUS : {'TAMBAH' if not status_car else 'KURANG'}, FLOOR : {current_floor_position}, CAMERA : {current_cam_position}, TOTAL_FRAME: {len(self.container_plate_no)}")
+        print(f"PLAT_NO : {plate_no}, AVAILABLE PARKING SPACES : {available_space}, STATUS : {'TAMBAH' if not status_car else 'KURANG'}, VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR : {current_floor_position}, CAMERA : {current_cam_position}, TOTAL_FRAME: {len(self.container_plate_no)}")
     
-        # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=cam_position)
+        # self.send_plate_data(floor_id=floor_id, plate_no=plate_no, cam_position=cam_position)
+
+        print('=' * 30 + " LINE BORDER " + '=' * 30)   
+
+    def vehicle_counter_2(self, cam_idx, arduino_idx, status_car, plate_no):
+        current_floor_position, current_cam_position = self.check_floor(cam_idx=cam_idx)
+        current_data = self.db_floor.get_slot_by_id(current_floor_position)
+        current_slot = current_data["slot"]
+        current_max_slot = current_data["max_slot"]
+        current_vehicle_total = current_data["vehicle_total"]
+        current_slot_update = current_slot
+        current_vehicle_total_update = current_vehicle_total
+
+        prev_floor_position = current_floor_position - 1
+        prev_data = self.db_floor.get_slot_by_id(prev_floor_position)
+        prev_slot = prev_data["slot"]
+        prev_max_slot = prev_data["max_slot"]
+        prev_vehicle_total = prev_data["vehicle_total"]
+        prev_slot_update = prev_slot
+        prev_vehicle_total_update = prev_vehicle_total
+
+        next_floor_position = current_floor_position - 1
+        next_data = self.db_floor.get_slot_by_id(next_floor_position)
+        next_slot = next_data["slot"]
+        next_max_slot = next_data["max_slot"]
+        next_vehicle_total = next_data["vehicle_total"]
+        next_slot_update = next_slot
+        next_vehicle_total_update = next_vehicle_total
+
+        # NAIK / MASUK
+        if not status_car:
+            print("VEHICLE - IN")
+            print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
+            if current_slot == 0:
+                print("UPDATE 0")
+                current_slot_update = current_slot
+                self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                current_vehicle_total_update = current_vehicle_total + 1
+                self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                if prev_floor_position > 1:
+                    if prev_slot == 0:
+                        if prev_vehicle_total > prev_max_slot:
+                            prev_slot_update = prev_slot
+                            self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+                        else:
+                            prev_slot_update = prev_slot + 1
+                            self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
+
+                    elif prev_slot > 0 and prev_slot < prev_max_slot:
+                        prev_slot_update = prev_slot + 1
+                        self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                        prev_vehicle_total_update = prev_vehicle_total - 1
+                        self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+
+            elif current_slot > 0 and current_slot <= current_max_slot:
+                current_slot_update = current_slot - 1
+                print("current_slot_update: ", current_slot_update)
+                self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                current_vehicle_total_update = current_vehicle_total + 1
+                print("current_vehicle_total_update: ", current_vehicle_total_update)
+                self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                if prev_floor_position > 1:
+                    print("IN 1")
+                    if prev_slot == 0:
+                        if prev_vehicle_total > prev_max_slot:
+                            prev_slot_update = prev_slot
+                            self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+                        else:
+                            
+                            prev_slot_update = prev_slot + 1
+                            self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                            prev_vehicle_total_update = prev_vehicle_total - 1
+                            self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
+
+                    elif prev_slot > 0 and prev_slot < prev_max_slot:
+                        print("IN 2")
+                        prev_slot_update = prev_slot + 1
+                        print("prev_slot_update: ", prev_slot_update)
+                        print("prev_slot_update: ", prev_slot_update)
+
+                        self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
+
+                        prev_vehicle_total_update = prev_vehicle_total - 1
+                        print("prev_vehicle_total_update: ", prev_vehicle_total_update)
+                        self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
+
+        # TURUN / KELUAR
+        else:
+            print("VEHICLE - OUT")
+            print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
+            if current_slot == 0:
+                if current_vehicle_total > 0 and current_vehicle_total < current_max_slot:
+                    current_slot_update = current_slot + 1
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                    current_vehicle_total_update = current_vehicle_total - 1
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                    if next_floor_position > 1:
+                        if next_slot == 0:
+                            if next_vehicle_total >= next_max_slot:
+                                next_vehicle_total_update = next_vehicle_total_update + 1
+                                self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                        elif next_slot > 0 and next_slot < next_max_slot:
+                            next_slot_update = next_slot - 1
+                            self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+
+                            next_vehicle_total_update = next_vehicle_total_update + 1
+                            self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+
+                    print("current_slot_update: ", current_slot_update)
+                    print("next_vehicle_total_update: ", next_vehicle_total_update)
+
+                elif current_vehicle_total > current_max_slot:
+                    current_slot_update = current_slot
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                    current_vehicle_total_update = current_vehicle_total - 1
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                    if next_floor_position > 1:
+                        if next_slot == 0:
+                            if next_vehicle_total >= next_max_slot:
+                                next_vehicle_total_update = next_vehicle_total_update + 1
+                                self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                        elif next_slot > 0 and next_slot < next_max_slot:
+                            next_slot_update = next_slot - 1
+                            self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+
+                            next_vehicle_total_update = next_vehicle_total_update + 1
+                            self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+
+                    print("current_slot_update: ", current_slot_update)
+                    print("next_vehicle_total_update: ", next_vehicle_total_update)
+
+            elif current_slot > 0 and current_slot <= current_max_slot:
+                if current_slot == 18:
+                    current_slot_update = current_slot
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)                    
+                else:
+                    print("OUT 1")
+                    current_slot_update = current_slot + 1
+                    print("current_floor_position: ", current_floor_position)
+                    print("current_slot_update: ", current_slot_update)
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                if current_vehicle_total == 0:
+                    current_vehicle_total_update = current_vehicle_total
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+                else:
+                    current_vehicle_total_update = current_vehicle_total - 1
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+
+                if next_floor_position > 1:
+                    if next_slot == 0:
+                        if next_vehicle_total > next_max_slot:
+                            next_slot_update = next_slot
+                            self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+
+                            next_vehicle_total_update = next_vehicle_total + 1
+                            self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                    elif next_slot > 0 and next_slot <= next_max_slot:
+                        next_slot_update = next_slot - 1
+                        self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+
+                        next_vehicle_total_update = next_vehicle_total + 1
+                        self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+                    elif next_slot > next_max_slot:
+                        next_slot_update = next_slot
+                        self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
+
+                        next_vehicle_total_update = next_vehicle_total + 1
+                        self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
+
+                print("current_slot_update: ", current_slot_update)
+                print("next_vehicle_total_update: ", next_vehicle_total_update)
+
+        matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
+        available_space = matrix_update.get_total()
+        self.total_slot = current_max_slot - available_space
+        self.plate_no = plate_no
+
+        print(f"PLAT_NO : {plate_no}, AVAILABLE PARKING SPACES : {available_space}, STATUS : {'TAMBAH' if not status_car else 'KURANG'}, VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR : {current_floor_position}, CAMERA : {current_cam_position}, TOTAL_FRAME: {len(self.container_plate_no)}")
+    
+        # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
+
+        print('=' * 30 + " LINE BORDER " + '=' * 30)
+
+    def processing_logic_car(self, arduino_idx, cam_idx, status_car):
+        if not (self.passed == 2):
+            self.passed = 0
+            return
+
+        if len(self.container_plate_no) == 0:
+            self.passed = 0
+            return
+        
+        self.status_register = True
+        if len(self.container_plate_no) >= 1:
+            plate_no = most_freq(self.container_plate_no)
+            plate_no_detected = plate_no
+            status_plate_no = self.check_db(plate_no_detected)
+            if not status_plate_no:
+                logger.write(f"Warning, plat is unregistered, reading container text !! : {plate_no}", logger.WARN)
+                self.status_register = False
+
+        self.vehicle_counter_1(cam_idx, arduino_idx, status_car, plate_no)
 
         char = "H" if self.status_register else "M"
         matrix_text_text = plate_no + "," + char + ";"
@@ -529,23 +763,3 @@ class OCRController:
             self.status_register = False
             logger.write(f"WARNING THERE IS NO PLAT IN DATABASE!!! text: {plate_no}, status: {status_car}",
                          logger.WARNING)
-
-
-
-
-        # if total_slot < 0:
-        #     total_slot_update = 0
-        #     print("UPDATE 0")
-        # elif total_slot == 18 and status_car:
-        #     print("UPDATE 0")
-        # else:
-        #     if not status_car:
-        #         print("UPDATE -1")
-        #         total_slot_update = max(0, total_slot - 1)
-        #     else:
-        #         print("UPDATE +1")
-        #         total_slot_update = min(18, total_slot + 1)
-
-        # self.db_floor.update_slot_by_id(id=floor_id, new_slot=total_slot_update)
-
-
