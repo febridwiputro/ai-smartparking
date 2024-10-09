@@ -15,14 +15,14 @@ from src.Integration.service_v1.controller.vehicle_history_controller import Veh
 
 # semuanya berjalan secara per frame
 class OCRController:
-    def __init__(self, ard, matrix_total):
+    def __init__(self, ard, matrix_total, yolo_model, text_detector):
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
         self.plate_no = ""
-        self.car_detector = VehicleDetector(config.MODEL_PATH)
+        self.car_detector = VehicleDetector(yolo_model)
         self.plat_detector = PlatDetector(config.MODEL_PATH_PLAT_v2)
-        self.ocr = TextRecognition()
+        self.ocr = TextRecognition(text_detector=text_detector)
         self.container_plate_no = []
         # self.container_text = []
         # self.real_container_text = []
@@ -226,13 +226,15 @@ class OCRController:
         floor_id = floor_position
         slot = self.db_floor.get_slot_by_id(floor_id)
         total_slot = slot["slot"]
+        vehicle_total = slot["vehicle_total"]
         
         poly_points, frame, _, _ = self.crop_frame(frame, cam_idx)
         car, results = self.get_car_image(frame)
 
         show_text(f"Floor : {floor_position} {cam_position}", frame, 5, 50)
         show_text(f"Plate No. : {self.plate_no}", frame, 5, 100, (0, 255, 0) if self.status_register else (0, 0, 255))
-        show_text(f"Parking Lot Available : {total_slot}", frame, 5, 150)
+        show_text(f"Parking Lot Available : {total_slot}", frame, 5, 150, (0, 255, 0) if total_slot > 0 else (0, 0, 255))
+        show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
         # show_text(f"Total Car: {self.matrix.get_total()}", frame, 5, 150)
         # show_text(f"Parkir Lot Available: {available_slot}", frame, 5, 200, (0, 255, 0) if available_slot >= 1 else (0, 0, 255))
 
@@ -587,7 +589,7 @@ class OCRController:
 
         self.db_vehicle_history.create_vehicle_history_record(plate_no=plate_no, floor_id=current_floor_position, camera=current_cam_position)
         
-        self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
+        # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
         print('=' * 30 + " LINE BORDER " + '=' * 30)
 

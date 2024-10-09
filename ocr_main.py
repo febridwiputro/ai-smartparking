@@ -1,51 +1,97 @@
+import os
+import tensorflow as tf
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all logs (1 = INFO, 2 = WARNING, 3 = ERROR)
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+tf.get_logger().setLevel('ERROR')  # Set TensorFlow logger to ERROR
+
 import argparse
 import threading
 import time
 import cv2
+import numpy as np
+from tensorflow.keras.models import model_from_json
+from sklearn.preprocessing import LabelEncoder
 from src.Integration.arduino import Arduino
 from src.config.config import config
 from src.controller.matrix_controller import MatrixController
 from src.view.show_cam import show_cam
 from src.controller.ocr_controller import OCRController
 from src.controller.ocr_controller_mp import OCRControllerMP
+from src.model.recognize_plate.text_detection import TextDetector
 from src.model.cam_model import CameraV1
 from src.model.matrix_model import CarCounterMatrix
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from ultralytics import YOLO
 
+class ModelAndLabelLoader:
+    @staticmethod
+    def load_model(model_path, weight_path):
+        """Loads a Keras model from a JSON file and weights from an H5 file."""
+        try:
+            with open(model_path, 'r') as json_file:
+                model_json = json_file.read()
+            model = model_from_json(model_json)
+            model.load_weights(weight_path)
+            print(f'Model char_recognize loaded')
+            # print(f'Model loaded from {model_path} and weights from {weight_path}')
+            return model
+        except Exception as e:
+            print(f'Could not load model: {e}')
+            return None
 
+    @staticmethod
+    def load_labels(labels_path):
+        """Loads labels using LabelEncoder from a NumPy file."""
+        try:
+            labels = LabelEncoder()
+            labels.classes_ = np.load(labels_path)
+            print(f'Label char_recognize loaded')
+            # print(f'Labels loaded from {labels_path}')
+            return labels
+        except Exception as e:
+            print(f'Could not load labels: {e}')
+            return None
+
+# Helper function to map camera index to floor and direction
 def check_floor(cam_idx):
-    if cam_idx == 0:
-        return 2, "IN"
-    elif cam_idx == 1:
-        return 2, "OUT"
-    elif cam_idx == 2:
-        return 3, "IN"
-    elif cam_idx == 3:
-        return 3, "OUT"
-    elif cam_idx == 4:
-        return 4, "IN"
-    elif cam_idx == 5:
-        return 4, "OUT"
-    elif cam_idx == 6:
-        return 5, "IN"
-    elif cam_idx == 7:
-        return 5, "OUT"
-    else:
-        return 0, ""
+    cam_map = {
+        0: (2, "IN"), 1: (2, "OUT"),
+        2: (3, "IN"), 3: (3, "OUT"),
+        4: (4, "IN"), 5: (4, "OUT"),
+        6: (5, "IN"), 7: (5, "OUT")
+    }
+    return cam_map.get(cam_idx, (0, ""))
 
 def main():
     db_floor = FloorController()
     IS_DEBUG = True
-    IS_MP = False
+    IS_MP = True
 
-    # Load YOLO model before opening the camera
-    print("Loading YOLO model...")
-    yolo_model = YOLO(config.MODEL_PATH)  # Load YOLO model here
-    print("YOLO model loaded.")
+    try:
+        print("Loading YOLO model...")
+        yolo_model = YOLO(config.MODEL_PATH)
+        print("YOLO model loaded.")
+    except Exception as e:
+        print(f"Error loading YOLO model: {e}")
+        return
+
+    try:
+        model = ModelAndLabelLoader.load_model(config.MODEL_CHAR_RECOGNITION_PATH, config.WEIGHT_CHAR_RECOGNITION_PATH)
+        labels = ModelAndLabelLoader.load_labels(config.LABEL_CHAR_RECOGNITION_PATH)
+
+        if model is None or labels is None:
+            print("Failed to load model or labels, exiting.")
+            return
+    except Exception as e:
+        print(f"Error loading character recognition model or labels: {e}")
+        return
+
+    text_detector = TextDetector(models=model, labels=labels)
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_20241004
         print(video_source)
         caps = [CameraV1(video, is_video=True) for video in video_source]
     else:
@@ -84,14 +130,16 @@ def main():
                     # Conditional to use multiprocessing or not
                     if IS_MP:
                         # Using multiprocessing
-                        plat_detects[i] = OCRControllerMP(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model)
+                        plat_detects[i] = OCRControllerMP(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model, text_detector=text_detector)
                         print(f"Multiprocessing enabled for camera {i}.")
                     else:
                         # Without multiprocessing
-                        plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller)
+                        plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model, text_detector=text_detector)
+                        # plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model)
                         print(f"Multiprocessing disabled for camera {i}.")
 
                 _, frames[i] = caps[i].read()
+                # frames[i] = cv2.resize(frames[i], (1080, 720))
                 if frames[i] is not None:
                     vehicle_detected = plat_detects[i].car_direct(frames[i], arduino_idx=arduino_text, cam_idx=i)
 

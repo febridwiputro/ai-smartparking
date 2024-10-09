@@ -15,8 +15,8 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -115,13 +115,17 @@ class Config:
                     ]
     
     VIDEO_SOURCE_PC = [
-        fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
-        fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
-        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-        fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
-        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
-        #  fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+        # fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
         # fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    #     fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    #    fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    #     # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+    #      fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
 
     ]
 
@@ -265,80 +269,80 @@ class Config:
                                 (0.07037037037037037, 0.9902777777777778),
                                 ]
     
-    # POINTS_BACKGROUND_LT4_OUT = [(0.004629629629629629, 0.9875),
-    #                             (0.006481481481481481, 0.5930555555555556),
-    #                             (0.28055555555555556, 0.3458333333333333),
-    #                             (0.34629629629629627, 0.30277777777777776),
-    #                             (0.3768518518518518, 0.14305555555555555),
-    #                             (0.5935185185185186, 0.15694444444444444),
-    #                             (0.975, 0.3638888888888889),
-    #                             (0.9166666666666666, 0.7013888888888888),
-    #                             (0.9898148148148148, 0.9861111111111112),
-    #                             (0.005555555555555556, 0.9888888888888889)] ##asli
+    POINTS_BACKGROUND_LT4_OUT = [(0.004629629629629629, 0.9875),
+                                (0.006481481481481481, 0.5930555555555556),
+                                (0.28055555555555556, 0.3458333333333333),
+                                (0.34629629629629627, 0.30277777777777776),
+                                (0.3768518518518518, 0.14305555555555555),
+                                (0.5935185185185186, 0.15694444444444444),
+                                (0.975, 0.3638888888888889),
+                                (0.9166666666666666, 0.7013888888888888),
+                                (0.9898148148148148, 0.9861111111111112),
+                                (0.005555555555555556, 0.9888888888888889)] ##asli
     
-    POINTS_BACKGROUND_LT4_OUT = [(0.001851851851851852, 0.7666666666666667),
-                                (0.25925925925925924, 0.3347222222222222),
-                                (0.3425925925925926, 0.23472222222222222),
-                                (0.362962962962963, 0.06111111111111111),
-                                (0.37777777777777777, 0.005555555555555556),
-                                (0.5370370370370371, 0.006944444444444444),
-                                (0.5398148148148149, 0.1125),
-                                (0.6768518518518518, 0.42916666666666664),
-                                (0.6703703703703704, 0.5111111111111111),
-                                (0.9851851851851852, 0.8402777777777778),
-                                (0.001851851851851852, 0.8430555555555556)]##perubahan 08/10/2024
+    # POINTS_BACKGROUND_LT4_OUT = [(0.001851851851851852, 0.7666666666666667),
+    #                             (0.25925925925925924, 0.3347222222222222),
+    #                             (0.3425925925925926, 0.23472222222222222),
+    #                             (0.362962962962963, 0.06111111111111111),
+    #                             (0.37777777777777777, 0.005555555555555556),
+    #                             (0.5370370370370371, 0.006944444444444444),
+    #                             (0.5398148148148149, 0.1125),
+    #                             (0.6768518518518518, 0.42916666666666664),
+    #                             (0.6703703703703704, 0.5111111111111111),
+    #                             (0.9851851851851852, 0.8402777777777778),
+    #                             (0.001851851851851852, 0.8430555555555556)]##perubahan 08/10/2024
 
 
 
-    # POINTS_BACKGROUND_LT5_IN = [(0.31574074074074077, 0.07222222222222222),
-    #                             (0.012962962962962963, 0.41388888888888886),
-    #                             (0.003703703703703704, 0.9972222222222222),
-    #                             (0.9990740740740741, 0.9958333333333333),
-    #                             (0.9953703703703703, 0.6041666666666666),
-    #                             (0.7861111111111111, 0.29583333333333334),
-    #                             (0.6620370370370371, 0.23472222222222222),
-    #                             (0.6648148148148149, 0.03194444444444444),
-    #                             (0.6648148148148149, 0.002777777777777778),
-    #                             (0.2953703703703704, 0.005555555555555556),
-    #                             (0.31296296296296294, 0.075)] ##asli
+    POINTS_BACKGROUND_LT5_IN = [(0.31574074074074077, 0.07222222222222222),
+                                (0.012962962962962963, 0.41388888888888886),
+                                (0.003703703703703704, 0.9972222222222222),
+                                (0.9990740740740741, 0.9958333333333333),
+                                (0.9953703703703703, 0.6041666666666666),
+                                (0.7861111111111111, 0.29583333333333334),
+                                (0.6620370370370371, 0.23472222222222222),
+                                (0.6648148148148149, 0.03194444444444444),
+                                (0.6648148148148149, 0.002777777777777778),
+                                (0.2953703703703704, 0.005555555555555556),
+                                (0.31296296296296294, 0.075)] ##asli
 
     
-    POINTS_BACKGROUND_LT5_IN = [(0.002777777777777778, 0.9888888888888889),
-                                (0.24722222222222223, 0.6763888888888889),
-                                (0.4212962962962963, 0.30833333333333335),
-                                (0.45185185185185184, 0.25833333333333336),
-                                (0.45092592592592595, 0.1986111111111111),
-                                (0.6111111111111112, 0.19166666666666668),
-                                (0.6175925925925926, 0.3486111111111111),
-                                (0.7833333333333333, 0.5083333333333333),
-                                (0.9953703703703703, 0.9430555555555555),
-                                (0.9953703703703703, 0.9944444444444445),
-                                (0.001851851851851852, 0.9916666666666667)] ##perubahan 08/10/2024
+    # POINTS_BACKGROUND_LT5_IN = [(0.002777777777777778, 0.9888888888888889),
+    #                             (0.24722222222222223, 0.6763888888888889),
+    #                             (0.4212962962962963, 0.30833333333333335),
+    #                             (0.45185185185185184, 0.25833333333333336),
+    #                             (0.45092592592592595, 0.1986111111111111),
+    #                             (0.6111111111111112, 0.19166666666666668),
+    #                             (0.6175925925925926, 0.3486111111111111),
+    #                             (0.7833333333333333, 0.5083333333333333),
+    #                             (0.9953703703703703, 0.9430555555555555),
+    #                             (0.9953703703703703, 0.9944444444444445),
+    #                             (0.001851851851851852, 0.9916666666666667)] ##perubahan 08/10/2024
 
-    # POINTS_BACKGROUND_LT5_OUT = [(0.004629629629629629, 0.9875),
-    #                             (0.006481481481481481, 0.5930555555555556),
-    #                             (0.28055555555555556, 0.3458333333333333),
-    #                             (0.34629629629629627, 0.30277777777777776),
-    #                             (0.3768518518518518, 0.14305555555555555),
-    #                             (0.5935185185185186, 0.15694444444444444),
-    #                             (0.975, 0.3638888888888889),
-    #                             (0.9166666666666666, 0.7013888888888888),
-    #                             (0.9898148148148148, 0.9861111111111112),
-    #                             (0.005555555555555556, 0.9888888888888889)
-    #                             ] #asli
+    POINTS_BACKGROUND_LT5_OUT = [(0.004629629629629629, 0.9875),
+                                (0.006481481481481481, 0.5930555555555556),
+                                (0.28055555555555556, 0.3458333333333333),
+                                (0.34629629629629627, 0.30277777777777776),
+                                (0.3768518518518518, 0.14305555555555555),
+                                (0.5935185185185186, 0.15694444444444444),
+                                (0.975, 0.3638888888888889),
+                                (0.9166666666666666, 0.7013888888888888),
+                                (0.9898148148148148, 0.9861111111111112),
+                                (0.005555555555555556, 0.9888888888888889)
+                                ] #asli
 
 
-    POINTS_BACKGROUND_LT5_OUT = [(0.001851851851851852, 0.7569444444444444),
-                                (0.14629629629629629, 0.39444444444444443),
-                                (0.275, 0.21666666666666667),
-                                (0.3351851851851852, 0.14166666666666666),
-                                (0.3675925925925926, 0.0),
-                                (0.5268518518518519, 0.001388888888888889),
-                                (0.5194444444444445, 0.002777777777777778),
-                                (0.6638888888888889, 0.2777777777777778),
-                                (0.6472222222222223, 0.4722222222222222),
-                                (0.9833333333333333, 0.8430555555555556),
-                                (0.002777777777777778, 0.8444444444444444)] ##perubahan 08/10/2024
+    # POINTS_BACKGROUND_LT5_OUT = [(0.001851851851851852, 0.7569444444444444),
+    #                             (0.14629629629629629, 0.39444444444444443),
+    #                             (0.275, 0.21666666666666667),
+    #                             (0.3351851851851852, 0.14166666666666666),
+    #                             (0.3675925925925926, 0.0),
+    #                             (0.5268518518518519, 0.001388888888888889),
+    #                             (0.5194444444444445, 0.002777777777777778),
+    #                             (0.6638888888888889, 0.2777777777777778),
+    #                             (0.6472222222222223, 0.4722222222222222),
+    #                             (0.9833333333333333, 0.8430555555555556),
+    #                             (0.002777777777777778, 0.8444444444444444)] ##perubahan 08/10/2024
 
 
 
@@ -550,8 +554,9 @@ CLASS_NAMES = {
 #     GET_URL = "/slot/"
 #     GET_SLOT_URL = "/slot"
     
-#     BASE_DIR = "D:/engine/smart_parking/repository/github"
-#     # BASE_DIR = Path(__file__).parent.parent.resolve()
+#     BASE_DIR = r"C:\Users\DOT\Documents\febri"
+#     # BASE_DIR = "D:/engine/smart_parking/repository/github"
+#     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
 #     MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
 #     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
@@ -575,17 +580,53 @@ CLASS_NAMES = {
 #     CAM_SOURCE_LT5_IN = fr'{LINK_CAM_PREFIX}192.168.1.16'
 #     CAM_SOURCE_LT5_OUT = fr'{LINK_CAM_PREFIX}192.168.1.17'
 
-#     VIDEO_SOURCE_LT2_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
-#     # VIDEO_SOURCE_LT2_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
-#     VIDEO_SOURCE_LT2_OUT = fr'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
-#     VIDEO_SOURCE_LT3_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
-#     VIDEO_SOURCE_LT3_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
-#     VIDEO_SOURCE_LT4_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
-#     VIDEO_SOURCE_LT4_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
-#     VIDEO_SOURCE_LT5_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
-#     VIDEO_SOURCE_LT5_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
+#     VIDEO_SOURCE_LT2_IN = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4'
+#     VIDEO_SOURCE_LT2_OUT = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\keluar_lt_2_out.mp4'
+#     VIDEO_SOURCE_LT3_IN = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4'
+#     VIDEO_SOURCE_LT3_OUT = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\keluar_lt_2_out.mp4'
+#     VIDEO_SOURCE_LT4_IN = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4'
+#     VIDEO_SOURCE_LT4_OUT = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\keluar_lt_2_out.mp4'
+#     VIDEO_SOURCE_LT5_IN = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4'
+#     VIDEO_SOURCE_LT5_OUT = fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\keluar_lt_2_out.mp4'
 
-#     video_source = [VIDEO_SOURCE_LT2_IN, 
+#     VIDEO_SOURCE_20241004_LT2_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_2_IN.mp4"
+#     VIDEO_SOURCE_20241004_LT2_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_2_OUT.mp4"
+#     VIDEO_SOURCE_20241004_LT3_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+#     VIDEO_SOURCE_20241004_LT3_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+#     VIDEO_SOURCE_20241004_LT4_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
+#     VIDEO_SOURCE_20241004_LT4_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
+#     VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
+#     VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+
+#     # VIDEO_SOURCE_20241004_LT2_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_IN.mp4"
+#     # VIDEO_SOURCE_20241004_LT2_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_OUT.mp4"
+#     # VIDEO_SOURCE_20241004_LT3_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_IN.mp4"
+#     # VIDEO_SOURCE_20241004_LT3_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_OUT.mp4"
+#     # VIDEO_SOURCE_20241004_LT4_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_IN.mp4"
+#     # VIDEO_SOURCE_20241004_LT4_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_OUT.mp4"
+#     # VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_IN.mp4"
+#     # VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_OUT.mp4"
+
+#     # VIDEO_SOURCE_LT2_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
+#     # # VIDEO_SOURCE_LT2_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
+#     # VIDEO_SOURCE_LT2_OUT = fr'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
+#     # VIDEO_SOURCE_LT3_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
+#     # VIDEO_SOURCE_LT3_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
+#     # VIDEO_SOURCE_LT4_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
+#     # VIDEO_SOURCE_LT4_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
+#     # VIDEO_SOURCE_LT5_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
+#     # VIDEO_SOURCE_LT5_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
+
+#     VIDEO_SOURCE_20241004 = [VIDEO_SOURCE_20241004_LT2_IN, 
+#                     VIDEO_SOURCE_20241004_LT2_OUT, 
+#                     VIDEO_SOURCE_20241004_LT3_IN, 
+#                     VIDEO_SOURCE_20241004_LT3_OUT, 
+#                     VIDEO_SOURCE_20241004_LT4_IN, 
+#                     VIDEO_SOURCE_20241004_LT4_OUT, 
+#                     VIDEO_SOURCE_20241004_LT5_IN, 
+#                     VIDEO_SOURCE_20241004_LT5_OUT]
+
+#     VIDEO_SOURCE = [VIDEO_SOURCE_LT2_IN, 
 #                     VIDEO_SOURCE_LT2_OUT, 
 #                     VIDEO_SOURCE_LT3_IN, 
 #                     VIDEO_SOURCE_LT3_OUT, 
@@ -596,15 +637,18 @@ CLASS_NAMES = {
 
 #     video_source1 = [VIDEO_SOURCE_LT2_IN]
 
-#     video_source2 = [VIDEO_SOURCE_LT2_IN, 
+#     VIDEO_SOURCE_LT2 = [VIDEO_SOURCE_LT2_IN, 
 #                     VIDEO_SOURCE_LT2_OUT]
-    
-#     VIDEO_SOURCE_23 = [VIDEO_SOURCE_LT2_IN, 
+
+#     VIDEO_SOURCE_LT23 = [VIDEO_SOURCE_LT2_IN, 
 #                     VIDEO_SOURCE_LT2_OUT, 
 #                     VIDEO_SOURCE_LT3_IN, 
 #                     VIDEO_SOURCE_LT3_OUT]
 
-#     cam_source = [CAM_SOURCE_LT2_IN, 
+#     CAM_SOURCE_LT2 = [CAM_SOURCE_LT2_IN, 
+#                   CAM_SOURCE_LT2_OUT]
+
+#     CAM_SOURCE_LT = [CAM_SOURCE_LT2_IN, 
 #                   CAM_SOURCE_LT2_OUT, 
 #                   CAM_SOURCE_LT3_IN, 
 #                   CAM_SOURCE_LT3_OUT, 
@@ -632,7 +676,11 @@ CLASS_NAMES = {
 #     SERIAL_NUMBER_MATRIX_NUM_LT5 = '5626004963'
 #     SERIAL_NUMBER_MATRIX_TEXT_LT5 = '0003'
 
-#     serials = [
+#     SERIAL_LT2 = [
+#         SERIAL_NUMBER_MATRIX_TEXT_LT2, SERIAL_NUMBER_MATRIX_NUM_LT2
+#     ]
+
+#     SERIALS = [
 #         SERIAL_NUMBER_MATRIX_TEXT_LT2, SERIAL_NUMBER_MATRIX_NUM_LT2,
 #         SERIAL_NUMBER_MATRIX_TEXT_LT3, SERIAL_NUMBER_MATRIX_NUM_LT3,
 #         SERIAL_NUMBER_MATRIX_TEXT_LT4, SERIAL_NUMBER_MATRIX_NUM_LT4,
@@ -703,17 +751,19 @@ CLASS_NAMES = {
 #                                 (0.9898148148148148, 0.9861111111111112),
 #                                 (0.005555555555555556, 0.9888888888888889)]
 
-#     POINTS_BACKGROUND_LT4_IN = [(0.31574074074074077, 0.07222222222222222),
-#                                 (0.012962962962962963, 0.41388888888888886),
-#                                 (0.003703703703703704, 0.9972222222222222),
-#                                 (0.9990740740740741, 0.9958333333333333),
-#                                 (0.9953703703703703, 0.6041666666666666),
-#                                 (0.7861111111111111, 0.29583333333333334),
-#                                 (0.6620370370370371, 0.23472222222222222),
-#                                 (0.6648148148148149, 0.03194444444444444),
-#                                 (0.6648148148148149, 0.002777777777777778),
-#                                 (0.2953703703703704, 0.005555555555555556),
-#                                 (0.31296296296296294, 0.075)]
+#     POINTS_BACKGROUND_LT4_IN = [
+#                                 (0.12777777777777777, 0.9944444444444445),
+#                                 (0.2101851851851852, 0.6555555555555556),
+#                                 (0.3907407407407407, 0.23194444444444445),
+#                                 (0.3990740740740741, 0.1763888888888889),
+#                                 (0.6055555555555555, 0.19722222222222222),
+#                                 (0.6240740740740741, 0.38333333333333336),
+#                                 (0.6953703703703704, 0.45694444444444443),
+#                                 (0.8648148148148148, 0.6430555555555556),
+#                                 (0.9972222222222222, 0.9319444444444445),
+#                                 (0.9694444444444444, 0.9986111111111111),
+#                                 (0.07037037037037037, 0.9902777777777778),
+#                                 ]
     
 #     POINTS_BACKGROUND_LT4_OUT = [(0.004629629629629629, 0.9875),
 #                                 (0.006481481481481481, 0.5930555555555556),
@@ -747,7 +797,8 @@ CLASS_NAMES = {
 #                                 (0.975, 0.3638888888888889),
 #                                 (0.9166666666666666, 0.7013888888888888),
 #                                 (0.9898148148148148, 0.9861111111111112),
-#                                 (0.005555555555555556, 0.9888888888888889)]
+#                                 (0.005555555555555556, 0.9888888888888889)
+#                                 ]
 
 #     # POINT_LT2_1_START = (0.38055555555555554, 0.40694444444444444)
 #     # POINT_LT2_2_START = (0.6370370370370371, 0.40694444444444444)
@@ -783,10 +834,10 @@ CLASS_NAMES = {
 #     POINT_LT2_IN_R_START = (0.5972222222222222, 0.32222222222222224)
 #     POINT_LT2_IN_L_END = (0.05740740740740741, 0.6611111111111111)
 #     POINT_LT2_IN_R_END = (0.6907407407407408, 0.6694444444444444)
-#     POINT_LT2_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
-#     # POINT_LT2_OUT_L_START = (0.35833333333333334, 0.39166666666666666)
-#     POINT_LT2_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
-#     # POINT_LT2_OUT_R_START = (0.5787037037037037, 0.4)
+#     # POINT_LT2_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
+#     POINT_LT2_OUT_L_START = (0.35833333333333334, 0.39166666666666666)
+#     # POINT_LT2_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
+#     POINT_LT2_OUT_R_START = (0.5787037037037037, 0.4)
 #     POINT_LT2_OUT_L_END = (0.05462962962962963, 0.6611111111111111)
 #     POINT_LT2_OUT_R_END = (0.8111111111111111, 0.6708333333333333)
 

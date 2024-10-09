@@ -60,13 +60,14 @@ class EasyOCRNet:
 
 
 class TextRecognition:
-    def __init__(self):
+    def __init__(self, text_detector):
         self.ocr_net = EasyOCRNet(use_cuda=True)        
         self.reader = Reader(['en'], gpu=True, verbose=False)
         self.controller = PlatController()
         self.all_plat = self.controller.get_all_plat()
         self.gan_model = GanModel()
-        self.td = TextDetector()        
+        self.td = text_detector
+        # self.td = TextDetector()        
         # self.ocr = PaddleOCR(lang='en', debug=False)
         self.dict_char_to_int = {'O': '0',
                             'B': '8',

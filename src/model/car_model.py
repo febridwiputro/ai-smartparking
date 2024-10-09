@@ -7,8 +7,8 @@ from utils.centroid_tracking import CentroidTracker
 
 
 class VehicleDetector:
-    def __init__(self, model_path = config.MODEL_PATH):
-        self.model = YOLO(model_path)
+    def __init__(self, yolo_model):
+        self.model = yolo_model
         self.tracking_norfair = Tracker(distance_function='euclidean', distance_threshold=10)
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.detection = []

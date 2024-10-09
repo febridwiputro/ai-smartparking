@@ -15,14 +15,14 @@ from src.Integration.service_v1.controller.vehicle_history_controller import Veh
 from src.model.car_model_mp import VehicleDetectorMP
 
 class OCRControllerMP:
-    def __init__(self, ard, matrix_total, yolo_model):
+    def __init__(self, ard, matrix_total, yolo_model, text_detector):
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
         self.plate_no = ""
         self.car_detector = VehicleDetector(config.MODEL_PATH)
         self.plat_detector = PlatDetector(config.MODEL_PATH_PLAT_v2)
-        self.ocr = TextRecognition()
+        self.ocr = TextRecognition(text_detector=text_detector)
         self.container_plate_no = []
         # self.container_text = []
         # self.real_container_text = []
@@ -92,10 +92,11 @@ class OCRControllerMP:
             return []
 
     def get_car_image(self, frame, threshold=0.008):
+        """Capture car images from frame using YOLO model."""
         self.car_detector_mp.process_frame(frame)
 
-        max_retries = 5
         retries = 0
+        max_retries = 5
 
         while not self.car_detector_mp.is_model_ready() and retries < max_retries:
             print("Waiting for YOLO model to be ready...")
@@ -112,12 +113,9 @@ class OCRControllerMP:
             print(f"Error getting results from YOLO: {e}")
             return np.array([]), None
 
-        if not results or not hasattr(results[0], 'boxes') or not results[0].boxes.xyxy.cpu().tolist():
+        if not results or not hasattr(results[0], 'boxes'):
             print("No bounding boxes detected.")
-            return np.array([]), results
-
-        # Debugging: pastikan box valid
-        # print(f"Detected boxes: {results[0].boxes.xyxy.cpu().tolist()}")
+            return np.array([]), None
 
         boxes = results[0].boxes.xyxy.cpu().tolist()
         height, width = frame.shape[:2]
@@ -128,19 +126,17 @@ class OCRControllerMP:
             return np.array([]), results
 
         sorted_boxes = sorted(filtered_boxes, key=lambda x: x[3] - x[1], reverse=True)
-        if len(sorted_boxes) > 0:
-            box = sorted_boxes[0]
-            x1, y1, x2, y2 = [int(coord) for coord in box]
+        if sorted_boxes:
+            x1, y1, x2, y2 = [int(coord) for coord in sorted_boxes[0]]
             car_frame = frame[y1:y2, x1:x2]
 
-            if car_frame.shape[0] == 0 or car_frame.shape[1] == 0:
+            if car_frame.size == 0:
                 print("Car frame is empty after cropping.")
                 return np.array([]), results
 
             return car_frame, results
 
         return np.array([]), results
-
 
     def is_car_out_v2(self, boxes):
         sorted_boxes = sorted(boxes, key=lambda x: x[3], reverse=True)
@@ -250,6 +246,27 @@ class OCRControllerMP:
         poly_points = convert_decimal_to_bbox((self.height, self.width), polygon_point)
         
         return poly_points, frame, floor_position, cam_position
+
+    def check_centroid_location(self, results, poly_points, inverse=False):
+        # Get centroids
+        self.centroids = self.get_centroid(results, line_pos=False)
+
+        # Check if centroids exist
+        if not self.centroids or len(self.centroids) == 0:
+            print("No centroids detected.")
+            return None, None
+
+        point = (self.centroids[0][0], self.centroids[0][1])
+
+        # Calculate start and end based on poly points
+        start = point_position(poly_points[0], poly_points[1], point, inverse=inverse)
+        end = point_position(poly_points[2], poly_points[3], point, inverse=inverse)
+
+        # If inverse, swap start and end
+        if inverse:
+            return end, start
+        else:
+            return start, end
 
 
     def check_centroid_location(self, results, poly_points, inverse=False):

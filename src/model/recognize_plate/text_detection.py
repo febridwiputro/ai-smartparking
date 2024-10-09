@@ -24,10 +24,12 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
 class TextDetector:
-    def __init__(self, threshold=0.30):
-        model_path, weight_path, labels_path = config.MODEL_CHAR_RECOGNITION_PATH, config.WEIGHT_CHAR_RECOGNITION_PATH, config.LABEL_CHAR_RECOGNITION_PATH
-        self.model = self.load_model(model_path, weight_path)
-        self.labels = self.load_labels(labels_path)
+    def __init__(self, threshold=0.30, models=None, labels=None):
+        self.model = models
+        self.labels = labels
+        # model_path, weight_path, labels_path = config.MODEL_CHAR_RECOGNITION_PATH, config.WEIGHT_CHAR_RECOGNITION_PATH, config.LABEL_CHAR_RECOGNITION_PATH
+        # self.model = self.load_model(model_path, weight_path)
+        # self.labels = self.load_labels(labels_path)
         self.threshold = threshold
 
     def load_model(self, model_path, weight_path):
