@@ -354,10 +354,58 @@ class OCRController:
         next_slot_update = next_slot
         next_vehicle_total_update = next_vehicle_total
 
+        get_plate_history = self.db_vehicle_history.get_vehicle_history_by_plate_no(plate_no=plate_no)
+        print("get_plate_history: ", get_plate_history)
+
         # NAIK / MASUK
         if not status_car:
+            # if get_plate_history:
+            #     if get_plate_history[0]['floor_id'] != current_floor_position:
+            #         print(f"Update vehicle history karena floor_id tidak sesuai: {get_plate_history[0]['floor_id']} != {current_floor_position}")
+                    
+            #         # Update vehicle history
+            #         update_plate_history = self.db_vehicle_history.update_vehicle_history_by_plate_no(
+            #             plate_no=plate_no, 
+            #             floor_id=current_floor_position, 
+            #             camera=current_cam_position
+            #         )
+
+            #         if update_plate_history:
+            #             print(f"Vehicle history updated for plate_no: {plate_no} to floor_id: {current_floor_position}")
+            #         else:
+            #             print(f"Failed to update vehicle history for plate_no: {plate_no}")
+
+            if get_plate_history:
+                # Jika floor_id di history berbeda dengan current_floor_position
+                if get_plate_history[0]['floor_id'] != current_floor_position:
+                    print(f"Update vehicle history karena floor_id tidak sesuai: {get_plate_history[0]['floor_id']} != {current_floor_position}")
+                    
+                    # Update vehicle history
+                    update_plate_history = self.db_vehicle_history.update_vehicle_history_by_plate_no(
+                        plate_no=plate_no, 
+                        floor_id=current_floor_position, 
+                        camera=current_cam_position
+                    )
+
+                    if update_plate_history:
+                        print(f"Vehicle history updated for plate_no: {plate_no} to floor_id: {current_floor_position}")
+                    else:
+                        print(f"Failed to update vehicle history for plate_no: {plate_no}")
+
+                # Jika current_floor_position == 3 dan floor_id dari history == 2
+                if current_floor_position == 3 and get_plate_history[0]['floor_id'] == 2:
+                    # Mengurangi current_slot_update dan current_vehicle_total_update sebanyak 1
+                    current_slot_update = current_slot - 1
+                    self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
+
+                    current_vehicle_total_update = current_vehicle_total - 1
+                    self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
+                    print(f"Updated current_slot to {current_slot_update} and vehicle_total to {current_vehicle_total_update}")
+
+
             print("VEHICLE - IN")
             print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
+
             if current_slot == 0:
                 print("UPDATE 0")
                 current_slot_update = current_slot

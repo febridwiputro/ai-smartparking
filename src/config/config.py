@@ -15,8 +15,8 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
     
-    BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -75,24 +75,24 @@ class Config:
     # LAPTOP
     BASE_VIDEO_SOURCE_20241004 = r"D:\engine\smart_parking\dataset\cctv\20241004\split_videos"
 
-    # VIDEO_SOURCE_20241004_LT2_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_2_IN_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT2_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_2_OUT_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT3_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_3_IN_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT3_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_3_OUT_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT4_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_4_IN_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT4_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_4_OUT_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT5_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_5_IN_clip.mp4"
-    # VIDEO_SOURCE_20241004_LT5_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_5_OUT_clip.mp4"
+    VIDEO_SOURCE_20241004_LT2_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_2_IN_clip.mp4"
+    VIDEO_SOURCE_20241004_LT2_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_2_OUT_clip.mp4"
+    VIDEO_SOURCE_20241004_LT3_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_3_IN_clip.mp4"
+    VIDEO_SOURCE_20241004_LT3_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_3_OUT_clip.mp4"
+    VIDEO_SOURCE_20241004_LT4_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_4_IN_clip.mp4"
+    VIDEO_SOURCE_20241004_LT4_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_4_OUT_clip.mp4"
+    VIDEO_SOURCE_20241004_LT5_IN = fr"{BASE_VIDEO_SOURCE_20241004}\LT_5_IN_clip.mp4"
+    VIDEO_SOURCE_20241004_LT5_OUT = fr"{BASE_VIDEO_SOURCE_20241004}\LT_5_OUT_clip.mp4"
 
 
-    VIDEO_SOURCE_20241004_LT2_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_IN.mp4"
-    VIDEO_SOURCE_20241004_LT2_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_OUT.mp4"
-    VIDEO_SOURCE_20241004_LT3_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_IN.mp4"
-    VIDEO_SOURCE_20241004_LT3_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_OUT.mp4"
-    VIDEO_SOURCE_20241004_LT4_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_IN.mp4"
-    VIDEO_SOURCE_20241004_LT4_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_OUT.mp4"
-    VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_IN.mp4"
-    VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_OUT.mp4"
+    # VIDEO_SOURCE_20241004_LT2_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_IN.mp4"
+    # VIDEO_SOURCE_20241004_LT2_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_2_OUT.mp4"
+    # VIDEO_SOURCE_20241004_LT3_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_IN.mp4"
+    # VIDEO_SOURCE_20241004_LT3_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_3_OUT.mp4"
+    # VIDEO_SOURCE_20241004_LT4_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_IN.mp4"
+    # VIDEO_SOURCE_20241004_LT4_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_4_OUT.mp4"
+    # VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_IN.mp4"
+    # VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\output\car\LT_5_OUT.mp4"
 
     # VIDEO_SOURCE_LT2_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
     # # VIDEO_SOURCE_LT2_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
