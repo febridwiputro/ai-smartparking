@@ -28,6 +28,7 @@ class VehicleDetector:
         track_object = [self.centroid_tracking.update(centroid.reshape(1, -1)) for centroid in centroids][0]
         id = [i for i in track_object.keys()]
         point = [list(i.flatten()) for i in track_object.values()]
+        # print("point: ", point, "id :", id)
         return point, id
         
     def preprocess(self, image: np.ndarray) -> np.ndarray:

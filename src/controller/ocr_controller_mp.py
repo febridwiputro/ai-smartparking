@@ -12,10 +12,10 @@ from src.view.show_cam import show_cam, show_text, show_line
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
+from src.model.car_model_mp import VehicleDetectorMP
 
-# semuanya berjalan secara per frame
-class OCRController:
-    def __init__(self, ard, matrix_total):
+class OCRControllerMP:
+    def __init__(self, ard, matrix_total, yolo_model):
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
@@ -44,6 +44,10 @@ class OCRController:
         self.db_mysn = FetchAPIController()
         self.db_vehicle_history = VehicleHistoryController()
 
+        # self.car_detector_mp = VehicleDetectorMP()
+        self.car_detector_mp = VehicleDetectorMP(yolo_model)        
+        self.car_detector_mp.start_multiprocessing()
+
     def check_floor(self, cam_idx):
         if cam_idx == 0:
             return 2, "IN"
@@ -68,16 +72,76 @@ class OCRController:
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             print(convert_bbox_to_decimal((self.height, self.width), [[[x, y]]]))
-    
+
     def get_centroid(self, results, line_pos):
-        centro = get_centroids(results, line_pos)
-        estimate_tracking, self.track_id = self.car_detector.get_tracking_centroid(centro)
-        # self.track_id = self.car_detector.get_id_track(results[0])
-        if estimate_tracking != ():
-            return centro
-        else:
+        # Mengambil centroid dari hasil deteksi YOLO
+        centroids = get_centroids(results, line_pos)
+
+        print("centroids: ", centroids)
+        if not self.car_detector_mp.is_tracking_ready():
+            print("Waiting for tracking to be ready...")
+            return []
+
+        estimate_tracking, self.track_id = self.car_detector_mp.get_tracking_centroid(centroids)
+
+        print("Tracked Centroids: ", estimate_tracking, "Track IDs: ", self.track_id)
+
+        if estimate_tracking != []:
             return estimate_tracking
-    
+        else:
+            return []
+
+    def get_car_image(self, frame, threshold=0.008):
+        self.car_detector_mp.process_frame(frame)
+
+        max_retries = 5
+        retries = 0
+
+        while not self.car_detector_mp.is_model_ready() and retries < max_retries:
+            print("Waiting for YOLO model to be ready...")
+            time.sleep(0.5)
+            retries += 1
+
+        if retries == max_retries:
+            print("YOLO model is not ready after retries.")
+            return np.array([]), None
+
+        try:
+            results = self.car_detector_mp.result_queue.get(timeout=5)
+        except Exception as e:
+            print(f"Error getting results from YOLO: {e}")
+            return np.array([]), None
+
+        if not results or not hasattr(results[0], 'boxes') or not results[0].boxes.xyxy.cpu().tolist():
+            print("No bounding boxes detected.")
+            return np.array([]), results
+
+        # Debugging: pastikan box valid
+        # print(f"Detected boxes: {results[0].boxes.xyxy.cpu().tolist()}")
+
+        boxes = results[0].boxes.xyxy.cpu().tolist()
+        height, width = frame.shape[:2]
+        filtered_boxes = [box for box in boxes if (box[3] < height * (1 - threshold))]
+
+        if not filtered_boxes:
+            print("No boxes passed the threshold filter.")
+            return np.array([]), results
+
+        sorted_boxes = sorted(filtered_boxes, key=lambda x: x[3] - x[1], reverse=True)
+        if len(sorted_boxes) > 0:
+            box = sorted_boxes[0]
+            x1, y1, x2, y2 = [int(coord) for coord in box]
+            car_frame = frame[y1:y2, x1:x2]
+
+            if car_frame.shape[0] == 0 or car_frame.shape[1] == 0:
+                print("Car frame is empty after cropping.")
+                return np.array([]), results
+
+            return car_frame, results
+
+        return np.array([]), results
+
+
     def is_car_out_v2(self, boxes):
         sorted_boxes = sorted(boxes, key=lambda x: x[3], reverse=True)
         if len(sorted_boxes) > 0:
@@ -114,26 +178,6 @@ class OCRController:
                     self.num_skip_centroid = 0
                     self.centroid_sequence = []
         return None
-    
-    def get_car_image(self, frame, threshold=0.008):
-        results = self.car_detector.predict(frame)
-        if not results[0].boxes.xyxy.cpu().tolist():
-            return np.array([]), results
-        boxes = results[0].boxes.xyxy.cpu().tolist()
-        # print("boxes : ", boxes)
-        height, width = frame.shape[:2]
-        filtered_boxes = [box for box in boxes if (box[3] < height * (1 - threshold))]
-        if not filtered_boxes:
-            return np.array([]), results
-        sorted_boxes = sorted(filtered_boxes, key=lambda x: x[3] - x[1], reverse=True)
-        if len(sorted_boxes) > 0:
-            box = sorted_boxes[0]
-            x1, y1, x2, y2 = [int(coord) for coord in box]
-            car_frame = frame[y1:y2, x1:x2]
-            if car_frame.shape[0] == 0 or car_frame.shape[1] == 0:
-                return np.array([]), results
-            return car_frame, results
-        return np.array([]), results
     
     def get_process_plat_image(self, car, is_bitwise=True) -> (np.ndarray, np.ndarray):
         if car.shape[0] == 0 or car.shape[1] == 0:
@@ -221,10 +265,7 @@ class OCRController:
 
     def car_direct(self, frame, arduino_idx, cam_idx='a') -> list:
         floor_position, cam_position = self.check_floor(cam_idx=cam_idx)
-        floor_id = floor_position
-
-        floor_id = floor_position
-        slot = self.db_floor.get_slot_by_id(floor_id)
+        slot = self.db_floor.get_slot_by_id(floor_position)
         total_slot = slot["slot"]
         
         poly_points, frame, _, _ = self.crop_frame(frame, cam_idx)
@@ -587,7 +628,7 @@ class OCRController:
 
         self.db_vehicle_history.create_vehicle_history_record(plate_no=plate_no, floor_id=current_floor_position, camera=current_cam_position)
         
-        self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
+        # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
         print('=' * 30 + " LINE BORDER " + '=' * 30)
 
