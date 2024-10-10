@@ -56,22 +56,40 @@ class EasyOCRNet:
             return []
 
 def _restoration_process_image(image_queue: mp.Queue, result_queue: mp.Queue, gan_model: GanModel, stop_event: mp.Event):
-    """Function that runs in a separate process to restore images using GAN model."""
     while not stop_event.is_set():
         try:
             image = image_queue.get(timeout=5)
             if image is None:
                 continue
             
-            # Image processing with GAN model
-            restored_image = gan_model.super_resolution(image)
+            print("Image received for restoration")  # Log tambahan
             
-            # Put the processed image in the result queue
+            restored_image = gan_model.super_resolution(image)
             result_queue.put(restored_image)
+            
+            print("Restored image added to result queue")  # Log tambahan
         except mp.queues.Empty:
             pass
         except Exception as e:
             print(f"Error in restoration process: {e}")
+
+
+def display_images(result_queue: mp.Queue):
+    """Function to display images in the main process."""
+    try:
+        while True:
+            restored_image = result_queue.get(timeout=5)
+            if restored_image is None:
+                break
+
+            # Display the processed image
+            cv2.imshow("restored_image", restored_image)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+    except Exception as e:
+        print(f"Error in display_images: {e}")
+    finally:
+        cv2.destroyAllWindows()
 
 class TextRecognition:
     def __init__(self, character_recognition):
@@ -103,36 +121,32 @@ class TextRecognition:
             '7' : '1'
         }
 
-    #     # Queues and event for multiprocessing
+        # Queues and event for multiprocessing
     #     self.image_queue = mp.Queue()
     #     self.result_queue = mp.Queue()
     #     self.stop_event = mp.Event()
-        
+    #            # Queues and event for multiprocessing
+    #     self.image_queue = mp.Queue()
+    #     self.result_queue = mp.Queue()
+    #     self.stop_event = mp.Event()
+
     #     # Start the multiprocessing process for GAN model
     #     self.process = mp.Process(target=_restoration_process_image, args=(self.image_queue, self.result_queue, self.gan_model, self.stop_event))
     #     self.process.start()
 
     # def image_processing(self, image: np.ndarray, is_bitwise=True) -> np.ndarray:
-    #     """
-    #     Process the image using GAN model in a separate process.
-
-    #     Args:
-    #         image: The input image as a numpy array.
-    #         is_bitwise: Boolean flag for additional bitwise processing (if needed).
-
-    #     Returns:
-    #         Restored image after processing.
-    #     """
     #     try:
-    #         # Convert image to grayscale
     #         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #         resize = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
-            
-    #         # Send the image to the queue for GAN restoration
-    #         self.image_queue.put(resize)
 
-    #         # Wait for the restored image from the result queue
-    #         restored_image = self.result_queue.get(timeout=5)  # Set a reasonable timeout for processing
+    #         self.image_queue.put(resize)
+            
+    #         try:
+    #             restored_image = self.result_queue.get(timeout=10)  # Tambah timeout atau gunakan retry mekanisme
+    #         except mp.queues.Empty:
+    #             print("Timeout while waiting for restored image.")
+    #             return resize  # Fallback ke gambar resized jika timeout
+
     #         return restored_image
     #     except Exception as e:
     #         print(f"Error in image_processing: {e}")
@@ -141,7 +155,7 @@ class TextRecognition:
     # def stop_processing(self):
     #     """Stops the multiprocessing process cleanly."""
     #     self.stop_event.set()
-    #     self.image_queue.put(None)  # Send a signal to stop the process
+    #     self.image_queue.put(None)
     #     self.process.join()
 
     def image_processing(self, image, is_bitwise=True):

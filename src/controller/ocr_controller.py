@@ -6,23 +6,22 @@ from src.config.logger import logger
 from src.controller.matrix_controller import MatrixController
 from src.model.car_model import VehicleDetector
 from src.model.plat_model import PlatDetector
-from src.model.text_recognition_model import TextRecognition
 from src.utils import *
 from src.view.show_cam import show_cam, show_text, show_line
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
-
+from src.model.text_recognition_model import TextRecognition
 
 class OCRController:
     def __init__(self, ard, matrix_total, vehicle_detection_model, character_recognition, plate_detection_model):
+        self.ocr = TextRecognition(character_recognition=character_recognition)
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
         self.plate_no = ""
         self.car_detector = VehicleDetector(vehicle_detection_model)
         self.plat_detector = PlatDetector(plate_detection_model)
-        self.ocr = TextRecognition(character_recognition=character_recognition)
         self.container_plate_no = []
         # self.container_text = []
         # self.real_container_text = []
@@ -45,24 +44,13 @@ class OCRController:
         self.db_vehicle_history = VehicleHistoryController()
 
     def check_floor(self, cam_idx):
-        if cam_idx == 0:
-            return 2, "IN"
-        elif cam_idx == 1:
-            return 2, "OUT"
-        elif cam_idx == 2:
-            return 3, "IN"
-        elif cam_idx == 3:
-            return 3, "OUT"
-        elif cam_idx == 4:
-            return 4, "IN"
-        elif cam_idx == 5:
-            return 4, "OUT"
-        elif cam_idx == 6:
-            return 5, "IN"
-        elif cam_idx == 7:
-            return 5, "OUT"
-        else:
-            return 0, ""
+        cam_map = {
+            0: (2, "IN"), 1: (2, "OUT"),
+            2: (3, "IN"), 3: (3, "OUT"),
+            4: (4, "IN"), 5: (4, "OUT"),
+            6: (5, "IN"), 7: (5, "OUT")
+        }
+        return cam_map.get(cam_idx, (0, ""))
 
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -134,6 +122,26 @@ class OCRController:
             return car_frame, results
         return np.array([]), results
 
+    # def get_process_plat_image(self, car, is_bitwise=True) -> (np.ndarray, np.ndarray): 
+    #     if car.shape[0] == 0 or car.shape[1] == 0:
+    #         return np.array([])
+        
+    #     results_plat = self.plat_detector.predict(car)
+    #     if not results_plat:
+    #         return np.array([])
+        
+    #     plat = self.plat_detector.get_plat_image(image=car, results=results_plat[0])
+    #     if plat.shape[0] == 0 or plat.shape[1] == 0:
+    #         return np.array([]), np.array([])
+
+    #     plat_preprocessing = self.ocr.image_processing(plat, is_bitwise)
+
+    #     return plat_preprocessing, plat
+
+    # def stop_ocr(self):
+    #     """Function to stop OCR process cleanly."""
+    #     self.ocr.stop_processing()
+
     def get_process_plat_image(self, car, is_bitwise=True) -> (np.ndarray, np.ndarray):
         if car.shape[0] == 0 or car.shape[1] == 0:
             return np.array([])
@@ -170,22 +178,22 @@ class OCRController:
     def crop_frame(self, frame, cam_idx):
         # polygons_point = [ config.POINTS_BACKGROUND_LT2_OUT]
 
-        polygons_point = [config.POINTS_BACKGROUND_LT2_IN, 
-                          config.POINTS_BACKGROUND_LT2_OUT,
-                          config.POINTS_BACKGROUND_LT3_IN,
-                          config.POINTS_BACKGROUND_LT3_OUT,
-                          config.POINTS_BACKGROUND_LT4_IN,
-                          config.POINTS_BACKGROUND_LT4_OUT,
-                          config.POINTS_BACKGROUND_LT5_IN,
-                          config.POINTS_BACKGROUND_LT5_OUT]
+        # polygons_point = [config.POINTS_BACKGROUND_LT2_IN, 
+        #                   config.POINTS_BACKGROUND_LT2_OUT,
+        #                   config.POINTS_BACKGROUND_LT3_IN,
+        #                   config.POINTS_BACKGROUND_LT3_OUT,
+        #                   config.POINTS_BACKGROUND_LT4_IN,
+        #                   config.POINTS_BACKGROUND_LT4_OUT,
+        #                   config.POINTS_BACKGROUND_LT5_IN,
+        #                   config.POINTS_BACKGROUND_LT5_OUT]
         
-        point=polygons_point[cam_idx]
+        # point=polygons_point[cam_idx]
 
         floor_position, cam_position = self.check_floor(cam_idx=cam_idx)
         self.height, self.width = frame.shape[:2]
-        polygons = [point]
-        bbox = convert_decimal_to_bbox((self.height, self.width), polygons)
-        frame = crop_polygon(frame, bbox[0])
+        # polygons = [point]
+        # bbox = convert_decimal_to_bbox((self.height, self.width), polygons)
+        # frame = crop_polygon(frame, bbox[0])
 
         if frame.shape[0] == () or frame.shape[1] == ():
             return "", np.array([]), np.array([])

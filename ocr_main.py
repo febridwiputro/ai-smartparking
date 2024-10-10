@@ -53,7 +53,6 @@ class ModelAndLabelLoader:
             print(f'Could not load labels: {e}')
             return None
 
-# Helper function to map camera index to floor and direction
 def check_floor(cam_idx):
     cam_map = {
         0: (2, "IN"), 1: (2, "OUT"),
@@ -88,9 +87,10 @@ def main():
     CHARACTER_RECOGNITION = CharacterRecognize(models=model, labels=labels)
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_LAPTOP
+        # video_source = config.VIDEO_SOURCE_LAPTOP
         # video_source = config.VIDEO_SOURCE_PC
-        # video_source = config.VIDEO_SOURCE_20241004
+        video_source = config.VIDEO_SOURCE_20241004
+        # video_source = config.video_source
         print(video_source)
         caps = [CameraV1(video, is_video=True) for video in video_source]
     else:
@@ -145,6 +145,7 @@ def main():
                     if vehicle_detected:
                         plat_detects[i].processing_car_counter(vehicle_detected)
                         plat_detects[i].processing_ocr(arduino_text, i, frames[i], vehicle_detected)
+                        # plat_detects[i].stop_ocr()
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):

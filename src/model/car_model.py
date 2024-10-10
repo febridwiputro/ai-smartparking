@@ -38,12 +38,34 @@ class VehicleDetector:
 
     def predict(self, image: np.ndarray):
         preprocessed_image = self.preprocess(image)
-        results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose = False, classes=config.CLASS_NAMES)
+        results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose=False, classes=config.CLASS_NAMES)
+
         for result in results:
-            self.draw_boxes(frame=image, results=result)
-        
-        # self.get_vehicle_image(image=image, results=results)
+            # boxes = result.boxes  # xyxy format (x_min, y_min, x_max, y_max)
+            # confidences = result.boxes.conf 
+            # class_ids = result.boxes.cls 
+            # for i, box in enumerate(boxes):
+            #     confidence = confidences[i].item() 
+            #     class_id = int(class_ids[i].item())
+
+            #     if class_id < len(config.CLASS_NAMES):
+            #         class_name = config.CLASS_NAMES[class_id] 
+            #         print(f"Detected object: {class_name}, Confidence: {confidence:.2f}")
+            #     else:
+            #         print(f"Warning: Detected object with invalid class_id {class_id}, Confidence: {confidence:.2f}")
+
+                self.draw_boxes(frame=image, results=result)
+
         return results
+
+    # def predict(self, image: np.ndarray):
+    #     preprocessed_image = self.preprocess(image)
+    #     results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose = False, classes=config.CLASS_NAMES)
+    #     for result in results:
+    #         self.draw_boxes(frame=image, results=result)
+        
+    #     # self.get_vehicle_image(image=image, results=results)
+    #     return results
 
     def tracking(self, image: np.ndarray):
         preprocess_image = self.preprocess(image)
