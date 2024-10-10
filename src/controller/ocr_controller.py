@@ -13,16 +13,16 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 
-# semuanya berjalan secara per frame
+
 class OCRController:
-    def __init__(self, ard, matrix_total, yolo_model, text_detector):
+    def __init__(self, ard, matrix_total, vehicle_detection_model, character_recognition, plate_detection_model):
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
         self.plate_no = ""
-        self.car_detector = VehicleDetector(yolo_model)
-        self.plat_detector = PlatDetector(config.MODEL_PATH_PLAT_v2)
-        self.ocr = TextRecognition(text_detector=text_detector)
+        self.car_detector = VehicleDetector(vehicle_detection_model)
+        self.plat_detector = PlatDetector(plate_detection_model)
+        self.ocr = TextRecognition(character_recognition=character_recognition)
         self.container_plate_no = []
         # self.container_text = []
         # self.real_container_text = []
@@ -63,7 +63,6 @@ class OCRController:
             return 5, "OUT"
         else:
             return 0, ""
-
 
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -134,7 +133,7 @@ class OCRController:
                 return np.array([]), results
             return car_frame, results
         return np.array([]), results
-    
+
     def get_process_plat_image(self, car, is_bitwise=True) -> (np.ndarray, np.ndarray):
         if car.shape[0] == 0 or car.shape[1] == 0:
             return np.array([])

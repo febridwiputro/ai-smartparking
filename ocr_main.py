@@ -18,7 +18,7 @@ from src.controller.matrix_controller import MatrixController
 from src.view.show_cam import show_cam
 from src.controller.ocr_controller import OCRController
 from src.controller.ocr_controller_mp import OCRControllerMP
-from src.model.recognize_plate.text_detection import TextDetector
+from src.model.recognize_plate.character_recognition import CharacterRecognize
 from src.model.cam_model import CameraV1
 from src.model.matrix_model import CarCounterMatrix
 from src.Integration.service_v1.controller.floor_controller import FloorController
@@ -66,31 +66,30 @@ def check_floor(cam_idx):
 def main():
     db_floor = FloorController()
     IS_DEBUG = True
-    IS_MP = True
+    IS_MP = False
 
     try:
-        print("Loading YOLO model...")
-        yolo_model = YOLO(config.MODEL_PATH)
-        print("YOLO model loaded.")
-    except Exception as e:
-        print(f"Error loading YOLO model: {e}")
-        return
+        print("Loading model...")
+        VEHICLE_DETECTION_MODEL = YOLO(config.MODEL_PATH)
+        PLATE_DETECTION_MODEL = YOLO(config.MODEL_PATH_PLAT_v2)
 
-    try:
         model = ModelAndLabelLoader.load_model(config.MODEL_CHAR_RECOGNITION_PATH, config.WEIGHT_CHAR_RECOGNITION_PATH)
         labels = ModelAndLabelLoader.load_labels(config.LABEL_CHAR_RECOGNITION_PATH)
 
         if model is None or labels is None:
             print("Failed to load model or labels, exiting.")
             return
+
+        print("Model loaded.")
     except Exception as e:
-        print(f"Error loading character recognition model or labels: {e}")
+        print(f"Error loading YOLO model: {e}")
         return
 
-    text_detector = TextDetector(models=model, labels=labels)
+    CHARACTER_RECOGNITION = CharacterRecognize(models=model, labels=labels)
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_PC
+        video_source = config.VIDEO_SOURCE_LAPTOP
+        # video_source = config.VIDEO_SOURCE_PC
         # video_source = config.VIDEO_SOURCE_20241004
         print(video_source)
         caps = [CameraV1(video, is_video=True) for video in video_source]
@@ -130,11 +129,11 @@ def main():
                     # Conditional to use multiprocessing or not
                     if IS_MP:
                         # Using multiprocessing
-                        plat_detects[i] = OCRControllerMP(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model, text_detector=text_detector)
+                        plat_detects[i] = OCRControllerMP(arduino_text, matrix_total=matrix_controller, yolo_model=VEHICLE_DETECTION_MODEL, character_recognition=CHARACTER_RECOGNITION)
                         print(f"Multiprocessing enabled for camera {i}.")
                     else:
                         # Without multiprocessing
-                        plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model, text_detector=text_detector)
+                        plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller, vehicle_detection_model=VEHICLE_DETECTION_MODEL, character_recognition=CHARACTER_RECOGNITION, plate_detection_model=PLATE_DETECTION_MODEL)
                         # plat_detects[i] = OCRController(arduino_text, matrix_total=matrix_controller, yolo_model=yolo_model)
                         print(f"Multiprocessing disabled for camera {i}.")
 

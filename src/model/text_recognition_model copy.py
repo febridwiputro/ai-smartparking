@@ -15,7 +15,7 @@ from src.view.show_cam import show_cam
 this_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 sys.path.append(this_path)
 
-from recognize_plate.text_detection import TextDetector
+from model.recognize_plate.character_recognition import TextDetector
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

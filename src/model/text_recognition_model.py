@@ -6,6 +6,7 @@ import time
 import numpy as np
 from easyocr import Reader
 import logging
+import multiprocessing as mp
 from src.Integration.service_v1.controller.plat_controller import PlatController
 from src.model.gan_model import GanModel
 from src.utils import correct_skew, find_closest_strings_dict
@@ -15,11 +16,7 @@ from src.view.show_cam import show_cam
 this_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 sys.path.append(this_path)
 
-from recognize_plate.text_detection import TextDetector
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-
 
 class EasyOCRNet:
     def __init__(self, languages=['en'], use_cuda=True):
@@ -58,16 +55,32 @@ class EasyOCRNet:
             logging.info("No text recognized.")
             return []
 
+def _restoration_process_image(image_queue: mp.Queue, result_queue: mp.Queue, gan_model: GanModel, stop_event: mp.Event):
+    """Function that runs in a separate process to restore images using GAN model."""
+    while not stop_event.is_set():
+        try:
+            image = image_queue.get(timeout=5)
+            if image is None:
+                continue
+            
+            # Image processing with GAN model
+            restored_image = gan_model.super_resolution(image)
+            
+            # Put the processed image in the result queue
+            result_queue.put(restored_image)
+        except mp.queues.Empty:
+            pass
+        except Exception as e:
+            print(f"Error in restoration process: {e}")
 
 class TextRecognition:
-    def __init__(self, text_detector):
+    def __init__(self, character_recognition):
         self.ocr_net = EasyOCRNet(use_cuda=True)        
         self.reader = Reader(['en'], gpu=True, verbose=False)
         self.controller = PlatController()
         self.all_plat = self.controller.get_all_plat()
         self.gan_model = GanModel()
-        self.td = text_detector
-        # self.td = TextDetector()        
+        self.cr = character_recognition  
         # self.ocr = PaddleOCR(lang='en', debug=False)
         self.dict_char_to_int = {'O': '0',
                             'B': '8',
@@ -88,7 +101,54 @@ class TextRecognition:
         self.dict_3_7_to_1 = {
             '3' : "1",
             '7' : '1'
-        }      
+        }
+
+    #     # Queues and event for multiprocessing
+    #     self.image_queue = mp.Queue()
+    #     self.result_queue = mp.Queue()
+    #     self.stop_event = mp.Event()
+        
+    #     # Start the multiprocessing process for GAN model
+    #     self.process = mp.Process(target=_restoration_process_image, args=(self.image_queue, self.result_queue, self.gan_model, self.stop_event))
+    #     self.process.start()
+
+    # def image_processing(self, image: np.ndarray, is_bitwise=True) -> np.ndarray:
+    #     """
+    #     Process the image using GAN model in a separate process.
+
+    #     Args:
+    #         image: The input image as a numpy array.
+    #         is_bitwise: Boolean flag for additional bitwise processing (if needed).
+
+    #     Returns:
+    #         Restored image after processing.
+    #     """
+    #     try:
+    #         # Convert image to grayscale
+    #         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    #         resize = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
+            
+    #         # Send the image to the queue for GAN restoration
+    #         self.image_queue.put(resize)
+
+    #         # Wait for the restored image from the result queue
+    #         restored_image = self.result_queue.get(timeout=5)  # Set a reasonable timeout for processing
+    #         return restored_image
+    #     except Exception as e:
+    #         print(f"Error in image_processing: {e}")
+    #         return np.array([])
+
+    # def stop_processing(self):
+    #     """Stops the multiprocessing process cleanly."""
+    #     self.stop_event.set()
+    #     self.image_queue.put(None)  # Send a signal to stop the process
+    #     self.process.join()
+
+    def image_processing(self, image, is_bitwise=True):
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)        
+        resize = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
+        restorate = self.gan_model.super_resolution(resize)
+        return restorate
 
     def text_detect_and_recognize(self, image):
         """
@@ -97,7 +157,7 @@ class TextRecognition:
         img_copy = image.copy()
         bounding_boxes = self.ocr_net.detect(image)
 
-        filtered_heights = self.td.filter_height_bbox(bounding_boxes=bounding_boxes)
+        filtered_heights = self.cr.filter_height_bbox(bounding_boxes=bounding_boxes)
 
         converted_bboxes = []
         cropped_images = []
@@ -129,18 +189,12 @@ class TextRecognition:
         if len(cropped_images) > 0:
 
             print("cropped_images: ", cropped_images)
-            final_plate = self.td.process_image(cropped_images, image)
+            final_plate = self.cr.process_image(cropped_images, image)
 
         else:
             logging.info("No valid images to merge")
 
         return final_plate
-
-    def image_processing(self, image, is_bitwise=True):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)        
-        resize = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
-        restorate = self.gan_model.super_resolution(resize)
-        return restorate
 
     def recognition_image_text(self, image):
         texts = self.reader.readtext(image,
@@ -162,7 +216,7 @@ class TextRecognition:
         cropped_images = []
         final_plate = ""
 
-        filtered_heights = self.td.filter_text_frame(texts, False)
+        filtered_heights = self.cr.filter_text_frame(texts, False)
 
         for t in texts:
             (top_left, top_right, bottom_right, bottom_left) = t[0]
@@ -211,7 +265,7 @@ class TextRecognition:
         text = ''.join(text).upper()
 
         if len(cropped_images) > 0:
-            final_plate = self.td.process_image(cropped_images, image)
+            final_plate = self.cr.process_image(cropped_images, image)
 
         else:
             logging.info("No valid images to merge")

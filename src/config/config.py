@@ -15,14 +15,15 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
     MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
-    MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
+    # MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
+    MODEL_PATH_PLAT_v2 = r"C:\Users\febri.dwi\Downloads\yolov8x-supervision-license-plate-recognition.pt"
 
     # CHARACTER RECOGNITION MODEL
     MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_recognition.json')

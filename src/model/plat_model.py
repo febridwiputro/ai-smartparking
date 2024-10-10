@@ -5,9 +5,9 @@ from src.config.config import config
 
 
 class PlatDetector:
-    def __init__(self, model_path: config.MODEL_PATH_PLAT):
+    def __init__(self, plate_detection_model):
         # TODO refactor YOLO model
-        self.model = YOLO(model_path)
+        self.model = plate_detection_model
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         # TODO image processing

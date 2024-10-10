@@ -23,7 +23,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
-class TextDetector:
+class CharacterRecognize:
     def __init__(self, threshold=0.30, models=None, labels=None):
         self.model = models
         self.labels = labels
