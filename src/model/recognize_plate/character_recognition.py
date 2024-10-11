@@ -8,8 +8,8 @@ import glob
 from datetime import datetime
 import re
 
-from recognize_plate.utils.display import display_character_segments, display_results
-from recognize_plate.utils.backgrounds import check_background
+from src.model.recognize_plate.utils.display import display_character_segments, display_results
+from src.model.recognize_plate.utils.backgrounds import check_background
 
 this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(this_path)

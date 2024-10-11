@@ -12,10 +12,14 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from src.model.text_recognition_model import TextRecognition
+from src.model.text_detection_model import TextDetector
+
 
 class OCRController:
     def __init__(self, ard, matrix_total, vehicle_detection_model, character_recognition, plate_detection_model):
         self.ocr = TextRecognition(character_recognition=character_recognition)
+        self.td = TextDetector(character_recognition=character_recognition)
+        self.td.start()
         self.previous_state = None
         self.current_state = None
         self.passed_a = 0
@@ -153,7 +157,7 @@ class OCRController:
         plat = self.plat_detector.get_plat_image(image=car, results=results_plat[0])
         if plat.shape[0] == 0 or plat.shape[1] == 0:
             return np.array([]), np.array([])
-        plat_preprocessing = self.ocr.image_processing(plat, is_bitwise)
+        plat_preprocessing = self.td.image_processing(plat, is_bitwise)
         return plat_preprocessing, plat
     
     def image_to_text(self, frame):

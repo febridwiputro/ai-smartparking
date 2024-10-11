@@ -87,9 +87,9 @@ def main():
     CHARACTER_RECOGNITION = CharacterRecognize(models=model, labels=labels)
 
     if IS_DEBUG:
-        # video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_LAPTOP
         # video_source = config.VIDEO_SOURCE_PC
-        video_source = config.VIDEO_SOURCE_20241004
+        # video_source = config.VIDEO_SOURCE_20241004
         # video_source = config.video_source
         print(video_source)
         caps = [CameraV1(video, is_video=True) for video in video_source]
@@ -160,6 +160,7 @@ def main():
     except KeyboardInterrupt:
         for cap in caps:
             cap.release()
+            plat_detects[i].td.stop()
         cv2.destroyAllWindows()
         print("KeyboardInterrupt")
         exit(0)

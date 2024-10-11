@@ -15,8 +15,8 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -84,6 +84,11 @@ class Config:
                     VIDEO_SOURCE_20241004_LT5_IN, 
                     VIDEO_SOURCE_20241004_LT5_OUT
                     ]
+    
+    VIDEO_SOURCE_LAPTOP = [
+        VIDEO_SOURCE_LT2_IN,
+        # VIDEO_SOURCE_LT2_OUT
+    ]
 
     video_source = [VIDEO_SOURCE_LT2_IN, 
                     VIDEO_SOURCE_LT2_OUT, 
