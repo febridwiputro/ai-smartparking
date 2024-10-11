@@ -333,7 +333,10 @@ def image_restoration(stopped, plate_result_queue, img_restoration_result_queue,
         try:
             print("[Process] Restoring image...")
             image = plate_result_queue.get()
-            if image is None:
+
+            # Ensure the image is valid and check if it's a NumPy array
+            if image is None or not isinstance(image, np.ndarray):
+                print("[Process] Invalid image received.")
                 continue
 
             # Convert to grayscale and resize
@@ -346,6 +349,7 @@ def image_restoration(stopped, plate_result_queue, img_restoration_result_queue,
             print("[Process] Image restored")
             # Put the restored image back in the queue for further processing
             img_restoration_result_queue.put(restored_image)
+
         except Exception as e:
             print(f"Error in image_restoration: {e}")
 
@@ -601,7 +605,7 @@ class TextDetector:
         return heights
 
 class DetectionController:
-    def __init__(self, arduino_matrix, matrix_total, vehicle_model, plate_model, character_recognizer):
+    def __init__(self, arduino_matrix, matrix_total, vehicle_model, plate_model, character_recognizer, gan_model):
         self.matrix_text = MatrixController(arduino_matrix, 0, 100)
         self.matrix_text.start()
         self.matrix = matrix_total
@@ -620,7 +624,8 @@ class DetectionController:
         self.cropped_queue = mp.Queue()
         self.char_result_queue = mp.Queue()
 
-        self.gan_model = GanModel()
+        self.gan_model = GanModel(gan_model)
+
         self.character_recognizer = character_recognizer
 
         self.vehicle_thread = None
@@ -657,42 +662,10 @@ class DetectionController:
 
     def stop(self):
         print("[Controller] Stopping detection processes and threads...")
-
-        # Signal all threads and processes to stop
-        self.stopped.set()
-
-        # Put `None` into all queues to unblock processes waiting on the queue
-        put_queue_none(self.frame_queue)
-        put_queue_none(self.text_result_queue)
-        put_queue_none(self.cropped_queue)
-        put_queue_none(self.char_result_queue)
-        put_queue_none(self.vehicle_queue)
-        put_queue_none(self.plate_result_queue)
-
-        # Stop vehicle detection thread
-        if self.vehicle_thread is not None:
-            self.vehicle_thread.join()
-            self.vehicle_thread = None
-
-        # Stop processes
-        if self.plate_detection_process is not None:
-            self.plate_detection_process.join()
-            self.plate_detection_process = None
-
-        # Clear all queues
-        clear_queue(self.frame_queue)
-        clear_queue(self.text_result_queue)
-        clear_queue(self.cropped_queue)
-        clear_queue(self.char_result_queue)
-        clear_queue(self.vehicle_queue)
-        clear_queue(self.plate_result_queue)
-
-        print("[Controller] All processes and threads stopped.")
-
-    def stop(self):
         self.stopped.set()
 
         put_queue_none(self.frame_queue)
+        put_queue_none(self.img_restoration_result_queue)
         # put_queue_none(self.text_result_queue)
         put_queue_none(self.cropped_queue)
         # put_queue_none(self.char_result_queue)
@@ -709,9 +682,9 @@ class DetectionController:
             self.plate_detection_process.join()
             self.plate_detection_process = None
 
-        # if self.image_restoration_process is not None:
-        #     self.image_restoration_process.join()
-        #     self.image_restoration_process = None
+        if self.image_restoration_process is not None:
+            self.image_restoration_process.join()
+            self.image_restoration_process = None
 
     #     # if self.text_detection_process is not None:
     #     #     self.text_detection_process.join()
@@ -723,11 +696,14 @@ class DetectionController:
 
         # Clear all queues
         clear_queue(self.frame_queue)
+        clear_queue(self.img_restoration_result_queue)
         # clear_queue(self.text_result_queue)
         clear_queue(self.cropped_queue)
         # clear_queue(self.char_result_queue)
         clear_queue(self.vehicle_queue)
         clear_queue(self.plate_result_queue)
+
+        print("[Controller] All processes and threads stopped.")
 
     def process_frame(self, frame):
         # print("[Thread] Processing frame for text detection...")
