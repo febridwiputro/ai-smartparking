@@ -304,13 +304,12 @@ class CharacterRecognize:
 
         return filtered_heights
 
-    def process_image(self, cropped_images, image):
+    def process_image(self, cropped_images, bg_status):
         bg_color = ""
         final_plate = ""
         resized_images = []
 
         min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
-        gray, bg_status = check_background(image, False)
 
         for img in cropped_images:
             original_height = img.shape[0]
@@ -356,14 +355,14 @@ class CharacterRecognize:
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
 
-            final_plate = self.process_character(concatenated_image, bg_color, is_show=False)
+            final_plate = self.process_character(concatenated_image, bg_color)
 
         else:
             logging.info("No valid images to merge")
 
         return final_plate
 
-    def process_character(self, img_bgr, bg_color, is_show=False, verbose=False):
+    def process_character(self, img_bgr, bg_color, verbose=False):
         final_string = ''
         result_string = ''
 
@@ -384,8 +383,7 @@ class CharacterRecognize:
             if verbose:
                 logging.info('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20)
 
-            if is_show:
-                display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string)
+            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=False)
 
             return final_string
 
@@ -407,8 +405,7 @@ class CharacterRecognize:
             if verbose:
                 logging.info('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20)
 
-            if is_show:
-                display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string)
+            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=False)
 
             return final_string
 

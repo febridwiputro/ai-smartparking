@@ -46,33 +46,33 @@ def check_background(gray_image, verbose=False):
             logging.info('=' * 80)
             logging.info('=' * 30 + " BLACK-BLUE PLATE " + '=' * 30)
             logging.info('=' * 80)
-        return "bg_black_blue"
+        return gray_image, "bg_black_blue"
 
     if white_pixels > black_pixels and white_pixels > green_pixels and white_pixels > yellow_pixels and white_pixels > red_pixels and white_pixels > blue_pixels:
         if verbose:
             logging.info('=' * 80)
             logging.info('=' * 30 + " WHITE PLATE " + '=' * 30)
             logging.info('=' * 80)
-        return "bg_white"
+        return gray_image, "bg_white"
 
     elif black_pixels > white_pixels and black_pixels > green_pixels and black_pixels > yellow_pixels and black_pixels > red_pixels and black_pixels > blue_pixels:
         if verbose:
             logging.info('=' * 80)
             logging.info('=' * 30 + " BLACK PLATE " + '=' * 30)
             logging.info('=' * 80)
-        return "bg_black"
+        return gray_image, "bg_black"
 
     elif green_pixels > white_pixels and green_pixels > yellow_pixels and green_pixels > red_pixels and green_pixels > blue_pixels:
-        return "bg_green"
+        return gray_image, "bg_green"
 
     elif yellow_pixels > white_pixels and yellow_pixels > green_pixels and yellow_pixels > red_pixels and yellow_pixels > blue_pixels:
-        return "bg_yellow"
+        return gray_image, "bg_yellow"
 
     elif red_pixels > white_pixels and red_pixels > green_pixels and red_pixels > yellow_pixels and red_pixels > blue_pixels:
-        return "bg_red"
+        return gray_image, "bg_red"
 
     elif blue_pixels > white_pixels and blue_pixels > green_pixels and blue_pixels > yellow_pixels and blue_pixels > red_pixels:
-        return "bg_blue"
+        return gray_image, "bg_blue"
 
     else:
-        return "bg_unknown"
+        return gray_image, "bg_unknown"

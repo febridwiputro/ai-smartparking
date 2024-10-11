@@ -11,125 +11,53 @@ from basicsr.utils.download_util import load_file_from_url
 from torch.nn import functional as F
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def load_rrdb_model(model_name="RealESRGAN_x4plus", base_dir=config.BASE_DIR):
-    model_path = os.path.join(base_dir, 'weights', model_name + '.pth')
-    model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+# def load_rrdb_model(model_name="RealESRGAN_x4plus", base_dir=config.BASE_DIR):
+#     model_path = os.path.join(base_dir, 'weights', model_name + '.pth')
+#     model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
     
-    # If the model is located at a URL, download it first
-    if model_path.startswith('https://'):
-        model_path = load_file_from_url(
-            url=model_path, model_dir=os.path.join(ROOT_DIR, 'weights'), progress=True, file_name=None)
+#     # If the model is located at a URL, download it first
+#     if model_path.startswith('https://'):
+#         model_path = load_file_from_url(
+#             url=model_path, model_dir=os.path.join(ROOT_DIR, 'weights'), progress=True, file_name=None)
     
-    loadnet = torch.load(model_path, map_location=torch.device('cpu'))
+#     loadnet = torch.load(model_path, map_location=torch.device('cpu'))
 
-    # Use 'params_ema' if available, otherwise 'params'
-    keyname = 'params_ema' if 'params_ema' in loadnet else 'params'
-    model.load_state_dict(loadnet[keyname], strict=True)
+#     # Use 'params_ema' if available, otherwise 'params'
+#     keyname = 'params_ema' if 'params_ema' in loadnet else 'params'
+#     model.load_state_dict(loadnet[keyname], strict=True)
     
-    model.eval()
-    return model
+#     model.eval()
+#     return model
 
-
-class GanModel:
-    def __init__(self, model, scale=4, gpu_id=0):
-        self.upsampler = RealESRGANer(
-            scale=scale,
-            model=model,
-            model_path=None,  # Model already loaded, no need to load again.
-            dni_weight=None,
-            tile=0,
-            tile_pad=10,
-            pre_pad=0,
-            half=True,
-            gpu_id=gpu_id
-        )
-
-    def super_resolution(self, input_img, outscale=2):
-        try:
-            return self.upsampler.enhance(input_img, outscale=outscale)[0]
-        except RuntimeError as error:
-            print('Error:', error)
-            print('Try adjusting the tile parameter if you encounter CUDA out of memory issues.')
-
-
-class RealESRGANer:
-    def __init__(self,
-                 scale,
-                 model,
-                 model_path=None,  # No need to provide if model is pre-loaded.
-                 dni_weight=None,
-                 tile=0,
-                 tile_pad=10,
-                 pre_pad=10,
-                 half=False,
-                 device=None,
-                 gpu_id=None):
-        self.scale = scale
-        self.tile_size = tile
-        self.tile_pad = tile_pad
-        self.pre_pad = pre_pad
-        self.mod_scale = None
-        self.half = half
-
-        # Device selection
-        if gpu_id is not None:
-            self.device = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
-        else:
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
-
-        # Set the model and move to device
-        self.model = model.to(self.device)
-        if self.half:
-            self.model = self.model.half()
 
 # class GanModel:
-#     def __init__(self):
-#         self.base = config.BASE_DIR
-#         model_name = "RealESRGAN_x4plus"
-#         model_path = os.path.join(self.base, 'weights', model_name + '.pth')
-#         model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+#     def __init__(self, model, scale=4, gpu_id=0):
 #         self.upsampler = RealESRGANer(
-#             scale=4,
-#             model_path=model_path,
-#             dni_weight=None,
+#             scale=scale,
 #             model=model,
+#             model_path=None,  # Model already loaded, no need to load again.
+#             dni_weight=None,
 #             tile=0,
 #             tile_pad=10,
 #             pre_pad=0,
 #             half=True,
-#             gpu_id=0
+#             gpu_id=gpu_id
 #         )
 
 #     def super_resolution(self, input_img, outscale=2):
-#             try:
-#                 return self.upsampler.enhance(input_img, outscale=outscale)[0]
-#             except RuntimeError as error:
-#                 print('Error:', error)
-#                 print('Try adjusting the tile parameter if you encounter CUDA out of memory issues.')
+#         try:
+#             return self.upsampler.enhance(input_img, outscale=outscale)[0]
+#         except RuntimeError as error:
+#             print('Error:', error)
+#             print('Try adjusting the tile parameter if you encounter CUDA out of memory issues.')
 
 
-
-
-# class RealESRGANer():
-#     """A helper class for upsampling images with RealESRGAN.
-
-#     Args:
-#         scale (int): Upsampling scale factor used in the networks. It is usually 2 or 4.
-#         model_path (str): The path to the pretrained model. It can be urls (will first download it automatically).
-#         model (nn.Module): The defined network. Default: None.
-#         tile (int): As too large images result in the out of GPU memory issue, so this tile option will first crop
-#             input images into tiles, and then process each of them. Finally, they will be merged into one image.
-#             0 denotes for do not use tile. Default: 0.
-#         tile_pad (int): The pad size for each tile, to remove border artifacts. Default: 10.
-#         pre_pad (int): Pad the input images to avoid border artifacts. Default: 10.
-#         half (float): Whether to use half precision during inference. Default: False.
-#     """
-
+# class RealESRGANer:
 #     def __init__(self,
 #                  scale,
-#                  model_path,
+#                  model,
+#                  model_path=None,  # No need to provide if model is pre-loaded.
 #                  dni_weight=None,
-#                  model=None,
 #                  tile=0,
 #                  tile_pad=10,
 #                  pre_pad=10,
@@ -143,35 +71,107 @@ class RealESRGANer:
 #         self.mod_scale = None
 #         self.half = half
 
-#         # initialize model
-#         if gpu_id:
-#             self.device = torch.device(
-#                 f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
+#         # Device selection
+#         if gpu_id is not None:
+#             self.device = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
 #         else:
 #             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
 
-#         if isinstance(model_path, list):
-#             # dni
-#             assert len(model_path) == len(dni_weight), 'model_path and dni_weight should have the save length.'
-#             loadnet = self.dni(model_path[0], model_path[1], dni_weight)
-#         else:
-#             # if the model_path starts with https, it will first download models to the folder: weights
-#             if model_path.startswith('https://'):
-#                 model_path = load_file_from_url(
-#                     url=model_path, model_dir=os.path.join(ROOT_DIR, 'weights'), progress=True, file_name=None)
-#             loadnet = torch.load(model_path, map_location=torch.device('cpu'))
-
-#         # prefer to use params_ema
-#         if 'params_ema' in loadnet:
-#             keyname = 'params_ema'
-#         else:
-#             keyname = 'params'
-#         model.load_state_dict(loadnet[keyname], strict=True)
-
-#         model.eval()
+#         # Set the model and move to device
 #         self.model = model.to(self.device)
 #         if self.half:
 #             self.model = self.model.half()
+
+class GanModel:
+    def __init__(self):
+        self.base = config.BASE_DIR
+        model_name = "RealESRGAN_x4plus"
+        model_path = os.path.join(self.base, 'weights', model_name + '.pth')
+        model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+        self.upsampler = RealESRGANer(
+            scale=4,
+            model_path=model_path,
+            dni_weight=None,
+            model=model,
+            tile=0,
+            tile_pad=10,
+            pre_pad=0,
+            half=True,
+            gpu_id=0
+        )
+
+    def super_resolution(self, input_img, outscale=2):
+            try:
+                return self.upsampler.enhance(input_img, outscale=outscale)[0]
+            except RuntimeError as error:
+                print('Error:', error)
+                print('Try adjusting the tile parameter if you encounter CUDA out of memory issues.')
+
+
+
+
+class RealESRGANer():
+    """A helper class for upsampling images with RealESRGAN.
+
+    Args:
+        scale (int): Upsampling scale factor used in the networks. It is usually 2 or 4.
+        model_path (str): The path to the pretrained model. It can be urls (will first download it automatically).
+        model (nn.Module): The defined network. Default: None.
+        tile (int): As too large images result in the out of GPU memory issue, so this tile option will first crop
+            input images into tiles, and then process each of them. Finally, they will be merged into one image.
+            0 denotes for do not use tile. Default: 0.
+        tile_pad (int): The pad size for each tile, to remove border artifacts. Default: 10.
+        pre_pad (int): Pad the input images to avoid border artifacts. Default: 10.
+        half (float): Whether to use half precision during inference. Default: False.
+    """
+
+    def __init__(self,
+                 scale,
+                 model_path,
+                 dni_weight=None,
+                 model=None,
+                 tile=0,
+                 tile_pad=10,
+                 pre_pad=10,
+                 half=False,
+                 device=None,
+                 gpu_id=None):
+        self.scale = scale
+        self.tile_size = tile
+        self.tile_pad = tile_pad
+        self.pre_pad = pre_pad
+        self.mod_scale = None
+        self.half = half
+
+        # initialize model
+        if gpu_id:
+            self.device = torch.device(
+                f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
+        else:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
+
+        if isinstance(model_path, list):
+            # dni
+            assert len(model_path) == len(dni_weight), 'model_path and dni_weight should have the save length.'
+            loadnet = self.dni(model_path[0], model_path[1], dni_weight)
+        else:
+            # if the model_path starts with https, it will first download models to the folder: weights
+            if model_path.startswith('https://'):
+                model_path = load_file_from_url(
+                    url=model_path, model_dir=os.path.join(ROOT_DIR, 'weights'), progress=True, file_name=None)
+            loadnet = torch.load(model_path, map_location=torch.device('cpu'))
+
+        # prefer to use params_ema
+        if 'params_ema' in loadnet:
+            keyname = 'params_ema'
+        else:
+            keyname = 'params'
+        model.load_state_dict(loadnet[keyname], strict=True)
+
+        model.eval()
+        self.model = model.to(self.device)
+        if self.half:
+            self.model = self.model.half()
 
     def dni(self, net_a, net_b, dni_weight, key='params', loc='cpu'):
         """Deep network interpolation.
