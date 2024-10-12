@@ -1,10 +1,20 @@
 import cv2
 import numpy as np
+import Levenshtein as lev
 
 from src.config.config import config
 from src.config.logger import logger
 
 
+def find_closest_strings_dict(target, strings):
+    distances = np.array([lev.distance(target, s) for s in strings])
+    min_distance = np.min(distances)
+    min_indices = np.where(distances == min_distance)[0]
+    closest_strings_dict = {strings[i]: distances[i] for i in min_indices}
+    return closest_strings_dict
+
+def most_freq(lst):
+    return max(set(lst), key=lst.count) if lst else ""
 
 def crop_frame(frame, height, width, floor_id, cam_id):
     # polygons_point = [ config.POINTS_BACKGROUND_LT2_OUT]

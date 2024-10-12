@@ -21,23 +21,70 @@ def text_detection(stopped, image_restoration_result_queue, text_detection_resul
             if restoration_result is None or len(restoration_result) == 0:
                 continue
 
+            # Extract all relevant fields from restoration_result
             restored_image = restoration_result.get("frame", None)
             bg_color = restoration_result.get("bg_color", None)
+            floor_id = restoration_result.get("floor_id", 0)
+            cam_id = restoration_result.get("cam_id", "")
+            arduino_idx = restoration_result.get("arduino_idx", None)
+            car_direction = restoration_result.get("car_direction", None)
+            mobil_masuk = restoration_result.get("mobil_masuk", None)
+            passed = restoration_result.get("passed", 0)
+            start_line = restoration_result.get("start_line", None)
+            end_line = restoration_result.get("end_line", None)
 
             if restored_image is None:
                 continue
 
+            # Detect text in the restored image
             text_detected_result, _ = detector.recognition_image_text(image=restored_image)
 
+            # Prepare the result with all relevant fields
             result = {
                 "bg_color": bg_color,
-                "frame": text_detected_result
+                "frame": text_detected_result,
+                "floor_id": floor_id,
+                "cam_id": cam_id,
+                "arduino_idx": arduino_idx,
+                "car_direction": car_direction,
+                "mobil_masuk": mobil_masuk,
+                "passed": passed,
+                "start_line": start_line,
+                "end_line": end_line
             }
 
+            # Put the result into the text detection result queue
             text_detection_result_queue.put(result)
 
         except Exception as e:
             print(f"Error in text detection: {e}")
+
+
+# def text_detection(stopped, image_restoration_result_queue, text_detection_result_queue):
+#     detector = TextDetector()
+
+#     while not stopped.is_set():
+#         try:
+#             restoration_result = image_restoration_result_queue.get()
+#             if restoration_result is None or len(restoration_result) == 0:
+#                 continue
+
+#             restored_image = restoration_result.get("frame", None)
+#             bg_color = restoration_result.get("bg_color", None)
+#             if restored_image is None:
+#                 continue
+
+#             text_detected_result, _ = detector.recognition_image_text(image=restored_image)
+
+#             result = {
+#                 "bg_color": bg_color,
+#                 "frame": text_detected_result
+#             }
+
+#             text_detection_result_queue.put(result)
+
+#         except Exception as e:
+#             print(f"Error in text detection: {e}")
 
 
 

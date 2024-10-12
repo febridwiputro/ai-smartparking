@@ -10,6 +10,7 @@ from src.config.logger import logger
 from src.model.recognize_plate.utils.backgrounds import check_background
 
 
+
 def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
     plate_model_path = config.MODEL_PATH_PLAT_v2
     plate_model = YOLO(plate_model_path)
@@ -22,24 +23,42 @@ def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
             if vehicle_data is None:
                 continue
             
+            # Extract all relevant data from vehicle_data
             car_frame = vehicle_data.get('car_frame')
-            floor_id = vehicle_data.get('floor_id')
-            cam_id = vehicle_data.get('cam_id')
+            floor_id = vehicle_data.get('floor_id', 0)
+            cam_id = vehicle_data.get('cam_id', "")
+            arduino_idx = vehicle_data.get('arduino_idx')
+            car_direction = vehicle_data.get('car_direction')
+            mobil_masuk = vehicle_data.get('mobil_masuk')
+            passed = vehicle_data.get('passed', 0)
+            start_line = vehicle_data.get('start_line')
+            end_line = vehicle_data.get('end_line')
 
             if car_frame is not None:
+                # Detect plates in the car frame
                 plate_results = plate_detector.detect_plate(car_frame)
 
                 for plate in plate_results:
+                    # Convert plate to grayscale and check background color
                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
                     bg_color = check_background(gray_plate, False)
 
+                    # Prepare the result dictionary with all relevant fields
                     result = {
                         "bg_color": bg_color,
                         "frame": plate,
                         "floor_id": floor_id,
-                        "cam_id": cam_id
+                        "cam_id": cam_id,
+                        "arduino_idx": arduino_idx,
+                        "car_direction": car_direction,
+                        "mobil_masuk": mobil_masuk,
+                        "passed": passed,
+                        "start_line": start_line,
+                        "end_line": end_line
                     }
 
+                    print("result plate: ", result)
+                    # Put the result into the plate result queue
                     plate_result_queue.put(result)
 
         except Exception as e:
@@ -53,23 +72,30 @@ def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
 
 #     while not stopped.is_set():
 #         try:
-#             frame = vehicle_queue.get()
+#             vehicle_data = vehicle_queue.get()
 
-#             if frame is None:
+#             if vehicle_data is None:
 #                 continue
             
-#             plate_results = plate_detector.detect_plate(frame)
+#             car_frame = vehicle_data.get('car_frame')
+#             floor_id = vehicle_data.get('floor_id')
+#             cam_id = vehicle_data.get('cam_id')
 
-#             for plate in plate_results:
-#                 gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
-#                 bg_color = check_background(gray_plate, False)
+#             if car_frame is not None:
+#                 plate_results = plate_detector.detect_plate(car_frame)
 
-#                 result = {
-#                     "bg_color": bg_color,
-#                     "frame": plate
-#                 }
+#                 for plate in plate_results:
+#                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
+#                     bg_color = check_background(gray_plate, False)
 
-#                 plate_result_queue.put(result)
+#                     result = {
+#                         "bg_color": bg_color,
+#                         "frame": plate,
+#                         "floor_id": floor_id,
+#                         "cam_id": cam_id
+#                     }
+
+#                     plate_result_queue.put(result)
 
 #         except Exception as e:
 #             print(f"Error in plate detection: {e}")
