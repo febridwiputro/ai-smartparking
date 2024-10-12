@@ -102,13 +102,13 @@ class Config:
 
     VIDEO_SOURCE_PC = [
                         fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
     ]
 
     # VIDEO_SOURCE_PC = [

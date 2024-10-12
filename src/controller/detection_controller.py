@@ -146,7 +146,7 @@ class PlateDetector:
         results = self.model.predict(preprocessed_image, conf=0.3, device="cuda:0", verbose=False)
         return results
 
-    def detect_plate(self, frame, is_save=False):
+    def detect_plate(self, frame, is_save=True):
         results = self.predict(frame)
 
         if not results:

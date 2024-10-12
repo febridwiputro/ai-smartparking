@@ -16,6 +16,10 @@ class Logger:
         Initialize the logger.
         If is_save=True, log to file. Otherwise, log only to the console.
         """
+
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.DEBUG)  # Capture all levels
         
