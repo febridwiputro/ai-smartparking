@@ -87,8 +87,8 @@ def main():
     CHARACTER_RECOGNITION = CharacterRecognize(models=model, labels=labels)
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_LAPTOP
-        # video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_PC
         # video_source = config.VIDEO_SOURCE_20241004
         # video_source = config.video_source
         print(video_source)

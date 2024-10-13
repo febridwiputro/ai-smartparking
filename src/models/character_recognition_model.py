@@ -1,6 +1,7 @@
 import os, sys
 import cv2
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.models import model_from_json
 from sklearn.preprocessing import LabelEncoder
 from datetime import datetime
@@ -15,14 +16,11 @@ sys.path.append(this_path)
 from src.config.config import config
 from src.config.logger import Logger
 
-# os.environ["TF_ENABLE_ONEDNN_OPTS"]= "0"
+# Set TF_CPP_MIN_LOG_LEVEL to suppress warnings
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 logging = Logger("char_recog_model", is_save=False)
-
-
 
 class ModelAndLabelLoader:
     @staticmethod
@@ -54,9 +52,6 @@ class ModelAndLabelLoader:
             return None
 
 def character_recognition(stopped, text_detection_result_queue, char_recognize_result_queue):
-    """
-    Function to load the model within the process and perform character recognition.
-    """
     char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
     char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
     label_path = config.LABEL_CHAR_RECOGNITION_PATH
@@ -70,12 +65,9 @@ def character_recognition(stopped, text_detection_result_queue, char_recognize_r
         try:
             result = text_detection_result_queue.get()
 
-            print("before character: ", result)
-
             if result is None:
                 continue
 
-            # Extract all relevant fields from result
             bg_color = result.get("bg_color", None)
             cropped_images = result.get("frame", None)
             floor_id = result.get("floor_id", 0)
@@ -84,20 +76,34 @@ def character_recognition(stopped, text_detection_result_queue, char_recognize_r
             car_direction = result.get("car_direction", None)
             mobil_masuk = result.get("mobil_masuk", None)
             passed = result.get("passed", 0)
-            start_line = result.get("start_line", None)
-            end_line = result.get("end_line", None)
+            start_line = result.get("start_line", False)  # Default to False
+            end_line = result.get("end_line", False)  # Default to False
 
-            if cropped_images is None:
+            # print(f'start_line: {start_line} & end_line: {end_line}')
+
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
+            if not start_line and not end_line:
+                char_recognize_result = {
+                    "bg_color": bg_color,
+                    "plate_no": "",  # or None, based on your requirement
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "mobil_masuk": mobil_masuk,
+                    "passed": passed,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
+                char_recognize_result_queue.put(char_recognize_result)
                 continue
 
-            # Process character recognition on the cropped images
-            plate_text = cr.process_image(cropped_images, bg_color)
-            logging.write(f'PLATE_NO: {plate_text}', logging.DEBUG)
-
-            # Prepare the result with all relevant fields
+            plate_no = cr.process_image(cropped_images, bg_color) if cropped_images is not None else ""
+            # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
             char_recognize_result = {
                 "bg_color": bg_color,
-                "plate_no": plate_text,
+                "plate_no": plate_no,
                 "floor_id": floor_id,
                 "cam_id": cam_id,
                 "arduino_idx": arduino_idx,
@@ -108,49 +114,10 @@ def character_recognition(stopped, text_detection_result_queue, char_recognize_r
                 "end_line": end_line
             }
 
-            # Put the result into the character recognition result queue
             char_recognize_result_queue.put(char_recognize_result)
 
         except Exception as e:
-            logging.write(f"Error in character recognition: {e}", logging.DEBUG)
-
-
-# def character_recognition(stopped, text_detection_result_queue, char_recognize_result_queue):
-#     """
-#     Function to load the model within the process and perform character recognition.
-#     """
-#     char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
-#     char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
-#     label_path = config.LABEL_CHAR_RECOGNITION_PATH
-
-#     model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
-#     labels = ModelAndLabelLoader.load_labels(label_path)
-
-#     cr = CharacterRecognize(models=model, labels=labels)
-
-#     while not stopped.is_set():
-#         try:
-#             result = text_detection_result_queue.get()
-
-#             if result is None:
-#                 continue
-
-#             bg_color = result.get("bg_color", None)
-#             cropped_images = result.get("frame", None)
-
-#             if cropped_images is None:
-#                 continue
-
-#             plate_text = cr.process_image(cropped_images, bg_color)
-#             logging.write(f'PLATE_NO: {plate_text}', logging.DEBUG)
-
-#             char_recognize_result_queue.put({
-#                 "bg_color": bg_color,
-#                 "plate_no": plate_text
-#             })
-
-#         except Exception as e:
-#             logging.write(f"Error in character recognition: {e}", logging.DEBUG)
+            print(f"Error in character recognition: {e}")
 
 
 class CharacterRecognize:

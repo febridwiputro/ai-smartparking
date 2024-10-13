@@ -88,12 +88,12 @@ class DetectionController:
         self.plate_detection_process = mp.Process(target=plate_detection_process, args=(self.stopped, self.vehicle_result_queue, self.plate_result_queue))
         self.plate_detection_process.start()
 
-        print("[Process] Starting image restoration process...")
-        self.image_restoration_process = mp.Process(target=image_restoration, args=(self.stopped, self.plate_result_queue, self.img_restoration_result_queue))
-        self.image_restoration_process.start()
+        # print("[Process] Starting image restoration process...")
+        # self.image_restoration_process = mp.Process(target=image_restoration, args=(self.stopped, self.plate_result_queue, self.img_restoration_result_queue))
+        # self.image_restoration_process.start()
 
         print("[Process] Starting text detection process...")
-        self.text_detection_process = mp.Process(target=text_detection, args=(self.stopped, self.img_restoration_result_queue, self.text_detection_result_queue))
+        self.text_detection_process = mp.Process(target=text_detection, args=(self.stopped, self.plate_result_queue, self.text_detection_result_queue))
         self.text_detection_process.start()
 
         print("[Process] Starting character recognition process...")
@@ -106,6 +106,10 @@ class DetectionController:
         return None
 
     def process_frame(self, frame, floor_id, cam_id):
+        self._current_frame = frame.copy()
+        self.floor_id = floor_id
+        self.cam_id = cam_id
+
         self.height, self.width = frame.shape[:2]
 
         slot = self.db_floor.get_slot_by_id(floor_id)
@@ -127,10 +131,6 @@ class DetectionController:
         show_cam(window_name, frame)
 
         cv2.setMouseCallback(window_name, self.mouse_event) 
-
-        self._current_frame = frame
-        self.floor_id = floor_id
-        self.cam_id = cam_id
 
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -154,60 +154,53 @@ class DetectionController:
 
                 self._current_result = result
 
-                print("last_result: ", result)
-
                 floor_id = result.get("floor_id", 0)
                 cam_id = result.get("cam_id", "")
-                car_direction = result.get("car_direction", None) # True or False
-                mobil_masuk = result.get("mobil_masuk", None) # True or False
+                car_direction = result.get("car_direction", None)  # True or False
+                mobil_masuk = result.get("mobil_masuk", None)  # True or False
                 arduino_idx = result.get("arduino_idx", None)
-                start_line, end_line = result.get("start_line", None), result.get("end_line", None)  # Example: (start=True, end=False)
-                bg_color = result.get("bg_color", None)
-                plate_no = result.get("plate_no", "")
+                start_line = result.get("start_line", None)
+                end_line = result.get("end_line", None)  # Example: (start=True, end=False)
+                plate_no = result.get("plate_no", None)  # Use None to check for absence
 
-                if start_line and not end_line:
-                    self.passed = 2
-                elif end_line:
-                    mobil_masuk = False
+                # print(f'start_line: {start_line} & end_line: {end_line} & plate_no: {plate_no} & car_direction: {car_direction}')
 
-                if self.passed > 0:
-                    # Use plate number from the character recognition result
-                    text = plate_no
+                # Append plate_no if start_line and end_line are both True
+                if start_line and end_line and plate_no is not None:  # Check that plate_no is not None
+                    self.container_plate_no.append(plate_no)
+                    print(f'Appended plate_no: {plate_no} to container_plate_no')
 
-                    if text:
-                        self.container_plate_no.append(text)
-
-                    # Process vehicle logic
-                    if self.passed == 2:
-                        if len(self.container_plate_no) == 0:
-                            self.passed = 0
-                            continue
+                # If both start_line and end_line are False, process the collected plate numbers
+                if not start_line and not end_line:
+                    if len(self.container_plate_no) > 0:
+                        print(f'self.container_plate_no: {self.container_plate_no}')
+                        plate_no_max = most_freq(self.container_plate_no)
+                        plate_no_detected = plate_no_max
+                        status_plate_no = self.check_db(plate_no_detected)
 
                         plate_no_is_registered = True
-                        if len(self.container_plate_no) >= 1:
-                            plate_no = most_freq(self.container_plate_no)
-                            plate_no_detected = plate_no
-                            status_plate_no = self.check_db(plate_no_detected)
+                        if not status_plate_no:
+                            logger.write(
+                                f"Warning, plat is unregistered, reading container text!! : {plate_no_detected}",
+                                logger.WARN
+                            )
+                            plate_no_is_registered = False
 
-                            if not status_plate_no:
-                                logger.write(
-                                    f"Warning, plat is unregistered, reading container text!! : {plate_no}",
-                                    logger.WARN
-                                )
-                                plate_no_is_registered = False
-
-                        self.parking_space_vehicle_counter(floor_id=floor_id, cam_id=cam_id, arduino_idx=arduino_idx, car_direction=car_direction, plate_no=plate_no)
+                        # Call the parking space vehicle counter with the detected plate number
+                        self.parking_space_vehicle_counter(floor_id=floor_id, cam_id=cam_id, arduino_idx=arduino_idx, car_direction=car_direction, plate_no=plate_no_detected)
 
                         char = "H" if plate_no_is_registered else "M"
-                        matrix_text = f"{plate_no},{char};"
+                        matrix_text = f"{plate_no_detected},{char};"
                         self.matrix_text.write_arduino(matrix_text)
+
+                        # Clear the container after processing
                         self.container_plate_no = []
                         self.passed = 0
 
-                        if not self.db_plate.check_exist_plat(plate_no):
+                        if not self.db_plate.check_exist_plat(plate_no_detected):
                             plate_no_is_registered = False
                             logger.write(
-                                f"WARNING THERE IS NO PLAT IN DATABASE!!! text: {plate_no}, status: {car_direction}",
+                                f"WARNING THERE IS NO PLAT IN DATABASE!!! text: {plate_no_detected}, status: {car_direction}",
                                 logger.WARNING
                             )
 
@@ -279,9 +272,9 @@ class DetectionController:
             self.plate_detection_process.join()
             self.plate_detection_process = None
 
-        if self.image_restoration_process is not None:
-            self.image_restoration_process.join()
-            self.image_restoration_process = None
+        # if self.image_restoration_process is not None:
+        #     self.image_restoration_process.join()
+        #     self.image_restoration_process = None
 
         if self.text_detection_process is not None:
             self.text_detection_process.join()
@@ -294,7 +287,7 @@ class DetectionController:
         # Clear all queues
         clear_queue(self.vehicle_result_queue)
         clear_queue(self.plate_result_queue)
-        clear_queue(self.img_restoration_result_queue)
+        # clear_queue(self.img_restoration_result_queue)
         clear_queue(self.text_detection_result_queue)
         clear_queue(self.char_recognize_result_queue)
 
@@ -402,7 +395,7 @@ class DetectionController:
             print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
 
             if current_slot == 0:
-                print("UPDATE 0")
+                # print("UPDATE 0")
                 current_slot_update = current_slot
                 self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -433,15 +426,15 @@ class DetectionController:
 
             elif current_slot > 0 and current_slot <= current_max_slot:
                 current_slot_update = current_slot - 1
-                print("current_slot_update: ", current_slot_update)
+                # print("current_slot_update: ", current_slot_update)
                 self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
                 current_vehicle_total_update = current_vehicle_total + 1
-                print("current_vehicle_total_update: ", current_vehicle_total_update)
+                # print("current_vehicle_total_update: ", current_vehicle_total_update)
                 self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
 
                 if prev_floor_position > 1:
-                    print("IN 1")
+                    # print("IN 1")
                     if prev_slot == 0:
                         if prev_vehicle_total > prev_max_slot:
                             prev_slot_update = prev_slot
@@ -457,15 +450,15 @@ class DetectionController:
                             self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
 
                     elif prev_slot > 0 and prev_slot < prev_max_slot:
-                        print("IN 2")
+                        # print("IN 2")
                         prev_slot_update = prev_slot + 1
-                        print("prev_slot_update: ", prev_slot_update)
-                        print("prev_slot_update: ", prev_slot_update)
+                        # print("prev_slot_update: ", prev_slot_update)
+                        # print("prev_slot_update: ", prev_slot_update)
 
                         self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
 
                         prev_vehicle_total_update = prev_vehicle_total - 1
-                        print("prev_vehicle_total_update: ", prev_vehicle_total_update)
+                        # print("prev_vehicle_total_update: ", prev_vehicle_total_update)
                         self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)
 
         # TURUN / KELUAR
@@ -474,7 +467,7 @@ class DetectionController:
             print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
             if current_slot == 0:
                 if current_vehicle_total > 0 and current_vehicle_total <= current_max_slot:
-                    print("CURRENT OUT 1")
+                    # print("CURRENT OUT 1")
                     current_slot_update = current_slot + 1
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -483,12 +476,12 @@ class DetectionController:
 
                     if next_floor_position > 1:
                         if next_slot == 0:
-                            print("NEXT OUT 1")
+                            # print("NEXT OUT 1")
                             if next_vehicle_total >= next_max_slot:
                                 next_vehicle_total_update = next_vehicle_total_update + 1
                                 self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                         elif next_slot > 0 and next_slot <= next_max_slot:
-                            print("NEXT OUT 2")
+                            # print("NEXT OUT 2")
                             next_slot_update = next_slot - 1
                             self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
@@ -496,7 +489,7 @@ class DetectionController:
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
                 elif current_vehicle_total > current_max_slot:
-                    print("CURRENT OUT 2")
+                    # print("CURRENT OUT 2")
                     current_slot_update = current_slot
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -518,11 +511,11 @@ class DetectionController:
 
             elif current_slot > 0 and current_slot <= current_max_slot:
                 if current_slot == 18:
-                    print("CURRENT OUT 3")
+                    # print("CURRENT OUT 3")
                     current_slot_update = current_slot
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)                    
                 else:
-                    print("CURRENT OUT 4")
+                    # print("CURRENT OUT 4")
                     current_slot_update = current_slot + 1
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -535,7 +528,7 @@ class DetectionController:
 
                 if next_floor_position > 1:
                     if next_slot == 0:
-                        print("NEXT OUT 3")
+                        # print("NEXT OUT 3")
                         if next_vehicle_total > next_max_slot:
                             next_slot_update = next_slot
                             self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
@@ -543,22 +536,22 @@ class DetectionController:
                             next_vehicle_total_update = next_vehicle_total + 1
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > 0 and next_slot <= next_max_slot:
-                        print("NEXT OUT 4")
+                        # print("NEXT OUT 4")
                         next_slot_update = next_slot - 1
                         self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > next_max_slot:
-                        print("NEXT OUT 5")
+                        # print("NEXT OUT 5")
                         next_slot_update = next_slot
                         self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
-            print("current_slot_update: ", current_slot_update)
-            print("next_vehicle_total_update: ", next_vehicle_total_update)
+            # print("current_slot_update: ", current_slot_update)
+            # print("next_vehicle_total_update: ", next_vehicle_total_update)
 
         matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
         available_space = matrix_update.get_total()
@@ -571,7 +564,7 @@ class DetectionController:
         
         # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
-        print('=' * 30 + " LINE BORDER " + '=' * 30)
+        # print('=' * 30 + " LINE BORDER " + '=' * 30)
 
 
 
@@ -592,4 +585,78 @@ class DetectionController:
     #         except Exception as e:
     #             print(f"Error in get plate_no: {e}")
 
+
+    # def post_process_work_thread(self):
+    #     while True:
+    #         if self.stopped.is_set():
+    #             break
+
+    #         try:
+    #             result = self.char_recognize_result_queue.get()
+
+    #             if result is None:
+    #                 print("Result is None", result)
+    #                 continue
+
+    #             self._current_result = result
+
+    #             # print("last_result: ", result)
+
+    #             floor_id = result.get("floor_id", 0)
+    #             cam_id = result.get("cam_id", "")
+    #             car_direction = result.get("car_direction", None) # True or False
+    #             mobil_masuk = result.get("mobil_masuk", None) # True or False
+    #             arduino_idx = result.get("arduino_idx", None)
+    #             start_line, end_line = result.get("start_line", None), result.get("end_line", None)  # Example: (start=True, end=False)
+    #             bg_color = result.get("bg_color", None)
+    #             plate_no = result.get("plate_no", "")
+
+    #             print(f'start_line: {start_line} & end_line: {end_line} & plate_no: {plate_no} & car_direction: {car_direction}')
+
+    #             if start_line and not end_line:
+    #                 self.passed = 2
+    #             elif end_line:
+    #                 mobil_masuk = False
+
+    #             print("self.container_plate_no: ", self.container_plate_no)
+
+    #             if self.passed > 0:
+    #                 if plate_no:
+    #                     self.container_plate_no.append(plate_no)
+
+    #                 if self.passed == 2:
+    #                     if len(self.container_plate_no) == 0:
+    #                         self.passed = 0
+    #                         continue
+
+    #                     plate_no_is_registered = True
+    #                     if len(self.container_plate_no) >= 1:
+    #                         plate_no_max = most_freq(self.container_plate_no)
+    #                         plate_no_detected = plate_no_max
+    #                         status_plate_no = self.check_db(plate_no_detected)
+
+    #                         if not status_plate_no:
+    #                             logger.write(
+    #                                 f"Warning, plat is unregistered, reading container text!! : {plate_no}",
+    #                                 logger.WARN
+    #                             )
+    #                             plate_no_is_registered = False
+
+    #                     self.parking_space_vehicle_counter(floor_id=floor_id, cam_id=cam_id, arduino_idx=arduino_idx, car_direction=car_direction, plate_no=plate_no)
+
+    #                     char = "H" if plate_no_is_registered else "M"
+    #                     matrix_text = f"{plate_no},{char};"
+    #                     self.matrix_text.write_arduino(matrix_text)
+    #                     self.container_plate_no = []
+    #                     self.passed = 0
+
+    #                     if not self.db_plate.check_exist_plat(plate_no):
+    #                         plate_no_is_registered = False
+    #                         logger.write(
+    #                             f"WARNING THERE IS NO PLAT IN DATABASE!!! text: {plate_no}, status: {car_direction}",
+    #                             logger.WARNING
+    #                         )
+
+    #         except Exception as e:
+    #             print(f"Error in post-process work thread: {e}")
     

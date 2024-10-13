@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 from datetime import datetime
@@ -21,29 +22,21 @@ class VehicleDetector:
         self.num_skip_centroid = 0
         self.passed_a = 0
         self.mobil_masuk = False
-
+        self.start_end_counter = 0
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         if image is None or image.size == 0:
             raise ValueError("Received an empty image for preprocessing.")
 
-        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image_bgr = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR)
-        return image_bgr
+        # image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # image_bgr = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR)
+        # return image_bgr
+        return image
 
     def predict(self, image: np.ndarray):
         preprocessed_image = self.preprocess(image)
         results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose=False, classes=config.CLASS_NAMES)
         return results
-
-    def predict(self, image: np.ndarray):
-        preprocessed_image = self.preprocess(image)
-        try:
-            results = self.model.predict(preprocessed_image, conf=0.25, device="cuda:0", verbose=False, classes=config.CLASS_NAMES)
-            return results
-        except Exception as e:
-            logger.write(f"Error in prediction: {e}", logger.ERROR)
-            return []  # Return empty results in case of failure
 
     def get_car_image(self, frame, threshold=0.008):
         results = self.predict(frame)
@@ -124,7 +117,6 @@ class VehicleDetector:
         start = point_position(poly_points[0], poly_points[1], point, inverse=inverse)
         end = point_position(poly_points[2], poly_points[3], point, inverse=inverse)
         self.centroids = self.get_centroid(results, line_pos=False)
-        point = (self.centroids[0][0], self.centroids[0][1])
         if inverse:
             return end, start
         else:
@@ -145,6 +137,26 @@ class VehicleDetector:
         
         # logger.write(f"{self.matrix.get_total()}, {'KELUAR' if self.car_direction else 'MASUK'}, {list_data[1:-1]}".center(100, "="), logger.DEBUG)
 
+    def save_vehicle_frame(self, vehicle_frames):
+        """
+        Save the vehicle frame images as image files.
+        
+        Args:
+            vehicle_frames: List of vehicle frame images.
+        """
+        if not os.path.exists('vehicle_saved'):
+            os.makedirs('vehicle_saved')
+
+        for i, vehicle_frame in enumerate(vehicle_frames):
+            if vehicle_frame.size > 0:
+                # Create a filename with the current timestamp
+                timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+                filename = f'vehicle_saved/vehicle_frame_{timestamp}_{i}.jpg'
+
+                # Save the vehicle frame image
+                cv2.imwrite(filename, vehicle_frame)
+                print(f'Saved vehicle frame: {filename}')
+
     def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, matrix, poly_points):
         self.matrix = matrix
         boxes = []
@@ -157,6 +169,7 @@ class VehicleDetector:
         vehicle_frame, results = self.get_car_image(preprocessed_image)
 
         if vehicle_frame.size > 0:
+            # self.save_vehicle_frame(vehicle_frames=vehicle_frame)
             boxes = results[0].boxes.xyxy.cpu().tolist()
             self.centroids = self.get_centroid(results, line_pos=True)
             direction = self.is_car_out_v2(boxes)
@@ -168,8 +181,12 @@ class VehicleDetector:
                 results, poly_points, inverse=self.car_direction
             )
 
-            # print("start, end:", start_line, end_line)
-            self.mobil_masuk = True if vehicle_frame.size > 0 else False
+            if not start_line and not end_line:
+                vehicle_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
+            # print(f'VEHICLE : start_line: {start_line}, End_line: {end_line}')
+
+            self.mobil_masuk = vehicle_frame.size > 0
 
             vehicle_data = {
                 'arduino_idx': arduino_idx,
@@ -185,76 +202,6 @@ class VehicleDetector:
             self.vehicle_result_queue.put(vehicle_data)
 
         return vehicle_frame, boxes
-
-
-    # def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, matrix, poly_points):
-    #     self.matrix = matrix
-
-    #     if frame is None or frame.size == 0:
-    #         print("Empty or invalid frame received.")
-    #         return None, []
-
-    #     boxes = []
-    #     preprocessed_image = self.preprocess(frame)
-    #     vehicle_frame, results = self.get_car_image(preprocessed_image)
-
-    #     if vehicle_frame.size > 0:
-    #         # Create a dictionary to hold car frame and additional IDs
-    #         vehicle_data = {
-    #             'arduino_idx': arduino_idx,
-    #             'car_frame': vehicle_frame,
-    #             'floor_id': floor_id,
-    #             'cam_id': cam_id
-    #         }
-            
-    #         # Put the dictionary into the vehicle result queue
-    #         self.vehicle_result_queue.put(vehicle_data)
-
-    #         boxes = results[0].boxes.xyxy.cpu().tolist()
-    #         # Optionally, you can call self.draw_box here if needed
-    #         # self.draw_box(frame=frame, boxes=boxes)
-
-    #         if vehicle_frame.shape[0] == 0 or vehicle_frame.shape[1] == 0:
-    #             return []
-    #         self.mobil_masuk = True
-    #         # cv2.imwrite(fr"D:\car\car_{time.time()}.jpg", car)
-    #         self.centroids = self.get_centroid(results, line_pos=True)
-    #         direction = self.is_car_out_v2(results[0].boxes.xyxy.cpu().tolist())
-    #         if direction is not None or self.car_direction is None:
-    #             self.car_direction = direction
-            
-    #         start, end = self.check_centroid_location(results, poly_points, inverse=self.car_direction)
-    #         print("start, end: ", start, end)
-
-    #         # if start and not end:
-    #         #     self.passed_a = 2
-    #         # elif end:
-    #         #     if self.passed_a == 2:
-    #         #         self.matrix.plus_car() if not self.car_direction else self.matrix.minus_car()
-    #         #     self.mobil_masuk = False
-    #         #     self.passed_a = 0
-
-    #         # return [car, start, end]
-
-    #     return vehicle_frame, boxes
-
-    # def detect_vehicle(self, frame):
-    #     if frame is None or frame.size == 0:
-    #         print("Empty or invalid frame received.")
-    #         return None
-        
-    #     boxes = []
-
-    #     preprocessed_image = self.preprocess(frame)
-    #     car_frame, results = self.get_car_image(preprocessed_image)
-
-    #     if car_frame.size > 0:
-    #         self.vehicle_result_queue.put(car_frame)
-
-    #         boxes = results[0].boxes.xyxy.cpu().tolist()
-    #         # self.draw_box(frame=frame, boxes=boxes)
-
-    #     return car_frame, boxes
 
     def draw_box(self, frame, boxes):
         for box in boxes:

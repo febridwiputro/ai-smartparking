@@ -10,31 +10,55 @@ from src.config.logger import logger
 from src.model.recognize_plate.utils.backgrounds import check_background
 
 
-
-def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
+def plate_detection_process(stopped, vehicle_result_queue, plate_result_queue):
     plate_model_path = config.MODEL_PATH_PLAT_v2
     plate_model = YOLO(plate_model_path)
     plate_detector = PlateDetector(plate_model)
 
+    # Counter to keep track of frames sent when start_line and end_line are True
+    frame_count = 0
+
     while not stopped.is_set():
         try:
-            vehicle_data = vehicle_queue.get()
+            vehicle_data = vehicle_result_queue.get()
 
             if vehicle_data is None:
                 continue
             
             # Extract all relevant data from vehicle_data
-            car_frame = vehicle_data.get('car_frame')
+            car_frame = vehicle_data.get('frame')
             floor_id = vehicle_data.get('floor_id', 0)
             cam_id = vehicle_data.get('cam_id', "")
             arduino_idx = vehicle_data.get('arduino_idx')
             car_direction = vehicle_data.get('car_direction')
             mobil_masuk = vehicle_data.get('mobil_masuk')
             passed = vehicle_data.get('passed', 0)
-            start_line = vehicle_data.get('start_line')
-            end_line = vehicle_data.get('end_line')
+            start_line = vehicle_data.get('start_line', False)  # Default to False
+            end_line = vehicle_data.get('end_line', False)  # Default to False
 
-            if car_frame is not None:
+            # Create an empty frame to use in results
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
+            # Check if both start_line and end_line are False
+            if not start_line and not end_line:
+                # Reset frame_count if both lines are False
+                frame_count = 0
+                result = {
+                    "bg_color": None,
+                    "frame": empty_frame,
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "mobil_masuk": mobil_masuk,
+                    "passed": passed,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
+                plate_result_queue.put(result)
+                continue  # Skip further processing for this iteration
+
+            if car_frame is not None and start_line and end_line:
                 # Detect plates in the car frame
                 plate_results = plate_detector.detect_plate(car_frame)
 
@@ -43,63 +67,31 @@ def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
                     bg_color = check_background(gray_plate, False)
 
-                    # Prepare the result dictionary with all relevant fields
-                    result = {
-                        "bg_color": bg_color,
-                        "frame": plate,
-                        "floor_id": floor_id,
-                        "cam_id": cam_id,
-                        "arduino_idx": arduino_idx,
-                        "car_direction": car_direction,
-                        "mobil_masuk": mobil_masuk,
-                        "passed": passed,
-                        "start_line": start_line,
-                        "end_line": end_line
-                    }
+                    # Check if we have already sent 7 frames
+                    if frame_count < 10:
+                        plate_detector.save_cropped_plate(plate_results)
+                        result = {
+                            "bg_color": bg_color,
+                            "frame": plate,
+                            "floor_id": floor_id,
+                            "cam_id": cam_id,
+                            "arduino_idx": arduino_idx,
+                            "car_direction": car_direction,
+                            "mobil_masuk": mobil_masuk,
+                            "passed": passed,
+                            "start_line": start_line,
+                            "end_line": end_line
+                        }
 
-                    print("result plate: ", result)
-                    # Put the result into the plate result queue
-                    plate_result_queue.put(result)
+                        plate_result_queue.put(result)
+                        frame_count += 1  # Increment frame count
+
+            # Reset the counter when either start_line or end_line is False
+            if not start_line or not end_line:
+                frame_count = 0
 
         except Exception as e:
             print(f"Error in plate detection: {e}")
-
-
-# def plate_detection_process(stopped, vehicle_queue, plate_result_queue):
-#     plate_model_path = config.MODEL_PATH_PLAT_v2
-#     plate_model = YOLO(plate_model_path)
-#     plate_detector = PlateDetector(plate_model)
-
-#     while not stopped.is_set():
-#         try:
-#             vehicle_data = vehicle_queue.get()
-
-#             if vehicle_data is None:
-#                 continue
-            
-#             car_frame = vehicle_data.get('car_frame')
-#             floor_id = vehicle_data.get('floor_id')
-#             cam_id = vehicle_data.get('cam_id')
-
-#             if car_frame is not None:
-#                 plate_results = plate_detector.detect_plate(car_frame)
-
-#                 for plate in plate_results:
-#                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
-#                     bg_color = check_background(gray_plate, False)
-
-#                     result = {
-#                         "bg_color": bg_color,
-#                         "frame": plate,
-#                         "floor_id": floor_id,
-#                         "cam_id": cam_id
-#                     }
-
-#                     plate_result_queue.put(result)
-
-#         except Exception as e:
-#             print(f"Error in plate detection: {e}")
-
 
 class PlateDetector:
     def __init__(self, model):
@@ -115,7 +107,7 @@ class PlateDetector:
         results = self.model.predict(preprocessed_image, conf=0.3, device="cuda:0", verbose=False)
         return results
 
-    def detect_plate(self, frame, is_save=True):
+    def detect_plate(self, frame, is_save=False):
         results = self.predict(frame)
 
         if not results:
