@@ -266,7 +266,7 @@ class OCRController:
         
         start, end = self.check_centroid_location(results, poly_points, inverse=self.car_direction)
 
-        print("start, end: ", start, end)
+        # print("start, end: ", start, end)
 
         return [car, start, end]
 

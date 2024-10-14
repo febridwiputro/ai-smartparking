@@ -51,14 +51,14 @@ class DetectionController:
         self.text_detection_result_queue = mp.Queue()
         self.stopped = mp.Event()
         self.char_recognize_result_queue = mp.Queue()
-        self.vehicle_thread = None
-        self.plate_detection_process = None
+        self.vehicle_plate_thread = None
+        self.img_restore_text_char_process = None
         self.vehicle_bounding_boxes = []
         self.floor_id = 0
         self.cam_id = ""
         self._current_frame = None
         self._current_result = None
-        self.result_processing_thread = None
+        # self.result_processing_thread = None
         self.results_lock = threading.Lock()
 
         self.passed_a = 0
@@ -83,28 +83,16 @@ class DetectionController:
 
     def start(self):
         print("[Thread] Starting vehicle detection thread...")
-        self.vehicle_thread = threading.Thread(target=self.detect_vehicle_work_thread)
-        self.vehicle_thread.start()
+        self.vehicle_plate_thread = threading.Thread(target=self.detect_vehicle_plate_work_thread)
+        self.vehicle_plate_thread.start()
 
-        print("[Thread] Starting result processing thread...")
-        self.result_processing_thread = threading.Thread(target=self.post_process_work_thread)
-        self.result_processing_thread.start()
+        # print("[Thread] Starting result processing thread...")
+        # self.result_processing_thread = threading.Thread(target=self.post_process_work_thread)
+        # self.result_processing_thread.start()
 
-        print("[Process] Starting plate detection process...")
-        self.plate_detection_process = mp.Process(target=plate_detection_process, args=(self.stopped, self.vehicle_result_queue, self.plate_result_queue))
-        self.plate_detection_process.start()
-
-        print("[Process] Starting image restoration process...")
-        self.image_restoration_process = mp.Process(target=image_restoration, args=(self.stopped, self.plate_result_queue, self.img_restoration_result_queue))
-        self.image_restoration_process.start()
-
-        print("[Process] Starting text detection process...")
-        self.text_detection_process = mp.Process(target=text_detection, args=(self.stopped, self.img_restoration_result_queue, self.text_detection_result_queue))
-        self.text_detection_process.start()
-
-        print("[Process] Starting character recognition process...")
-        self.char_recognition_process = mp.Process(target=character_recognition, args=(self.stopped, self.text_detection_result_queue, self.char_recognize_result_queue))
-        self.char_recognition_process.start()
+        print("[Process] Starting image_restoration, text_detection, character_recognition process...")
+        self.img_restore_text_char_process = mp.Process(target=image_restoration, args=(self.stopped, self.plate_result_queue, self.char_recognize_result_queue))
+        self.img_restore_text_char_process.start()
 
     def get_plate_number(self):
         if self._current_result and 'plate_no' in self._current_result:
@@ -115,7 +103,6 @@ class DetectionController:
         self._current_frame = frame.copy()
         self.floor_id = floor_id
         self.cam_id = cam_id
-
         self.height, self.width = frame.shape[:2]
 
         slot = self.db_floor.get_slot_by_id(floor_id)
@@ -221,8 +208,7 @@ class DetectionController:
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
 
-
-    def detect_vehicle_work_thread(self):
+    def detect_vehicle_plate_work_thread(self):
         # TODO define YOLO MODEL
         vehicle_model = YOLO(config.MODEL_PATH)
         vehicle_detector = VehicleDetector(vehicle_model, self.vehicle_result_queue)
@@ -266,12 +252,12 @@ class DetectionController:
         put_queue_none(self.char_recognize_result_queue)
 
         # Stop threads
-        if self.vehicle_thread is not None:
-            self.vehicle_thread.join()
-            self.vehicle_thread = None
+        if self.vehicle_plate_thread is not None:
+            self.vehicle_plate_thread.join()
+            self.vehicle_plate_thread  = None
 
-        if self.result_processing_thread is not None:
-            self.result_processing_thread.join()
+        # if self.result_processing_thread is not None:
+        #     self.result_processing_thread.join()
 
         # Stop processes
         if self.plate_detection_process is not None:

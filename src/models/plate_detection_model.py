@@ -56,19 +56,16 @@ def plate_detection_process(stopped, vehicle_result_queue, plate_result_queue):
                     "end_line": end_line
                 }
                 plate_result_queue.put(result)
-                continue  # Skip further processing for this iteration
+                continue
 
             if car_frame is not None and start_line and end_line:
-                # Detect plates in the car frame
                 plate_results = plate_detector.detect_plate(car_frame)
 
                 for plate in plate_results:
-                    # Convert plate to grayscale and check background color
                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
                     bg_color = check_background(gray_plate, False)
 
-                    # Check if we have already sent 7 frames
-                    if frame_count < 10:
+                    if frame_count < 7:
                         plate_detector.save_cropped_plate(plate_results)
                         result = {
                             "bg_color": bg_color,
@@ -84,9 +81,8 @@ def plate_detection_process(stopped, vehicle_result_queue, plate_result_queue):
                         }
 
                         plate_result_queue.put(result)
-                        frame_count += 1  # Increment frame count
+                        frame_count += 1
 
-            # Reset the counter when either start_line or end_line is False
             if not start_line or not end_line:
                 frame_count = 0
 

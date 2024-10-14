@@ -25,7 +25,6 @@ def text_detection(stopped, plate_result_queue, text_detection_result_queue):
             if restoration_result is None or len(restoration_result) == 0:
                 continue
 
-            # Extract all relevant fields from restoration_result
             restored_image = restoration_result.get("frame", None)
             bg_color = restoration_result.get("bg_color", None)
             floor_id = restoration_result.get("floor_id", 0)
@@ -39,7 +38,6 @@ def text_detection(stopped, plate_result_queue, text_detection_result_queue):
 
             empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
 
-            # Check if both start_line and end_line are False
             if not start_line and not end_line:
                 result = {
                     "bg_color": bg_color,

@@ -35,10 +35,29 @@ def image_restoration(stopped, plate_result_queue, img_restoration_result_queue)
             if plate_image is None:
                 continue
 
-            # Process the image for restoration
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
+            if not start_line and not end_line:
+                result = {
+                    "bg_color": bg_color,
+                    "frame": empty_frame,
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "mobil_masuk": mobil_masuk,
+                    "passed": passed,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
+                img_restoration_result_queue.put(result)
+                continue
+
+            if plate_image is None:
+                continue
+
             restored_image = img_restore.process_image(plate_image)
 
-            # Prepare the result with all relevant fields
             result = {
                 "bg_color": bg_color,
                 "frame": restored_image,
@@ -52,41 +71,10 @@ def image_restoration(stopped, plate_result_queue, img_restoration_result_queue)
                 "end_line": end_line
             }
 
-            # Put the result into the restoration result queue
             img_restoration_result_queue.put(result)
 
         except Exception as e:
             print(f"Error in image_restoration: {e}")
-
-
-# def image_restoration(stopped, plate_result_queue, img_restoration_result_queue):
-#     img_restore = ImageRestoration()
-
-#     while not stopped.is_set():
-#         try:
-#             plate_result = plate_result_queue.get()
-
-#             if plate_result is None or len(plate_result) == 0:
-#                 continue
-
-#             plate_image = plate_result.get("frame", None)
-#             bg_color = plate_result.get("bg_color", None)
-
-#             if plate_image is None:
-#                 continue
-
-#             restored_image = img_restore.process_image(plate_image)
-
-#             result = {
-#                 "bg_color": bg_color,
-#                 "frame": restored_image
-#             }
-
-#             img_restoration_result_queue.put(result)
-
-#         except Exception as e:
-#             print(f"Error in image_restoration: {e}")
-
 
 class ImageRestoration:
     def __init__(self):

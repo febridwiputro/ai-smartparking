@@ -75,14 +75,15 @@ class Config:
     VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
     VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
 
-    VIDEO_SOURCE_20241004 = [VIDEO_SOURCE_20241004_LT2_IN, 
+    VIDEO_SOURCE_20241004 = [
+                    VIDEO_SOURCE_20241004_LT2_IN, 
                     VIDEO_SOURCE_20241004_LT2_OUT, 
-                    VIDEO_SOURCE_20241004_LT3_IN, 
-                    VIDEO_SOURCE_20241004_LT3_OUT, 
-                    VIDEO_SOURCE_20241004_LT4_IN, 
-                    VIDEO_SOURCE_20241004_LT4_OUT, 
-                    VIDEO_SOURCE_20241004_LT5_IN, 
-                    VIDEO_SOURCE_20241004_LT5_OUT
+                    # VIDEO_SOURCE_20241004_LT3_IN, 
+                    # VIDEO_SOURCE_20241004_LT3_OUT, 
+                    # VIDEO_SOURCE_20241004_LT4_IN, 
+                    # VIDEO_SOURCE_20241004_LT4_OUT, 
+                    # VIDEO_SOURCE_20241004_LT5_IN, 
+                    # VIDEO_SOURCE_20241004_LT5_OUT
                     ]
     
     VIDEO_SOURCE_LAPTOP = [

@@ -21,8 +21,9 @@ def main():
     db_vehicle_history = VehicleHistoryController()
 
     if IS_DEBUG:
-        video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_PC
         # video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_20241004
     else:
         video_source = config.CAM_SOURCE_LT
 
