@@ -604,7 +604,7 @@ class OCRController:
         
         # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
-        print('=' * 30 + " LINE BORDER " + '=' * 30)
+        print('=' * 30 + " BORDER: LAST RESULT " + '=' * 30)
 
     def processing_logic_car(self, arduino_idx, cam_idx, status_car):
         if not (self.passed == 2):

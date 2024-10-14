@@ -132,7 +132,7 @@ class CharacterRecognize:
             ratio = intHeight / intWidth
 
             if verbose:
-                logging.info('=' * 25 + f' BORDER ' + '=' * 25)
+                logging.info('=' * 25 + f' BORDER: RECOGNIZE ' + '=' * 25)
                 logging.info(f'WIDTH={intWidth} & HEIGHT={intHeight}')
             height_difference = abs(second_highest_height - intHeight)
 
@@ -254,7 +254,7 @@ class CharacterRecognize:
             filtered_heights = w_h
 
         if verbose:
-            logging.info('>' * 25 + f' BORDER ' + '>' * 25)
+            logging.info('>' * 25 + f' BORDER: filter_height_bbox ' + '>' * 25)
             logging.info(f'LIST OF HEIGHT: {list_of_height}, SORTED HEIGHT: {sorted_heights}, FILTERED HEIGHTS: {filtered_heights}, AVG HEIGHT: {avg_height}')
 
         return filtered_heights      
@@ -299,7 +299,7 @@ class CharacterRecognize:
             filtered_heights = w_h
 
         if verbose:
-            logging.info('>' * 25 + f' BORDER ' + '>' * 25)
+            logging.info('>' * 25 + f' BORDER: filter_height_bbox' + '>' * 25)
             logging.info(f'LIST OF HEIGHT: {list_of_height}, SORTED HEIGHT: {sorted_heights}, FILTERED HEIGHTS: {filtered_heights}, AVG HEIGHT: {avg_height}')
 
         return filtered_heights

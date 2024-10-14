@@ -6,9 +6,14 @@ import time
 from datetime import datetime
 
 from src.config.config import config
-from src.config.logger import logger
-from src.model.recognize_plate.utils.backgrounds import check_background
+from src.config.logger import Logger
+from src.models.utils.text_detection_util import (
+    filter_height_bbox, 
+    filter_readtext_frame, 
+    save_cropped_images
+)
 
+logging = Logger("text_detection_model", is_save=False)
 
 def text_detection(stopped, plate_result_queue, text_detection_result_queue):
     detector = TextDetector()
@@ -29,8 +34,8 @@ def text_detection(stopped, plate_result_queue, text_detection_result_queue):
             car_direction = restoration_result.get("car_direction", None)
             mobil_masuk = restoration_result.get("mobil_masuk", None)
             passed = restoration_result.get("passed", 0)
-            start_line = restoration_result.get("start_line", False)  # Default to False
-            end_line = restoration_result.get("end_line", False)  # Default to False
+            start_line = restoration_result.get("start_line", False)
+            end_line = restoration_result.get("end_line", False)
 
             empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
 
@@ -49,12 +54,12 @@ def text_detection(stopped, plate_result_queue, text_detection_result_queue):
                     "end_line": end_line
                 }
                 text_detection_result_queue.put(result)
-                continue  # Skip further processing for this iteration
+                continue
 
             if restored_image is None:
                 continue
 
-            text_detected_result, _ = detector.recognition_image_text(image=restored_image)
+            text_detected_result, _ = detector.easyocr_readtext(image=restored_image)
 
             result = {
                 "bg_color": bg_color,
@@ -109,90 +114,16 @@ class EasyOCRNet:
         if results:
             return results
         else:
-            logger.write(f"No text recognized.", logger.DEBUG)
+            logging.write(f"No text recognized.", logging.DEBUG)
             return []
 
-# Text detection class using EasyOCR
 class TextDetector:
     def __init__(self):
         self.ocr_net = EasyOCRNet(use_cuda=True)
 
-    def filter_height_bbox(self, bounding_boxes, verbose=False):
-        converted_bboxes = []
-        w_h = []
-        for bbox_group in bounding_boxes:
-            for bbox in bbox_group:
-                if len(bbox) == 4:
-                    x_min, x_max, y_min, y_max = bbox
-                    top_left = [x_min, y_min]
-                    top_right = [x_max, y_min]
-                    bottom_right = [x_max, y_max]
-                    bottom_left = [x_min, y_max]
-                    converted_bboxes.append([top_left, top_right, bottom_right, bottom_left])
-
-                    width_bbox = x_max - x_min
-                    height_bbox = y_max - y_min 
-
-                    if height_bbox >= 10:
-                        w_h.append(height_bbox)
-
-    def filter_readtext_frame(self, texts: list, verbose=False) -> list:
-        w_h = []
-        sorted_heights = []
-        avg_height = ""
-        for t in texts:
-            (top_left, top_right, bottom_right, bottom_left) = t[0]
-            top_left = tuple([int(val) for val in top_left])
-            bottom_left = tuple([int(val) for val in bottom_left])
-            top_right = tuple([int(val) for val in top_right])
-            height_f = bottom_left[1] - top_left[1]
-            width_f = top_right[0] - top_left[0]
-
-            if height_f >= 10:
-                w_h.append(height_f)
-
-        if len(w_h) == 1:
-            list_of_height = w_h
-            filtered_heights = w_h
-            sorted_heights = w_h
-
-        elif len(w_h) == 2:
-            list_of_height = w_h
-            filtered_heights = [max(w_h)]
-            sorted_heights = sorted(w_h, reverse=True)
-
-        elif len(w_h) > 2:
-            list_of_height = w_h
-            sorted_heights = sorted(w_h, reverse=True)
-            highest_height_f = sorted_heights[0]
-            avg_height = sum(sorted_heights) / len(sorted_heights)
-
-            filtered_heights = [highest_height_f]
-            filtered_heights += [h for h in sorted_heights[1:] if abs(highest_height_f - h) < 20]
-
-        else:
-            filtered_heights = w_h
-
-        if verbose:
-            logger.write('>' * 25 + f' BORDER ' + '>' * 25, logger.DEBUG)
-            logger.write(f'LIST OF HEIGHT: {list_of_height}, SORTED HEIGHT: {sorted_heights}, FILTERED HEIGHTS: {filtered_heights}, AVG HEIGHT: {avg_height}', logger.DEBUG)
-
-        return filtered_heights 
-
-    def save_cropped_images(self, cropped_images, save_dir="cropped_images"):
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-
-        for cropped_image in cropped_images:
-            # Create a timestamped filename for saving the cropped image
-            timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-            image_path = os.path.join(save_dir, f"cropped_image_{timestamp}.png")
-            cv2.imwrite(image_path, cropped_image)
-            # print(f"Saved: {image_path}")
-
-    def text_detect_and_recognize(self, image, is_save=False):
+    def easyocr_detect(self, image, is_save=False):
         bounding_boxes = self.ocr_net.detect(image)
-        filtered_heights = self.filter_height_bbox(bounding_boxes=bounding_boxes)
+        filtered_heights = filter_height_bbox(bounding_boxes=bounding_boxes)
 
         converted_bboxes = []
         cropped_images = []
@@ -216,25 +147,24 @@ class TextDetector:
                     cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
                     if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
-                        logger.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logger.DEBUG)
+                        logging.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logging.DEBUG)
                         continue
 
                     cropped_images.append(cropped_image)
 
-        # Save the cropped images after processing them
         if cropped_images:
             if is_save:
-                self.save_cropped_images(cropped_images)
+                save_cropped_images(cropped_images)
 
         # Return cropped images and processed frame
         return cropped_images, image
 
-    def recognition_image_text(self, image):
+    def easyocr_readtext(self, image):
 
         bounding_boxes = self.ocr_net.readtext(image)
 
         cropped_images = []
-        filtered_heights = self.filter_readtext_frame(bounding_boxes, False)
+        filtered_heights = filter_readtext_frame(bounding_boxes, False)
 
         for t in bounding_boxes:
             (top_left, top_right, bottom_right, bottom_left) = t[0]
@@ -244,6 +174,10 @@ class TextDetector:
 
             height_f = bottom_left[1] - top_left[1]
             width_f = top_right[0] - top_left[0]
+
+            # logging.write('=' * 25 + f' BORDER: EASYOCR READTEXT' + '=' * 25, logging.DEBUG)
+            # logging.write(f'height: {height_f}, width: {width_f}', logging.DEBUG)
+
             if height_f not in filtered_heights:
                 continue
 
@@ -253,7 +187,7 @@ class TextDetector:
             cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
             if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
-                logger.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logger.DEBUG)
+                logging.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logging.DEBUG)
                 continue
 
             cropped_images.append(cropped_image)

@@ -433,7 +433,7 @@ class TextDetector:
             filtered_heights = w_h
 
         if verbose:
-            logging.info('>' * 25 + f' BORDER ' + '>' * 25)
+            logging.info('>' * 25 + f' BORDER: FILTER READTEXT FRAME ' + '>' * 25)
             logging.info(f'LIST OF HEIGHT: {list_of_height}, SORTED HEIGHT: {sorted_heights}, FILTERED HEIGHTS: {filtered_heights}, AVG HEIGHT: {avg_height}')
 
         return filtered_heights 

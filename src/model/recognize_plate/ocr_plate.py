@@ -157,7 +157,7 @@ class OCRPlate:
     #         logging.info(f'WIDTH: {intWidth}, HEIGHT: {intHeight}')
 
     #         if (intWidth >= 10 and intWidth <= 50) and (intHeight > 30):
-    #             logging.info('=' * 20 + " BORDER " + '=' * 20)
+    #             logging.info('=' * 20 + " BORDER: find_contours " + '=' * 20)
     #             logging.info(f'PASS WIDTH: {intWidth}, HEIGHT: {intHeight}')
     #             logging.info(f'PASS: {intWidth}x{intHeight} with RATIO: {ratio}')
 
@@ -313,7 +313,7 @@ class OCRPlate:
 
             # Check if contour meets the height difference criterion
             if (intWidth >= 10 and intWidth <= 50) and (intHeight > 30):
-                logging.info('=' * 25 + f' BORDER ' + '=' * 25)
+                logging.info('=' * 25 + f' BORDER: FIND CONTOURS CHARACTERS ' + '=' * 25)
                 height_difference = abs(intHeight - second_highest_height)
 
                 # Log the height difference

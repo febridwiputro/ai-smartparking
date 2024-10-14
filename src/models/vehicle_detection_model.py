@@ -28,10 +28,10 @@ class VehicleDetector:
         if image is None or image.size == 0:
             raise ValueError("Received an empty image for preprocessing.")
 
-        # image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        # image_bgr = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR)
-        # return image_bgr
-        return image
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        image_bgr = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR)
+        return image_bgr
+        # return image
 
     def predict(self, image: np.ndarray):
         preprocessed_image = self.preprocess(image)

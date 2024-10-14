@@ -538,7 +538,7 @@ class OCRController:
     
         # self.send_plate_data(floor_id=floor_id, plate_no=plate_no, cam_position=cam_position)
 
-        print('=' * 30 + " LINE BORDER " + '=' * 30)
+        print('=' * 30 + " BORDER: LINE COPY " + '=' * 30)
 
         char = "H" if self.status_register else "M"
         matrix_text_text = plate_no + "," + char + ";"
