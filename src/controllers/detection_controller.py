@@ -74,6 +74,7 @@ class DetectionController:
         self.db_vehicle_history = VehicleHistoryController()
         self.car_bboxes = []
         self.poly_points = []
+        self.last_result_plate_no = ""
 
     def start(self):
         print("[Thread] Starting vehicle detection thread...")
@@ -120,7 +121,7 @@ class DetectionController:
 
         show_text(f"Floor : {floor_id} {cam_id}", frame, 5, 50)
         plate_no = self.get_plate_number()
-        show_text(f"Plate No. : {plate_no}", frame, 5, 100)
+        show_text(f"Plate No. : {self.last_result_plate_no}", frame, 5, 100)
         show_text(f"Parking Lot Available : {total_slot}", frame, 5, 150, (0, 255, 0) if total_slot > 0 else (0, 0, 255))
         show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
         show_line(frame, self.poly_points[0], self.poly_points[1])
@@ -334,7 +335,7 @@ class DetectionController:
         print("get_plate_history: ", get_plate_history)
 
         # NAIK / MASUK
-        if not car_direction:
+        if car_direction:
             # if get_plate_history:
             #     if get_plate_history[0]['floor_id'] != current_floor_position:
             #         print(f"Update vehicle history karena floor_id tidak sesuai: {get_plate_history[0]['floor_id']} != {current_floor_position}")
@@ -395,7 +396,7 @@ class DetectionController:
             print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
 
             if current_slot == 0:
-                # print("UPDATE 0")
+                print("UPDATE 0")
                 current_slot_update = current_slot
                 self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -434,8 +435,8 @@ class DetectionController:
                 self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
 
                 if prev_floor_position > 1:
-                    # print("IN 1")
                     if prev_slot == 0:
+                        print("IN 1")
                         if prev_vehicle_total > prev_max_slot:
                             prev_slot_update = prev_slot
                             self.db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
@@ -450,7 +451,7 @@ class DetectionController:
                             self.db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
 
                     elif prev_slot > 0 and prev_slot < prev_max_slot:
-                        # print("IN 2")
+                        print("IN 2")
                         prev_slot_update = prev_slot + 1
                         # print("prev_slot_update: ", prev_slot_update)
                         # print("prev_slot_update: ", prev_slot_update)
@@ -467,7 +468,7 @@ class DetectionController:
             print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
             if current_slot == 0:
                 if current_vehicle_total > 0 and current_vehicle_total <= current_max_slot:
-                    # print("CURRENT OUT 1")
+                    print("CURRENT OUT 1")
                     current_slot_update = current_slot + 1
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -476,12 +477,12 @@ class DetectionController:
 
                     if next_floor_position > 1:
                         if next_slot == 0:
-                            # print("NEXT OUT 1")
+                            print("NEXT OUT 1")
                             if next_vehicle_total >= next_max_slot:
                                 next_vehicle_total_update = next_vehicle_total_update + 1
                                 self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                         elif next_slot > 0 and next_slot <= next_max_slot:
-                            # print("NEXT OUT 2")
+                            print("NEXT OUT 2")
                             next_slot_update = next_slot - 1
                             self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
@@ -489,7 +490,7 @@ class DetectionController:
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
                 elif current_vehicle_total > current_max_slot:
-                    # print("CURRENT OUT 2")
+                    print("CURRENT OUT 2")
                     current_slot_update = current_slot
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -511,11 +512,11 @@ class DetectionController:
 
             elif current_slot > 0 and current_slot <= current_max_slot:
                 if current_slot == 18:
-                    # print("CURRENT OUT 3")
+                    print("CURRENT OUT 3")
                     current_slot_update = current_slot
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)                    
                 else:
-                    # print("CURRENT OUT 4")
+                    print("CURRENT OUT 4")
                     current_slot_update = current_slot + 1
                     self.db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -528,7 +529,7 @@ class DetectionController:
 
                 if next_floor_position > 1:
                     if next_slot == 0:
-                        # print("NEXT OUT 3")
+                        print("NEXT OUT 3")
                         if next_vehicle_total > next_max_slot:
                             next_slot_update = next_slot
                             self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
@@ -536,27 +537,27 @@ class DetectionController:
                             next_vehicle_total_update = next_vehicle_total + 1
                             self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > 0 and next_slot <= next_max_slot:
-                        # print("NEXT OUT 4")
+                        print("NEXT OUT 4")
                         next_slot_update = next_slot - 1
                         self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > next_max_slot:
-                        # print("NEXT OUT 5")
+                        print("NEXT OUT 5")
                         next_slot_update = next_slot
                         self.db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                         next_vehicle_total_update = next_vehicle_total + 1
                         self.db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
-            # print("current_slot_update: ", current_slot_update)
-            # print("next_vehicle_total_update: ", next_vehicle_total_update)
+            print("current_slot_update: ", current_slot_update)
+            print("next_vehicle_total_update: ", next_vehicle_total_update)
 
         matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
         available_space = matrix_update.get_total()
         self.total_slot = current_max_slot - available_space
-        self.plate_no = plate_no
+        self.last_result_plate_no = plate_no
 
         print(f"PLAT_NO : {plate_no}, AVAILABLE PARKING SPACES : {available_space}, STATUS : {'TAMBAH' if not car_direction else 'KURANG'}, VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR : {current_floor_position}, CAMERA : {current_cam_position}, TOTAL_FRAME: {len(self.container_plate_no)}")
 
@@ -565,8 +566,6 @@ class DetectionController:
         # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
         # print('=' * 30 + " LINE BORDER " + '=' * 30)
-
-
 
     # def post_process_work_thread(self):
     #     while True:
