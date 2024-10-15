@@ -1,10 +1,4 @@
 import os
-import tensorflow as tf
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all logs (1 = INFO, 2 = WARNING, 3 = ERROR)
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-tf.get_logger().setLevel('ERROR')
-
 import threading
 import multiprocessing as mp
 import cv2
@@ -13,12 +7,9 @@ from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
-from src.controller.matrix_controller import MatrixController
-from src.models.vehicle_detection_model import VehicleDetector
-from src.models.plate_detection_model import plate_detection_process
-from src.models.image_restoration_model import image_restoration
-from src.models.text_detection_model import text_detection
-from src.models.character_recognition_model import character_recognition
+from src.controllers.matrix_controller import MatrixController
+from src.models.vehicle_plate_model import VehicleDetector
+from src.models.image_restoration_text_char_model import image_restoration
 from utils.multiprocessing_util import put_queue_none, clear_queue
 
 from src.view.show_cam import show_cam, show_text, show_line
@@ -38,19 +29,19 @@ from src.controllers.utils.util import (
 from src.controllers.utils.display import draw_box
 
 
-class DetectionController:
+class DetectionControllerV2:
     def __init__(self, arduino_idx, matrix_total):
         self.arduino_idx = arduino_idx
         self.matrix_text = MatrixController(arduino_idx, 0, 100)
         self.matrix_text.start()
         self.matrix = matrix_total
         self.matrix.start(self.matrix.get_total())
-        self.vehicle_result_queue = mp.Queue()
+        self.vehicle_plate_result_queue = mp.Queue()
         self.plate_result_queue = mp.Queue()
         self.img_restoration_result_queue = mp.Queue()
         self.text_detection_result_queue = mp.Queue()
         self.stopped = mp.Event()
-        self.char_recognize_result_queue = mp.Queue()
+        self.img_restore_text_char_queue = mp.Queue()
         self.vehicle_plate_thread = None
         self.img_restore_text_char_process = None
         self.vehicle_bounding_boxes = []
@@ -91,7 +82,7 @@ class DetectionController:
         # self.result_processing_thread.start()
 
         print("[Process] Starting image_restoration, text_detection, character_recognition process...")
-        self.img_restore_text_char_process = mp.Process(target=image_restoration, args=(self.stopped, self.plate_result_queue, self.char_recognize_result_queue))
+        self.img_restore_text_char_process = mp.Process(target=image_restoration, args=(self.stopped, self.vehicle_plate_result_queue, self.img_restore_text_char_queue))
         self.img_restore_text_char_process.start()
 
     def get_plate_number(self):
@@ -138,7 +129,7 @@ class DetectionController:
                 break
 
             try:
-                result = self.char_recognize_result_queue.get()
+                result = self.img_restore_text_char_queue.get()
 
                 if result is None:
                     print("Result is None", result)
@@ -148,17 +139,15 @@ class DetectionController:
 
                 floor_id = result.get("floor_id", 0)
                 cam_id = result.get("cam_id", "")
-                car_direction = result.get("car_direction", None)  # True or False
-                mobil_masuk = result.get("mobil_masuk", None)  # True or False
+                car_direction = result.get("car_direction", None)
                 arduino_idx = result.get("arduino_idx", None)
                 start_line = result.get("start_line", None)
-                end_line = result.get("end_line", None)  # Example: (start=True, end=False)
-                plate_no = result.get("plate_no", None)  # Use None to check for absence
+                end_line = result.get("end_line", None)
+                plate_no = result.get("plate_no", None)
 
                 # print(f'start_line: {start_line} & end_line: {end_line} & plate_no: {plate_no} & car_direction: {car_direction}')
 
-                # Append plate_no if start_line and end_line are both True
-                if start_line and end_line and plate_no is not None:  # Check that plate_no is not None
+                if start_line and end_line and plate_no is not None:
                     self.container_plate_no.append(plate_no)
                     print(f'plate_no: {plate_no}')
 
@@ -211,7 +200,7 @@ class DetectionController:
     def detect_vehicle_plate_work_thread(self):
         # TODO define YOLO MODEL
         vehicle_model = YOLO(config.MODEL_PATH)
-        vehicle_detector = VehicleDetector(vehicle_model, self.vehicle_result_queue)
+        vehicle_detector = VehicleDetector(vehicle_model, self.vehicle_plate_result_queue)
         
         while True:
             if self.stopped.is_set():
@@ -245,11 +234,8 @@ class DetectionController:
         print("[Controller] Stopping detection processes and threads...")
         self.stopped.set()
 
-        put_queue_none(self.vehicle_result_queue)
-        put_queue_none(self.plate_result_queue)
-        put_queue_none(self.img_restoration_result_queue)
-        put_queue_none(self.text_detection_result_queue)
-        put_queue_none(self.char_recognize_result_queue)
+        put_queue_none(self.vehicle_plate_result_queue)
+        put_queue_none(self.img_restore_text_char_queue)
 
         # Stop threads
         if self.vehicle_plate_thread is not None:
@@ -260,45 +246,12 @@ class DetectionController:
         #     self.result_processing_thread.join()
 
         # Stop processes
-        if self.plate_detection_process is not None:
-            self.plate_detection_process.join()
-            self.plate_detection_process = None
-
-        if self.image_restoration_process is not None:
-            self.image_restoration_process.join()
-            self.image_restoration_process = None
-
-        if self.text_detection_process is not None:
-            self.text_detection_process.join()
-            self.text_detection_process = None
-
-        if self.char_recognition_process is not None:
-            self.char_recognition_process.join()
-            self.char_recognition_process = None
+        if self.img_restore_text_char_process is not None:
+            self.img_restore_text_char_process.join()
+            self.img_restore_text_char_process = None
 
         # Clear all queues
-        clear_queue(self.vehicle_result_queue)
-        clear_queue(self.plate_result_queue)
-        clear_queue(self.img_restoration_result_queue)
-        clear_queue(self.text_detection_result_queue)
-        clear_queue(self.char_recognize_result_queue)
+        clear_queue(self.vehicle_plate_result_queue)
+        clear_queue(self.img_restore_text_char_queue)
 
         print("[Controller] All processes and threads stopped.")
-
-
-    # def post_process_work_thread(self):
-    #     while True:
-    #         if self.stopped.is_set():
-    #             break
-
-    #         try:
-    #             result = self.char_recognize_result_queue.get()
-
-    #             if result is None:
-    #                 print("result is None", result)
-    #                 continue
-
-    #             self._current_result = result
-
-    #         except Exception as e:
-    #             print(f"Error in get plate_no: {e}")

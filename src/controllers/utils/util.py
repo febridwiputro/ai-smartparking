@@ -14,6 +14,16 @@ db_floor = FloorController()
 db_mysn = FetchAPIController()
 db_vehicle_history = VehicleHistoryController()
 
+
+def check_floor(cam_idx):
+    cam_map = {
+        0: (2, "IN"), 1: (2, "OUT"),
+        2: (3, "IN"), 3: (3, "OUT"),
+        4: (4, "IN"), 5: (4, "OUT"),
+        6: (5, "IN"), 7: (5, "OUT")
+    }
+    return cam_map.get(cam_idx, (0, ""))
+
 def find_closest_strings_dict(target, strings):
     distances = np.array([lev.distance(target, s) for s in strings])
     min_distance = np.min(distances)

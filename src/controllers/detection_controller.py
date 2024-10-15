@@ -13,7 +13,7 @@ from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
-from src.controller.matrix_controller import MatrixController
+from src.controllers.matrix_controller import MatrixController
 from src.models.vehicle_detection_model import VehicleDetector
 from src.models.plate_detection_model import plate_detection_process
 from src.models.image_restoration_model import image_restoration

@@ -6,7 +6,7 @@ from datetime import datetime
 
 from src.config.config import config
 from src.config.logger import logger
-from src.model.gan_model import GanModel
+from src.models.gan_model import GanModel
 
 
 
