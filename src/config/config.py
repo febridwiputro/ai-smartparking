@@ -15,8 +15,8 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    # BASE_DIR = r"C:\Users\DOT\Documents\febri"
-    BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -51,8 +51,8 @@ class Config:
         'rtsp://admin:Passw0rd@192.168.1.13',
         'rtsp://admin:Passw0rd@192.168.1.14',
         'rtsp://admin:Passw0rd@192.168.1.15',
-        'rtsp://admin:Passw0rd@192.168.1.16',
-        'rtsp://admin:Passw0rd@192.168.1.17'
+        # 'rtsp://admin:Passw0rd@192.168.1.16',
+        # 'rtsp://admin:Passw0rd@192.168.1.17'
     ]
 
     VIDEO_SOURCE_LT2_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
@@ -102,12 +102,14 @@ class Config:
                     ]
 
     VIDEO_SOURCE_PC = [
+                        # fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4",
                         fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4",
                         # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
                         # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
                         # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
     ]

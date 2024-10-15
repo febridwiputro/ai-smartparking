@@ -20,19 +20,16 @@ from src.controllers.utils.util import convert_bbox_to_decimal, convert_decimal_
 
 
 class VehicleDetector:
-    def __init__(self, model, vehicle_plate_result_queue):
-        self.model = model
+    def __init__(self, vehicle_model, plate_model, vehicle_plate_result_queue):
+        self.model = vehicle_model
         self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.car_direction = None
         self.prev_centroid = None
         self.num_skip_centroid = 0
-        self.passed_a = 0
-        self.mobil_masuk = False
         self.start_end_counter = 0
 
-        plate_model_path = config.MODEL_PATH_PLAT_v2
-        plate_model = YOLO(plate_model_path)
+        self.frame_count = 0
         self.pd = PlateDetector(plate_model)
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
@@ -171,7 +168,6 @@ class VehicleDetector:
     def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, matrix, poly_points):
         self.matrix = matrix
         boxes = []
-        frame_count = 0
 
         if frame is None or frame.size == 0:
             print("Empty or invalid frame received.")
@@ -179,6 +175,11 @@ class VehicleDetector:
 
         preprocessed_image = self.preprocess(frame)
         vehicle_frame, results = self.get_car_image(preprocessed_image)
+
+        # if vehicle_frame is not None and vehicle_frame.shape[0] >= 10 and vehicle_frame.shape[1] >= 10:
+        #     self.pd.save_cropped_plate(vehicle_frame)
+        # else:
+        #     print("Vehicle frame is empty or has an insufficient height.")
 
         if vehicle_frame.size > 0:
             # self.save_vehicle_frame(vehicle_frames=vehicle_frame)
@@ -193,32 +194,37 @@ class VehicleDetector:
                 results, poly_points, inverse=self.car_direction
             )
 
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
             if not start_line and not end_line:
-                vehicle_frame = np.empty((0, 0, 3), dtype=np.uint8)
+                # Reset frame_count when no lines detected
+                self.frame_count = 0
+                result = {
+                    "bg_color": None,
+                    "frame": empty_frame,
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
 
-            # print(f'VEHICLE : start_line: {start_line}, End_line: {end_line}')
-
-            vehicle_data = {
-                'arduino_idx': arduino_idx,
-                'frame': vehicle_frame,
-                'floor_id': floor_id,
-                'cam_id': cam_id,
-                'car_direction': self.car_direction,  # True or False
-                'start_line': start_line,  # Boolean start flag
-                'end_line': end_line  # Boolean end flag
-            }
-
-            self.vehicle_plate_result_queue.put(vehicle_data)
+                self.vehicle_plate_result_queue.put(result)
 
             if vehicle_frame is not None and start_line and end_line:
                 plate_results = self.pd.detect_plate(vehicle_frame)
 
-                for plate_frame in plate_results:
-                    gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
-                    bg_color = check_background(gray_plate, False)
+                # print("plate_results: ", plate_results)
 
-                    if frame_count < 7:
-                        self.pd.save_cropped_plate(plate_results)
+                for plate_frame in plate_results:
+                    
+                    if self.frame_count < 7:  # Limit to 7 frames only
+                        gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
+                        bg_color = check_background(gray_plate, False)
+
+                        self.pd.save_cropped_plate(vehicle_frame)
+
                         result = {
                             "bg_color": bg_color,
                             "frame": plate_frame,
@@ -230,11 +236,14 @@ class VehicleDetector:
                             "end_line": end_line
                         }
 
-                        self.vehicle_plate_result_queue.put(result)
-                        frame_count += 1
+                        print("frame_count: ", self.frame_count)
 
-            if not start_line or not end_line:
-                frame_count = 0
+                        self.vehicle_plate_result_queue.put(result)
+                        self.frame_count += 1  # Increment frame count
+
+            if not (start_line and end_line):
+                # Reset frame_count if either start_line or end_line is not True
+                self.frame_count = 0
 
         return vehicle_frame, boxes
 

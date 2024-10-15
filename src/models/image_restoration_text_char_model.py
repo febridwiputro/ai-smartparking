@@ -36,10 +36,17 @@ from src.models.gan_model import GanModel
 def image_restoration(stopped, plate_result_queue, img_restore_text_char_queue):
     img_restore = ImageRestoration()
     text_detection = TextDetector()
-    character_recognition = CharacterRecognize()
+
+    char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
+    char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
+    label_path = config.LABEL_CHAR_RECOGNITION_PATH
+
+    model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
+    labels = ModelAndLabelLoader.load_labels(label_path)
+
+    character_recognition = CharacterRecognize(models=model, labels=labels)
 
     while not stopped.is_set():
-        # try:
         plate_result = plate_result_queue.get()
 
         if plate_result is None or len(plate_result) == 0:
@@ -57,11 +64,9 @@ def image_restoration(stopped, plate_result_queue, img_restore_text_char_queue):
         if plate_image is None:
             continue
 
-        empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
-
         if not start_line and not end_line:
             result = {
-                "frame": empty_frame,
+                "plate_no": "",
                 "floor_id": floor_id,
                 "cam_id": cam_id,
                 "arduino_idx": arduino_idx,
@@ -72,29 +77,24 @@ def image_restoration(stopped, plate_result_queue, img_restore_text_char_queue):
             img_restore_text_char_queue.put(result)
             continue
 
-        if plate_image is None:
-            continue
+        if plate_image is not None and start_line and end_line:
+            restored_image = img_restore.process_image(plate_image)
+            text_detected_result, _ = text_detection.easyocr_readtext(image=restored_image)
+            plate_no = character_recognition.process_image(text_detected_result, bg_color) if text_detected_result is not None else ""
 
-        restored_image = img_restore.process_image(plate_image)
-        text_detected_result, _ = text_detection.easyocr_readtext(image=restored_image)
-        plate_no = character_recognition.process_image(text_detected_result, bg_color) if text_detected_result is not None else ""
+            # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
 
-        logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
+            result = {
+                "plate_no": plate_no,
+                "floor_id": floor_id,
+                "cam_id": cam_id,
+                "arduino_idx": arduino_idx,
+                "car_direction": car_direction,
+                "start_line": start_line,
+                "end_line": end_line
+            }
 
-        result = {
-            "plate_no": plate_no,
-            "floor_id": floor_id,
-            "cam_id": cam_id,
-            "arduino_idx": arduino_idx,
-            "car_direction": car_direction,
-            "start_line": start_line,
-            "end_line": end_line
-        }
-
-        img_restore_text_char_queue.put(result)
-
-        # except Exception as e:
-        #     print(f"Error in image_restoration: {e}")
+            img_restore_text_char_queue.put(result)
 
 class ImageRestoration:
     def __init__(self):
@@ -486,8 +486,7 @@ class CharacterRecognize:
         result = re.sub(pattern, replace, plate)
         return result
 
-    def process_image(self, cropped_images, bg_status):
-        bg_color = ""
+    def process_image(self, cropped_images, bg_color):
         final_plate = ""
         resized_images = []
 
@@ -511,12 +510,10 @@ class CharacterRecognize:
             channels = resized_images[0].shape[2] if len(resized_images[0].shape) == 3 else 1
             concatenated_image = resized_images[0]
 
-            if bg_status == "bg_black":
-                bg_color = "bg_black"
+            if bg_color == "bg_black":
                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
 
-            elif bg_status == "bg_white":
-                bg_color = "bg_white"
+            elif bg_color == "bg_white":
                 if channels == 3:
                     color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
                 else:
@@ -565,7 +562,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=True)
+            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=False)
 
             return final_string
 
@@ -587,7 +584,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=True)
+            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=False)
 
             return final_string
 

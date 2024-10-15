@@ -1,5 +1,7 @@
 import os
 import cv2
+from ultralytics import YOLO
+
 from src.Integration.arduino import Arduino
 from src.config.config import config
 from src.controllers.matrix_controller import MatrixController
@@ -10,18 +12,22 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from src.controllers.utils.util import check_floor
-
+from src.models.vehicle_plate_model import VehicleDetector
 
 def main():
-    IS_DEBUG = True
+    IS_DEBUG = False
 
     db_floor = FloorController()
     db_mysn = FetchAPIController()
     db_vehicle_history = VehicleHistoryController()
 
+    vehicle_model = YOLO(config.MODEL_PATH)
+    plate_model_path = config.MODEL_PATH_PLAT_v2
+    plate_model = YOLO(plate_model_path)
+
     if IS_DEBUG:
-        # video_source = config.VIDEO_SOURCE_PC
-        video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_LAPTOP
         # video_source = config.VIDEO_SOURCE_20241004
     else:
         video_source = config.CAM_SOURCE_LT
@@ -53,7 +59,7 @@ def main():
         arduino_matrix = arduino[arduino_index + 1]
 
         matrix_controller = MatrixController(arduino_matrix=arduino_matrix, max_car=18, total_car=total_slot)
-        plat_detects[i] = DetectionControllerV2(arduino_text, matrix_total=matrix_controller)
+        plat_detects[i] = DetectionControllerV2(arduino_text, matrix_total=matrix_controller, vehicle_model=vehicle_model, plate_model=plate_model)
         plat_detects[i].start()
 
     try:
