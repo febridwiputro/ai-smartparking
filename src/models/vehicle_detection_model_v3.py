@@ -21,7 +21,6 @@ class VehicleDetector:
         self.prev_centroid = None
         self.num_skip_centroid = 0
         self.passed_a = 0
-        self.mobil_masuk = False
         self.start_end_counter = 0
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
@@ -132,7 +131,6 @@ class VehicleDetector:
         elif end:
             if self.passed_a == 2:
                 self.matrix.plus_car() if not self.car_direction else self.matrix.minus_car()
-            self.mobil_masuk = False
             self.passed_a = 0
 
         # logger.write(f"{self.matrix.get_total()}, {'KELUAR' if self.car_direction else 'MASUK'}, {list_data[1:-1]}".center(100, "="), logger.DEBUG)
@@ -157,8 +155,7 @@ class VehicleDetector:
                 cv2.imwrite(filename, vehicle_frame)
                 print(f'Saved vehicle frame: {filename}')
 
-    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, matrix, poly_points):
-        self.matrix = matrix
+    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, poly_points):
         boxes = []
 
         if frame is None or frame.size == 0:
@@ -185,8 +182,6 @@ class VehicleDetector:
                 vehicle_frame = np.empty((0, 0, 3), dtype=np.uint8)
 
             # print(f'VEHICLE : start_line: {start_line}, End_line: {end_line}')
-
-            self.mobil_masuk = vehicle_frame.size > 0
 
             vehicle_data = {
                 'arduino_idx': arduino_idx,

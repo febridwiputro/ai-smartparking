@@ -121,6 +121,7 @@ class DetectionControllerV2:
         return self._current_result
 
     def post_process_work_thread(self):
+
         while True:
             if self.stopped.is_set():
                 break
@@ -139,20 +140,28 @@ class DetectionControllerV2:
                 car_direction = result.get("car_direction", None)
                 arduino_idx = result.get("arduino_idx", None)
                 start_line = result.get("start_line", None)
-                end_line = result.get("end_line", None)
-                plate_no = result.get("plate_no", None)
+                end_line = result.get("end_line", None)  # Example: (start=True, end=False)
+                plate_no = result.get("plate_no", None)  # Use None to check for absence
 
                 # print(f'start_line: {start_line} & end_line: {end_line} & plate_no: {plate_no} & car_direction: {car_direction}')
 
+                # Append plate_no if start_line and end_line are both True
                 if start_line and end_line and plate_no is not None:
-                    self.container_plate_no.append(plate_no)
+                    plate_no_data = {
+                        "plate_no": plate_no,
+                        "floor_id": floor_id,
+                        "cam_id": cam_id
+                    }
+                    self.container_plate_no.append(plate_no_data)
                     print(f'plate_no: {plate_no}')
 
                 # If both start_line and end_line are False, process the collected plate numbers
                 if not start_line and not end_line:
                     if len(self.container_plate_no) > 0:
                         print(f'self.container_plate_no: {self.container_plate_no}')
-                        plate_no_max = most_freq(self.container_plate_no)
+                        plate_no_list = [data["plate_no"] for data in self.container_plate_no]
+
+                        plate_no_max = most_freq(plate_no_list)
                         plate_no_detected = plate_no_max
                         status_plate_no = check_db(plate_no_detected)
 
