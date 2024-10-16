@@ -56,10 +56,12 @@ def character_recognition(stopped, text_detection_result_queue, char_recognize_r
     char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
     label_path = config.LABEL_CHAR_RECOGNITION_PATH
 
-    model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
-    labels = ModelAndLabelLoader.load_labels(label_path)
+    char_model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
+    char_label = ModelAndLabelLoader.load_labels(label_path)
 
-    cr = CharacterRecognize(models=model, labels=labels)
+    cr = CharacterRecognize(models=char_model, labels=char_label)
+
+    # cr = character_recognize
 
     while not stopped.is_set():
         try:

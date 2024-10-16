@@ -48,7 +48,6 @@ class DetectionControllerV3:
         self.results_lock = threading.Lock()
 
         self.plate_no = ""
-        self.container_plate_no = []
         self.centroids = []
         self.width, self.height = 0, 0
         self.status_register = False
@@ -95,7 +94,7 @@ class DetectionControllerV3:
         window_name = f"FLOOR {floor_id}: {cam_id}"
         show_cam(window_name, frame)
 
-        cv2.setMouseCallback(window_name, self.mouse_event) 
+        # cv2.setMouseCallback(window_name, self.mouse_event) 
 
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:

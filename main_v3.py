@@ -20,7 +20,7 @@ from utils.multiprocessing_util import put_queue_none, clear_queue
 from src.models.plate_detection_model_v3 import plate_detection_process
 from src.models.image_restoration_model_v3 import image_restoration
 from src.models.text_detection_model_v3 import text_detection
-from src.models.character_recognition_model_v3 import character_recognition
+from src.models.character_recognition_model_v3 import character_recognition, ModelAndLabelLoader
 from src.config.logger import logger
 from src.controllers.utils.util import (
     convert_bbox_to_decimal, 
@@ -60,6 +60,13 @@ class Wrapper:
     # def load_model(self):
     #     plate_model_path = config.MODEL_PATH_PLAT_v2
     #     plate_model = YOLO(plate_model_path)
+
+    #     char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
+    #     char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
+    #     label_path = config.LABEL_CHAR_RECOGNITION_PATH
+
+    #     char_model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
+    #     char_label = ModelAndLabelLoader.load_labels(label_path)
 
     def start(self):
         print("[Thread] Starting result processing thread...")
@@ -170,7 +177,7 @@ class Wrapper:
                 # If both start_line and end_line are False, process the collected plate numbers
                 if not start_line and not end_line:
                     if len(self.container_plate_no) > 0:
-                        print(f'self.container_plate_no: {self.container_plate_no}')
+                        # print(f'self.container_plate_no: {self.container_plate_no}')
                         plate_no_list = [data["plate_no"] for data in self.container_plate_no]
 
                         plate_no_max = most_freq(plate_no_list)
