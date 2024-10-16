@@ -1,10 +1,4 @@
 import os
-import tensorflow as tf
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all logs (1 = INFO, 2 = WARNING, 3 = ERROR)
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-tf.get_logger().setLevel('ERROR')
-
 import threading
 import multiprocessing as mp
 import cv2
@@ -13,7 +7,8 @@ from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
-from src.models.vehicle_detection_model_v3 import VehicleDetector
+from src.controllers.matrix_controller import MatrixController
+from src.models.vehicle_plate_model_v4 import VehicleDetector
 from utils.multiprocessing_util import put_queue_none, clear_queue
 
 from src.view.show_cam import show_cam, show_text, show_line
@@ -33,21 +28,30 @@ from src.controllers.utils.util import (
 from src.controllers.utils.display import draw_box
 
 
-class DetectionControllerV3:
+class DetectionControllerV4:
     def __init__(self, arduino_idx):
         self.arduino_idx = arduino_idx
-        self.vehicle_result_queue = mp.Queue()
+        self.vehicle_plate_result_queue = mp.Queue()
+        self.plate_result_queue = mp.Queue()
+        self.img_restoration_result_queue = mp.Queue()
+        self.text_detection_result_queue = mp.Queue()
         self.stopped = mp.Event()
-        self.vehicle_thread = None
+        self.img_restore_text_char_queue = mp.Queue()
+        self.vehicle_plate_thread = None
+        self.img_restore_text_char_process = None
         self.vehicle_bounding_boxes = []
         self.floor_id = 0
         self.cam_id = ""
         self._current_frame = None
         self._current_result = None
-        self.vehicle_processing_thread = None
+        # self.result_processing_thread = None
         self.results_lock = threading.Lock()
 
+        self.passed_a = 0
         self.plate_no = ""
+        self.container_plate_no = []
+        self.mobil_masuk = False
+        self.track_id = 0
         self.centroids = []
         self.width, self.height = 0, 0
         self.status_register = False
@@ -55,21 +59,22 @@ class DetectionControllerV3:
         self.prev_centroid = None
         self.num_skip_centroid = 0
         self.centroid_sequence = []
+        self.db_plate = PlatController()
+        self.db_floor = FloorController()
+        self.db_mysn = FetchAPIController()
+        self.db_vehicle_history = VehicleHistoryController()
         self.car_bboxes = []
         self.poly_points = []
         self.last_result_plate_no = ""
 
-        self.db_floor = FloorController()
-        self.db_vehicle_history = VehicleHistoryController()
-
     def start(self):
         print("[Thread] Starting vehicle detection thread...")
-        self.vehicle_thread = threading.Thread(target=self.detect_vehicle_work_thread)
-        self.vehicle_thread.start()
+        self.vehicle_plate_thread = threading.Thread(target=self.detect_vehicle_plate_work_thread)
+        self.vehicle_plate_thread.start()
 
         print("[Thread] Starting result processing thread...")
-        self.vehicle_processing_thread = threading.Thread(target=self.vehicle_process_work_thread)
-        self.vehicle_processing_thread.start()
+        self.result_processing_thread = threading.Thread(target=self.plate_process_work_thread)
+        self.result_processing_thread.start()
 
     def process_frame(self, frame, floor_id, cam_id):
         last_plate_no = ""
@@ -111,16 +116,16 @@ class DetectionControllerV3:
             print(f"Koordinat yang diklik: ({x}, {y})") 
     #         print(convert_bbox_to_decimal((self.height, self.width), [[[x, y]]]))
 
-    def get_vehicle_results(self):
+    def get_plate_results(self):
         return self._current_result
-    
-    def vehicle_process_work_thread(self):
+
+    def plate_process_work_thread(self):
         while True:
             if self.stopped.is_set():
                 break
 
             try:
-                result = self.vehicle_result_queue.get()
+                result = self.vehicle_plate_result_queue.get()
 
                 if result is None:
                     print("vehicle_result_queue is None", result)
@@ -132,10 +137,11 @@ class DetectionControllerV3:
                 print(f"Error in vehicle_result_queue work thread: {e}")
 
 
-    def detect_vehicle_work_thread(self):
+    def detect_vehicle_plate_work_thread(self):
         # TODO define YOLO MODEL
         vehicle_model = YOLO(config.MODEL_PATH)
-        vehicle_detector = VehicleDetector(vehicle_model, self.vehicle_result_queue)
+        plate_model = YOLO(config.MODEL_PATH_PLAT_v2)
+        vehicle_detector = VehicleDetector(vehicle_model, plate_model, self.vehicle_plate_result_queue)
 
         while True:
             if self.stopped.is_set():
@@ -169,17 +175,24 @@ class DetectionControllerV3:
         print("[Controller] Stopping detection processes and threads...")
         self.stopped.set()
 
-        put_queue_none(self.vehicle_result_queue)
+        put_queue_none(self.vehicle_plate_result_queue)
+        put_queue_none(self.img_restore_text_char_queue)
 
         # Stop threads
-        if self.vehicle_thread is not None:
-            self.vehicle_thread.join()
-            self.vehicle_thread = None
+        if self.vehicle_plate_thread is not None:
+            self.vehicle_plate_thread.join()
+            self.vehicle_plate_thread  = None
 
-        if self.vehicle_processing_thread is not None:
-            self.vehicle_processing_thread.join()
+        if self.result_processing_thread is not None:
+            self.result_processing_thread.join()
+
+        # Stop processes
+        if self.img_restore_text_char_process is not None:
+            self.img_restore_text_char_process.join()
+            self.img_restore_text_char_process = None
 
         # Clear all queues
-        clear_queue(self.vehicle_result_queue)
+        clear_queue(self.vehicle_plate_result_queue)
+        clear_queue(self.img_restore_text_char_queue)
 
         print("[Controller] All processes and threads stopped.")

@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
-
+from sqlalchemy import desc
 from src.Integration.service_v1.models.camera import MasterCamera, TabelCamera as TC
 from src.Integration.service_v1.models.plat_car import TblPlatMobilSatnusa as tpm
 from src.Integration.service_v1.models.slot import MasterSlot
@@ -52,6 +52,43 @@ def get_vehicle_history_by_plate_no_query(db: Session, plate_no: str):
                         TblVehicleHistoryModel.updated_date >= today_start,
                         TblVehicleHistoryModel.updated_date <= today_end
                     ).first()
+
+def get_vehicle_history_by_floor_id_query(db: Session, floor_id: int):
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    return (
+        db.query(
+            TblVehicleHistoryModel.id,
+            TblVehicleHistoryModel.floor_id,
+            TblVehicleHistoryModel.camera,
+            TblVehicleHistoryModel.plate_no,
+            TblVehicleHistoryModel.created_date,
+            TblVehicleHistoryModel.updated_date
+        )
+        .filter(
+            TblVehicleHistoryModel.floor_id == floor_id,
+            TblVehicleHistoryModel.updated_date >= today_start,
+            TblVehicleHistoryModel.updated_date <= today_end
+        )
+        .order_by(desc(TblVehicleHistoryModel.updated_date))  # Order by updated_date descending
+        .first()  # Get the latest record
+    )
+
+# def get_vehicle_history_by_floor_id_query(db: Session, floor_id: int):
+#     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+#     today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+#     return db.query(TblVehicleHistoryModel.id,
+#                     TblVehicleHistoryModel.floor_id, 
+#                     TblVehicleHistoryModel.camera, 
+#                     TblVehicleHistoryModel.plate_no,
+#                     TblVehicleHistoryModel.created_date,
+#                     TblVehicleHistoryModel.updated_date).filter(
+#                         TblVehicleHistoryModel.floor_id == floor_id,
+#                         TblVehicleHistoryModel.updated_date >= today_start,
+#                         TblVehicleHistoryModel.updated_date <= today_end
+#                     ).first()
 
 # def get_vehicle_history_by_plate_no_query(db: Session, plate_no: str):
 #     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)

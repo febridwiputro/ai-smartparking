@@ -2,6 +2,7 @@ from ._base_controller import BaseController
 from ..crud.crud import (
     create_vehicle_history,
     get_vehicle_history_by_plate_no_query,
+    get_vehicle_history_by_floor_id_query,
     update_floor_by_plate_no
 )
 from sqlalchemy.orm import Session
@@ -40,6 +41,26 @@ class VehicleHistoryController(BaseController):
 
         return result
 
+    def get_vehicle_history_by_floor_id(self, floor_id: int):
+        data = get_vehicle_history_by_floor_id_query(self.session, floor_id)
+
+        if not data:
+            return {
+                "id": 0,  # id
+                "floor_id": 0,  # floor_id
+                "camera": "",  # camera
+                "plate_no": ""  # plate_no
+            }
+        
+        else:
+            result = {
+                "id": int(data[0]),  # id
+                "floor_id": int(data[1]),  # floor_id
+                "camera": data[2],  # camera
+                "plate_no": data[3]  # plate_no
+            }
+
+            return result
 
     # def get_vehicle_history_by_plate_no(self, plate_no: str):
     #     data = get_vehicle_history_by_plate_no_query(self.session, plate_no)

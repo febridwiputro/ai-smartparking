@@ -47,10 +47,10 @@ class Config:
     CAM_SOURCE_LT = [
         'rtsp://admin:Passw0rd@192.168.1.10',
         'rtsp://admin:Passw0rd@192.168.1.11', 
-        'rtsp://admin:Passw0rd@192.168.1.12',
-        'rtsp://admin:Passw0rd@192.168.1.13',
-        'rtsp://admin:Passw0rd@192.168.1.14',
-        'rtsp://admin:Passw0rd@192.168.1.15',
+        # 'rtsp://admin:Passw0rd@192.168.1.12',
+        # 'rtsp://admin:Passw0rd@192.168.1.13',
+        # 'rtsp://admin:Passw0rd@192.168.1.14',
+        # 'rtsp://admin:Passw0rd@192.168.1.15',
         # 'rtsp://admin:Passw0rd@192.168.1.16',
         # 'rtsp://admin:Passw0rd@192.168.1.17'
     ]
