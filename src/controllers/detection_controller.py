@@ -221,6 +221,93 @@ class DetectionController:
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
 
+    # def post_process_work_thread(self):
+    #     last_floor_id = None
+    #     last_cam_id = None
+
+    #     while True:
+    #         if self.stopped.is_set():
+    #             break
+
+    #         try:
+    #             result = self.char_recognize_result_queue.get()
+
+    #             if result is None:
+    #                 print("Result is None", result)
+    #                 continue
+
+    #             self._current_result = result
+
+    #             floor_id = result.get("floor_id", 0)
+    #             cam_id = result.get("cam_id", "")
+    #             car_direction = result.get("car_direction", None)  # True or False
+    #             mobil_masuk = result.get("mobil_masuk", None)  # True or False
+    #             arduino_idx = result.get("arduino_idx", None)
+    #             start_line = result.get("start_line", None)
+    #             end_line = result.get("end_line", None)  # Example: (start=True, end=False)
+    #             plate_no = result.get("plate_no", None)  # Use None to check for absence
+
+    #             # Append plate_no if start_line and end_line are both True, and if floor_id and cam_id match the previous values
+    #             if start_line and end_line and plate_no is not None:
+    #                 # Check if floor_id and cam_id are the same as the previous ones
+    #                 if last_floor_id == floor_id and last_cam_id == cam_id:
+    #                     self.container_plate_no.append(plate_no)
+    #                     print(f'plate_no: {plate_no}')
+    #                 else:
+    #                     # Update last_floor_id and last_cam_id if the current floor_id and cam_id are different
+    #                     last_floor_id = floor_id
+    #                     last_cam_id = cam_id
+    #                     self.container_plate_no = [plate_no]  # Reset container_plate_no and add the new plate_no
+    #                     print(f'New floor and camera combination, resetting container_plate_no. plate_no: {plate_no}')
+
+    #             # If both start_line and end_line are False, process the collected plate numbers
+    #             if not start_line and not end_line:
+    #                 if len(self.container_plate_no) > 0:
+    #                     print(f'self.container_plate_no: {self.container_plate_no}')
+    #                     plate_no_max = most_freq(self.container_plate_no)
+    #                     plate_no_detected = plate_no_max
+    #                     status_plate_no = check_db(plate_no_detected)
+
+    #                     plate_no_is_registered = True
+    #                     if not status_plate_no:
+    #                         logger.write(
+    #                             f"Warning, plat is unregistered, reading container text!! : {plate_no_detected}",
+    #                             logger.WARN
+    #                         )
+    #                         plate_no_is_registered = False
+
+    #                     current_max_slot, current_slot_update, current_vehicle_total_update = parking_space_vehicle_counter(
+    #                         floor_id=floor_id, cam_id=cam_id, arduino_idx=arduino_idx, car_direction=car_direction, plate_no=plate_no_detected)
+
+    #                     matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
+    #                     available_space = matrix_update.get_total()
+    #                     self.total_slot = current_max_slot - available_space
+    #                     self.last_result_plate_no = plate_no_detected
+
+    #                     print(f"PLAT_NO : {plate_no_detected}, AVAILABLE PARKING SPACES : {available_space}, STATUS : {'TAMBAH' if not car_direction else 'KURANG'}, VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR : {floor_id}, CAMERA : {cam_id}, TOTAL_FRAME: {len(self.container_plate_no)}")
+
+    #                     self.db_vehicle_history.create_vehicle_history_record(plate_no=self.last_result_plate_no, floor_id=floor_id, camera=cam_id)
+                        
+    #                     # self.send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
+
+    #                     # print('=' * 30 + " BORDER: LAST RESULT " + '=' * 30)
+
+    #                     char = "H" if plate_no_is_registered else "M"
+    #                     matrix_text = f"{plate_no_detected},{char};"
+    #                     self.matrix_text.write_arduino(matrix_text)
+    #                     self.container_plate_no = []
+
+    #                     if not self.db_plate.check_exist_plat(plate_no_detected):
+    #                         plate_no_is_registered = False
+    #                         logger.write(
+    #                             f"WARNING THERE IS NO PLAT IN DATABASE!!! text: {plate_no_detected}, status: {car_direction}",
+    #                             logger.WARNING
+    #                         )
+
+    #         except Exception as e:
+    #             print(f"Error in post-process work thread: {e}")
+
+
 
     def detect_vehicle_work_thread(self):
         # TODO define YOLO MODEL

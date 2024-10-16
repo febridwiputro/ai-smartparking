@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
-from src.model.recognize_plate.utils.backgrounds import check_background
+from src.controllers.utils.util import check_background
 
 
 def plate_detection_process(stopped, vehicle_result_queue, plate_result_queue):
