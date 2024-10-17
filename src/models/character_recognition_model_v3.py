@@ -1,9 +1,3 @@
-import os
-import cv2
-import numpy as np
-import logging
-from datetime import datetime
-
 import os, sys
 import cv2
 import numpy as np
@@ -27,245 +21,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 logging = Logger("char_recog_model", is_save=False)
-from src.config.config import config
-from src.config.logger import logger
-from src.models.gan_model import GanModel
-
-
-
-def image_restoration(stopped, plate_result_queue, img_restore_text_char_queue):
-    img_restore = ImageRestoration()
-    text_detection = TextDetector()
-
-    char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
-    char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
-    label_path = config.LABEL_CHAR_RECOGNITION_PATH
-
-    model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
-    labels = ModelAndLabelLoader.load_labels(label_path)
-
-    character_recognition = CharacterRecognize(models=model, labels=labels)
-
-    while not stopped.is_set():
-        plate_result = plate_result_queue.get()
-
-        if plate_result is None or len(plate_result) == 0:
-            continue
-
-        plate_image = plate_result.get("frame", None)
-        bg_color = plate_result.get("bg_color", None)
-        floor_id = plate_result.get("floor_id", 0)
-        cam_id = plate_result.get("cam_id", "")
-        arduino_idx = plate_result.get("arduino_idx", None)
-        car_direction = plate_result.get("car_direction", None)
-        start_line = plate_result.get("start_line", None)
-        end_line = plate_result.get("end_line", None)
-
-        if plate_image is None:
-            continue
-
-        if not start_line and not end_line:
-            result = {
-                "plate_no": "",
-                "floor_id": floor_id,
-                "cam_id": cam_id,
-                "arduino_idx": arduino_idx,
-                "car_direction": car_direction,
-                "start_line": start_line,
-                "end_line": end_line
-            }
-            img_restore_text_char_queue.put(result)
-            continue
-
-        if plate_image is not None and start_line and end_line:
-            restored_image = img_restore.process_image(plate_image)
-            text_detected_result, _ = text_detection.easyocr_readtext(image=restored_image)
-            plate_no = character_recognition.process_image(text_detected_result, bg_color) if text_detected_result is not None else ""
-
-            # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
-
-            result = {
-                "plate_no": plate_no,
-                "floor_id": floor_id,
-                "cam_id": cam_id,
-                "arduino_idx": arduino_idx,
-                "car_direction": car_direction,
-                "start_line": start_line,
-                "end_line": end_line
-            }
-
-            img_restore_text_char_queue.put(result)
-
-class ImageRestoration:
-    def __init__(self):
-        self.gan_model = GanModel()
-        self.saved_dir = 'image_restoration_saved'
-
-    def process_image(self, image, is_save=False):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        resized_image = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
-
-        restored_image = self.gan_model.super_resolution(resized_image)
-
-        if is_save:
-            self.save_restored_image(restored_image)
-
-        return restored_image
-
-    def save_restored_image(self, restored_image):
-        if not os.path.exists(self.saved_dir):
-            os.makedirs(self.saved_dir)
-
-        if restored_image is not None and restored_image.size > 0:
-            timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-            filename = os.path.join(self.saved_dir, f'{timestamp}.jpg')
-
-            if len(restored_image.shape) == 2:  # Grayscale
-                cv2.imwrite(filename, restored_image)
-            elif len(restored_image.shape) == 3:  # Color
-                cv2.imwrite(filename, cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR))
-
-            # logging.info(f"[ImageRestoration] Image saved as {filename}")
-        else:
-            logging.warning("[ImageRestoration] Restored image is empty or invalid, not saving.")
-
-
-import os
-import cv2
-import numpy as np
-from easyocr import Reader
-import time
-from datetime import datetime
-
-from src.config.config import config
-from src.config.logger import Logger
-from src.models.utils.text_detection_util import (
-    filter_height_bbox, 
-    filter_readtext_frame, 
-    save_cropped_images
-)
-
-logging = Logger("text_detection_model", is_save=False)
-
-
-class EasyOCRNet:
-    def __init__(self, languages=['en'], use_cuda=True):
-        """
-        Initialize EasyOCR Reader
-        """
-        self.reader = Reader(languages, gpu=use_cuda, verbose=False)
-
-    def detect(self, image):
-        """
-        Detect text in the image.
-        Returns bounding boxes.
-        """
-        t0 = time.time()
-        results = self.reader.detect(image)
-        t1 = time.time() - t0
-        return results[0] if results else []
-
-    def readtext(self, image):
-        """
-        Read text from the image.
-        Returns text and bounding boxes.
-        """
-        t0 = time.time()
-        results = self.reader.readtext(image,
-                                       text_threshold=0.7,
-                                       low_text=0.4,
-                                       decoder='greedy',
-                                       slope_ths=0.6,
-                                       add_margin=0.0
-                                       )
-        t1 = time.time() - t0
-        if results:
-            return results
-        else:
-            logging.write(f"No text recognized.", logging.DEBUG)
-            return []
-
-class TextDetector:
-    def __init__(self):
-        self.ocr_net = EasyOCRNet(use_cuda=True)
-
-    def easyocr_detect(self, image, is_save=False):
-        bounding_boxes = self.ocr_net.detect(image)
-        filtered_heights = filter_height_bbox(bounding_boxes=bounding_boxes)
-
-        converted_bboxes = []
-        cropped_images = []
-        
-        for bbox_group in bounding_boxes:
-            for bbox in bbox_group:
-                if len(bbox) == 4:
-                    x_min, x_max, y_min, y_max = bbox
-                    top_left = [x_min, y_min]
-                    bottom_right = [x_max, y_max]
-
-                    width_bbox = x_max - x_min
-                    height_bbox = y_max - y_min
-
-                    if height_bbox not in filtered_heights:
-                        continue
-
-                    top_left_y, bottom_right_y = int(max(top_left[1], 0)), int(min(bottom_right[1], image.shape[0]))
-                    top_left_x, bottom_right_x = int(max(top_left[0], 0)), int(min(bottom_right[0], image.shape[1]))
-
-                    cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
-
-                    if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
-                        logging.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logging.DEBUG)
-                        continue
-
-                    cropped_images.append(cropped_image)
-
-        if cropped_images:
-            if is_save:
-                save_cropped_images(cropped_images)
-
-        # Return cropped images and processed frame
-        return cropped_images, image
-
-    def easyocr_readtext(self, image):
-
-        bounding_boxes = self.ocr_net.readtext(image)
-
-        cropped_images = []
-        filtered_heights = filter_readtext_frame(bounding_boxes, False)
-
-        for t in bounding_boxes:
-            (top_left, top_right, bottom_right, bottom_left) = t[0]
-            top_left = tuple([int(val) for val in top_left])
-            bottom_left = tuple([int(val) for val in bottom_left])
-            top_right = tuple([int(val) for val in top_right])
-
-            height_f = bottom_left[1] - top_left[1]
-            width_f = top_right[0] - top_left[0]
-
-            # logging.write('=' * 25 + f' BORDER: EASYOCR READTEXT' + '=' * 25, logging.DEBUG)
-            # logging.write(f'height: {height_f}, width: {width_f}', logging.DEBUG)
-
-            if height_f not in filtered_heights:
-                continue
-
-            top_left_y, bottom_right_y = int(max(top_left[1], 0)), int(min(bottom_right[1], image.shape[0]))
-            top_left_x, bottom_right_x = int(max(top_left[0], 0)), int(min(bottom_right[0], image.shape[1]))
-
-            cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
-
-            if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
-                logging.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logging.DEBUG)
-                continue
-
-            cropped_images.append(cropped_image)
-
-        return cropped_images, image
-
-    def filter_height_bbox(self, bounding_boxes):
-        heights = [box[3] - box[2] for group in bounding_boxes for box in group if len(box) == 4]
-        return heights
-
 
 class ModelAndLabelLoader:
     @staticmethod
@@ -295,6 +50,70 @@ class ModelAndLabelLoader:
         except Exception as e:
             logging.write(f'Could not load labels: {e}', logging.DEBUG)
             return None
+
+def character_recognition(stopped, text_detection_result_queue, char_recognize_result_queue):
+    char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
+    char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
+    label_path = config.LABEL_CHAR_RECOGNITION_PATH
+
+    char_model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
+    char_label = ModelAndLabelLoader.load_labels(label_path)
+
+    cr = CharacterRecognize(models=char_model, labels=char_label)
+
+    # cr = character_recognize
+
+    while not stopped.is_set():
+        try:
+            result = text_detection_result_queue.get()
+
+            if result is None:
+                continue
+
+            bg_color = result.get("bg_color", None)
+            cropped_images = result.get("frame", None)
+            floor_id = result.get("floor_id", 0)
+            cam_id = result.get("cam_id", "")
+            arduino_idx = result.get("arduino_idx", None)
+            car_direction = result.get("car_direction", None)
+            start_line = result.get("start_line", False)  # Default to False
+            end_line = result.get("end_line", False)  # Default to False
+
+            # print(f'start_line: {start_line} & end_line: {end_line}')
+
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
+            if not start_line and not end_line:
+                char_recognize_result = {
+                    "bg_color": bg_color,
+                    "plate_no": "",  # or None, based on your requirement
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
+                char_recognize_result_queue.put(char_recognize_result)
+                continue
+
+            plate_no = cr.process_image(cropped_images, bg_color) if cropped_images is not None else ""
+            # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
+            char_recognize_result = {
+                "bg_color": bg_color,
+                "plate_no": plate_no,
+                "floor_id": floor_id,
+                "cam_id": cam_id,
+                "arduino_idx": arduino_idx,
+                "car_direction": car_direction,
+                "start_line": start_line,
+                "end_line": end_line
+            }
+
+            char_recognize_result_queue.put(char_recognize_result)
+
+        except Exception as e:
+            print(f"Error in character recognition: {e}")
 
 
 class CharacterRecognize:
@@ -486,7 +305,8 @@ class CharacterRecognize:
         result = re.sub(pattern, replace, plate)
         return result
 
-    def process_image(self, cropped_images, bg_color):
+    def process_image(self, cropped_images, bg_status):
+        bg_color = ""
         final_plate = ""
         resized_images = []
 
@@ -510,10 +330,12 @@ class CharacterRecognize:
             channels = resized_images[0].shape[2] if len(resized_images[0].shape) == 3 else 1
             concatenated_image = resized_images[0]
 
-            if bg_color == "bg_black":
+            if bg_status == "bg_black":
+                bg_color = "bg_black"
                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
 
-            elif bg_color == "bg_white":
+            elif bg_status == "bg_white":
+                bg_color = "bg_white"
                 if channels == 3:
                     color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
                 else:
@@ -562,7 +384,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=False)
+            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=True)
 
             return final_string
 
@@ -584,7 +406,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=False)
+            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=True)
 
             return final_string
 

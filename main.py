@@ -6,6 +6,7 @@ from src.controllers.matrix_controller import MatrixController
 from src.controllers.detection_controller import DetectionController
 from src.controllers.utils.util import check_background, check_floor
 from src.models.cam_model import CameraV1
+from src.controllers.utils.util import check_floor
 from src.view.show_cam import show_cam, show_text, show_line
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
@@ -21,8 +22,8 @@ def main():
     db_vehicle_history = VehicleHistoryController()
 
     if IS_DEBUG:
-        # video_source = config.VIDEO_SOURCE_PC
-        video_source = config.VIDEO_SOURCE_LAPTOP
+        video_source = config.VIDEO_SOURCE_PC
+        # video_source = config.VIDEO_SOURCE_LAPTOP
         # video_source = config.VIDEO_SOURCE_20241004
     else:
         video_source = config.CAM_SOURCE_LT

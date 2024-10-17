@@ -3,9 +3,16 @@ import cv2
 import numpy as np
 from datetime import datetime
 import torch
+import threading
+import queue
+import multiprocessing as mp
+import cv2
+import numpy as np
+from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
+from src.controllers.utils.util import check_background
 from utils.centroid_tracking import CentroidTracker
 from src.utils import get_centroids
 from src.controllers.utils.util import convert_bbox_to_decimal, convert_decimal_to_bbox, point_position
@@ -13,16 +20,17 @@ from src.controllers.utils.util import convert_bbox_to_decimal, convert_decimal_
 
 
 class VehicleDetector:
-    def __init__(self, model, vehicle_result_queue):
-        self.model = model
-        self.vehicle_result_queue = vehicle_result_queue
+    def __init__(self, vehicle_model, plate_model, vehicle_plate_result_queue):
+        self.model = vehicle_model
+        self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.car_direction = None
         self.prev_centroid = None
         self.num_skip_centroid = 0
-        self.passed_a = 0
-        self.mobil_masuk = False
         self.start_end_counter = 0
+
+        self.frame_count = 0
+        self.pd = PlateDetector(plate_model)
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         if image is None or image.size == 0:
@@ -134,7 +142,7 @@ class VehicleDetector:
                 self.matrix.plus_car() if not self.car_direction else self.matrix.minus_car()
             self.mobil_masuk = False
             self.passed_a = 0
-
+        
         # logger.write(f"{self.matrix.get_total()}, {'KELUAR' if self.car_direction else 'MASUK'}, {list_data[1:-1]}".center(100, "="), logger.DEBUG)
 
     def save_vehicle_frame(self, vehicle_frames):
@@ -157,8 +165,7 @@ class VehicleDetector:
                 cv2.imwrite(filename, vehicle_frame)
                 print(f'Saved vehicle frame: {filename}')
 
-    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, matrix, poly_points):
-        self.matrix = matrix
+    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, poly_points):
         boxes = []
 
         if frame is None or frame.size == 0:
@@ -169,38 +176,64 @@ class VehicleDetector:
         vehicle_frame, results = self.get_car_image(preprocessed_image)
 
         if vehicle_frame.size > 0:
-            # self.save_vehicle_frame(vehicle_frames=vehicle_frame)
             boxes = results[0].boxes.xyxy.cpu().tolist()
             self.centroids = self.get_centroid(results, line_pos=True)
-            direction = self.is_car_out_v2(boxes)
+            car_direction = self.is_car_out_v2(boxes)
 
-            if direction is not None or self.car_direction is None:
-                self.car_direction = direction
+            if car_direction is not None or self.car_direction is None:
+                self.car_direction = car_direction
 
             start_line, end_line = self.check_centroid_location(
                 results, poly_points, inverse=self.car_direction
             )
 
+            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+
             if not start_line and not end_line:
-                vehicle_frame = np.empty((0, 0, 3), dtype=np.uint8)
+                result = {
+                    "bg_color": None,
+                    "frame": empty_frame,
+                    "floor_id": floor_id,
+                    "cam_id": cam_id,
+                    "arduino_idx": arduino_idx,
+                    "car_direction": car_direction,
+                    "start_line": start_line,
+                    "end_line": end_line
+                }
+                self.vehicle_plate_result_queue.put(result)
 
-            # print(f'VEHICLE : start_line: {start_line}, End_line: {end_line}')
+            # Check if start and end lines are detected AND frame_count is within limit
+            if vehicle_frame is not None and start_line and end_line:
+                plate_results = self.pd.detect_plate(vehicle_frame)
 
-            self.mobil_masuk = vehicle_frame.size > 0
+                for plate_frame in plate_results:
+                    # Process only if frame_count is still within limit
+                    if self.frame_count < 3:
+                        gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
+                        bg_color = check_background(gray_plate, False)
 
-            vehicle_data = {
-                'arduino_idx': arduino_idx,
-                'frame': vehicle_frame,
-                'floor_id': floor_id,
-                'cam_id': cam_id,
-                'car_direction': self.car_direction,  # True or False
-                'start_line': start_line,  # Boolean start flag
-                'end_line': end_line  # Boolean end flag
-            }
+                        self.pd.save_cropped_plate(vehicle_frame)
 
-            self.vehicle_result_queue.put(vehicle_data)
+                        result = {
+                            "bg_color": bg_color,
+                            "frame": plate_frame,
+                            "floor_id": floor_id,
+                            "cam_id": cam_id,
+                            "arduino_idx": arduino_idx,
+                            "car_direction": car_direction,
+                            "start_line": start_line,
+                            "end_line": end_line
+                        }
+
+                        self.vehicle_plate_result_queue.put(result)
+                        self.frame_count += 1
+
+            # Reset frame_count if start_line or end_line is not both True
+            if not (start_line and end_line):
+                self.frame_count = 0
 
         return vehicle_frame, boxes
+
 
     def draw_box(self, frame, boxes):
         for box in boxes:
@@ -234,4 +267,114 @@ class VehicleDetector:
             center_y = (y1 + y2) // 2
             cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)  # Red dot
         
+        return frame
+    
+
+class PlateDetector:
+    def __init__(self, model):
+        self.model = model
+
+    def preprocess(self, image: np.ndarray) -> np.ndarray:
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        image_bgr = cv2.cvtColor(image_gray, cv2.COLOR_GRAY2BGR)
+        return image_bgr
+
+    def predict(self, image: np.ndarray):
+        preprocessed_image = self.preprocess(image)
+        results = self.model.predict(preprocessed_image, conf=0.3, device="cuda:0", verbose=False)
+        return results
+
+    def detect_plate(self, frame, is_save=False):
+        results = self.predict(frame)
+
+        if not results:
+            print("[PlateDetector] No plates detected.")
+            return []
+
+        bounding_boxes = results[0].boxes.xyxy.cpu().numpy().tolist() if results else []
+        if not bounding_boxes:
+            return []
+
+        cropped_plates = self.get_cropped_plates(frame, bounding_boxes)
+
+        if is_save:
+            self.save_cropped_plate(cropped_plates)
+
+        return cropped_plates
+
+    def save_cropped_plate(self, cropped_plates):
+        """
+        Save the cropped plate regions as image files.
+        Args:
+            cropped_plates: List of cropped plate images.
+        """
+        import os
+        from datetime import datetime
+
+        if not os.path.exists('plate_saved'):
+            os.makedirs('plate_saved')
+
+        for i, cropped_plate in enumerate(cropped_plates):
+            if cropped_plate.size > 0:
+                # Create a filename with the current timestamp
+                timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+                filename = f'plate_saved/{timestamp}.jpg'
+
+                # Save the cropped plate image
+                cv2.imwrite(filename, cropped_plate)
+
+    def is_valid_cropped_plate(self, cropped_plate):
+        """Check if the cropped plate meets the size requirements."""
+        height, width = cropped_plate.shape[:2]
+        if height < 55 or width < 100:
+            return False
+        if height >= width:
+            return False
+        compare = abs(height - width)
+        if compare <= 100 or compare >= 400:
+            return False
+        return True
+
+    def get_cropped_plates(self, frame, boxes):
+        """
+        Extract cropped plate images based on bounding boxes.
+        Args:
+            frame: The original image/frame.
+            boxes: List of bounding boxes (each box is [x1, y1, x2, y2]).
+
+        Returns:
+            cropped_plates: List of cropped plate images.
+        """
+        height, width, _ = frame.shape
+        cropped_plates = []
+
+        for box in boxes:
+            x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
+            cropped_plate = frame[y1:y2, x1:x2]
+
+            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+                cropped_plates.append(cropped_plate)
+
+        return cropped_plates
+
+
+    def draw_boxes(self, frame, boxes):
+        """
+        Draw bounding boxes for detected plates on the frame.
+        Args:
+            frame: The original image/frame.
+            boxes: List of bounding boxes to draw (each box is [x1, y1, x2, y2]).
+        """
+        height, width, _ = frame.shape
+
+        for box in boxes:
+            x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
+
+            color = (0, 255, 0)  # Green
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+
+            center_x = (x1 + x2) // 2
+            center_y = (y1 + y2) // 2
+            cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)  # Red
+
         return frame
