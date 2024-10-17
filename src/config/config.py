@@ -21,7 +21,8 @@ class Config:
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
     VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
-    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
     MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
     MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
@@ -190,6 +191,30 @@ class Config:
     # }
 
     AREA = ["lantai_2"]
+
+    TRACKING_POINT2_F1_IN = [
+            (0.0185185185185185, 0.9875000000000000),
+            (0.0694444444444444, 0.6652777777777777),
+            (0.0250000000000000, 0.4152777777777778),
+            (0.3731481481481482, 0.1930555555555556),
+            (0.4953703703703703, 0.1888888888888889),
+            (0.6055555555555555, 0.2083333333333333),
+            (0.7962962962962963, 0.2736111111111111),
+            (0.9907407407407407, 0.5555555555555556),
+            (0.9879629629629629, 0.9861111111111112),
+        ]
+
+    TRACKING_POINT2_F1_OUT = [
+            (0.0185185185185185, 0.9875000000000000),
+            (0.0694444444444444, 0.6652777777777777),
+            (0.0250000000000000, 0.4152777777777778),
+            (0.3731481481481482, 0.1930555555555556),
+            (0.4953703703703703, 0.1888888888888889),
+            (0.6055555555555555, 0.2083333333333333),
+            (0.7962962962962963, 0.2736111111111111),
+            (0.9907407407407407, 0.5555555555555556),
+            (0.9879629629629629, 0.9861111111111112),
+        ]
 
     POINTS_BACKGROUND_LT2_IN = [(0.31574074074074077, 0.07222222222222222),
                                 (0.012962962962962963, 0.41388888888888886),

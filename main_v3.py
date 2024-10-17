@@ -303,6 +303,7 @@ class Wrapper:
                         print(f"Failed to read frame from camera {i}")
                         continue
 
+                    frames[i] = cv2.resize(frames[i], (1080, 720))
                     if plat_detects[i] is not None:
                         plat_detects[i].process_frame(frames[i], floor_id=idx, cam_id=cam_position)
                         results = plat_detects[i].get_vehicle_results()

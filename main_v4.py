@@ -246,13 +246,10 @@ class Wrapper:
         else:
             video_source = config.CAM_SOURCE_LT
 
-        # Start the processes
         self.start()
 
-        # Initialize camera captures
         caps = [CameraV1(video, is_video=True) for video in video_source]
 
-        # Start the cameras
         for cap in caps:
             print("Starting camera: ", cap)
             cap.start()
