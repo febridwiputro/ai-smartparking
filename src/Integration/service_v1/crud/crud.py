@@ -4,12 +4,13 @@ from sqlalchemy import asc, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-
+from datetime import datetime
+from sqlalchemy import desc
 from src.Integration.service_v1.models.camera import MasterCamera, TabelCamera as TC
 from src.Integration.service_v1.models.plat_car import TblPlatMobilSatnusa as tpm
 from src.Integration.service_v1.models.slot import MasterSlot
 from src.Integration.service_v1.models.floor_model import TblFloorModel
-
+from src.Integration.service_v1.models.vehicle_history_model import TblVehicleHistoryModel
 '''
 get data all, area slot status
 get data by lnt, slot status
@@ -17,6 +18,119 @@ get data by slot and status
 
 
 '''
+
+def create_vehicle_history(db: Session, plate_no: str, floor_id: int, camera: str):
+    try:
+        new_vehicle_history = TblVehicleHistoryModel(
+            plate_no=plate_no,
+            floor_id=floor_id,
+            camera=camera
+        )
+
+        db.add(new_vehicle_history)
+        db.commit()
+        db.refresh(new_vehicle_history)
+
+        return new_vehicle_history
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error occurred: {e}")
+        return None
+
+def get_vehicle_history_by_plate_no_query(db: Session, plate_no: str):
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    return db.query(TblVehicleHistoryModel.id,
+                    TblVehicleHistoryModel.floor_id, 
+                    TblVehicleHistoryModel.camera, 
+                    TblVehicleHistoryModel.plate_no,
+                    TblVehicleHistoryModel.created_date,
+                    TblVehicleHistoryModel.updated_date).filter(
+                        TblVehicleHistoryModel.plate_no == plate_no,
+                        TblVehicleHistoryModel.updated_date >= today_start,
+                        TblVehicleHistoryModel.updated_date <= today_end
+                    ).first()
+
+def get_vehicle_history_by_floor_id_query(db: Session, floor_id: int):
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    return (
+        db.query(
+            TblVehicleHistoryModel.id,
+            TblVehicleHistoryModel.floor_id,
+            TblVehicleHistoryModel.camera,
+            TblVehicleHistoryModel.plate_no,
+            TblVehicleHistoryModel.created_date,
+            TblVehicleHistoryModel.updated_date
+        )
+        .filter(
+            TblVehicleHistoryModel.floor_id == floor_id,
+            TblVehicleHistoryModel.updated_date >= today_start,
+            TblVehicleHistoryModel.updated_date <= today_end
+        )
+        .order_by(desc(TblVehicleHistoryModel.updated_date))  # Order by updated_date descending
+        .first()  # Get the latest record
+    )
+
+# def get_vehicle_history_by_floor_id_query(db: Session, floor_id: int):
+#     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+#     today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+#     return db.query(TblVehicleHistoryModel.id,
+#                     TblVehicleHistoryModel.floor_id, 
+#                     TblVehicleHistoryModel.camera, 
+#                     TblVehicleHistoryModel.plate_no,
+#                     TblVehicleHistoryModel.created_date,
+#                     TblVehicleHistoryModel.updated_date).filter(
+#                         TblVehicleHistoryModel.floor_id == floor_id,
+#                         TblVehicleHistoryModel.updated_date >= today_start,
+#                         TblVehicleHistoryModel.updated_date <= today_end
+#                     ).first()
+
+# def get_vehicle_history_by_plate_no_query(db: Session, plate_no: str):
+#     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+#     today_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+
+#     return db.query(TblVehicleHistoryModel.id,
+#                     TblVehicleHistoryModel.floor_id, 
+#                     TblVehicleHistoryModel.camera, 
+#                     TblVehicleHistoryModel.plate_no,
+#                     TblVehicleHistoryModel.created_date,
+#                     TblVehicleHistoryModel.updated_date).filter(
+#                         TblVehicleHistoryModel.plate_no == plate_no,
+#                         TblVehicleHistoryModel.updated_date >= today_start,
+#                         TblVehicleHistoryModel.updated_date <= today_end
+#                     ).all()
+
+# def get_plate_no_by_floor_id(db:Session, plate_no: str):
+#     return db.query(TblVehicleHistoryModel.id,
+#                     TblVehicleHistoryModel.floor_id, 
+#                     TblVehicleHistoryModel.camera, 
+#                     TblVehicleHistoryModel.plate_no).filter(TblVehicleHistoryModel.plate_no==plate_no).all()
+
+def update_floor_by_plate_no(db: Session, plate_no: str, floor_id: int, camera: str):
+    try:
+        floor_record = db.query(TblVehicleHistoryModel).filter(TblVehicleHistoryModel.plate_no == plate_no).first()
+
+        if not floor_record:
+            return None
+
+        floor_record.floor_id = floor_id  # Corrected the assignment operator
+        floor_record.camera = camera
+
+        db.commit()
+        db.refresh(floor_record)
+
+        return floor_record
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error occurred: {e}")
+        return None
+
 
 def get_total_slot_by_id(db: Session, id: int):
     return db.query(TblFloorModel.id, TblFloorModel.slot, TblFloorModel.max_slot, TblFloorModel.vehicle_total).filter(TblFloorModel.id==id).all()

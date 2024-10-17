@@ -14,19 +14,24 @@ class Config:
     GET_BBOX_URL = "/camera/bbox/"
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
+
+    BASE_DIR = r"C:\Users\DOT\Documents\febri"
+    # BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    # BASE_DIR = "D:/engine/smart_parking/repository/github"
+    # BASE_DIR = Path(_file_).parent.parent.resolve()
     
-    BASE_DIR = "D:/engine/smart_parking/repository/github"
-    # BASE_DIR = Path(__file__).parent.parent.resolve()
-    
-    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
+    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
     MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
+    MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
 
     # CHARACTER RECOGNITION MODEL
     MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_recognition.json')
     WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/models_cnn.h5')
     LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_classes.npy')
-    
+
     LINK_CAM_PREFIX = os.getenv("CAMERA_RTSP")
 
     # TODO write constants and configs as UPPER CASE
@@ -40,6 +45,17 @@ class Config:
     CAM_SOURCE_LT5_IN = fr'{LINK_CAM_PREFIX}192.168.1.16'
     CAM_SOURCE_LT5_OUT = fr'{LINK_CAM_PREFIX}192.168.1.17'
 
+    CAM_SOURCE_LT = [
+        'rtsp://admin:Passw0rd@192.168.1.10',
+        'rtsp://admin:Passw0rd@192.168.1.11', 
+        # 'rtsp://admin:Passw0rd@192.168.1.12',
+        # 'rtsp://admin:Passw0rd@192.168.1.13',
+        # 'rtsp://admin:Passw0rd@192.168.1.14',
+        # 'rtsp://admin:Passw0rd@192.168.1.15',
+        # 'rtsp://admin:Passw0rd@192.168.1.16',
+        # 'rtsp://admin:Passw0rd@192.168.1.17'
+    ]
+
     VIDEO_SOURCE_LT2_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
     # VIDEO_SOURCE_LT2_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
     VIDEO_SOURCE_LT2_OUT = fr'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
@@ -50,20 +66,74 @@ class Config:
     VIDEO_SOURCE_LT5_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
     VIDEO_SOURCE_LT5_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
 
+    # PC
+    VIDEO_SOURCE_20241004_LT2_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_2_IN.mp4"
+    VIDEO_SOURCE_20241004_LT2_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_2_OUT.mp4"
+    VIDEO_SOURCE_20241004_LT3_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+    VIDEO_SOURCE_20241004_LT3_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+    VIDEO_SOURCE_20241004_LT4_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
+    VIDEO_SOURCE_20241004_LT4_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
+    VIDEO_SOURCE_20241004_LT5_IN = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
+    VIDEO_SOURCE_20241004_LT5_OUT = fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+
+    VIDEO_SOURCE_20241004 = [
+                    VIDEO_SOURCE_20241004_LT2_IN, 
+                    VIDEO_SOURCE_20241004_LT2_OUT, 
+                    # VIDEO_SOURCE_20241004_LT3_IN, 
+                    # VIDEO_SOURCE_20241004_LT3_OUT, 
+                    # VIDEO_SOURCE_20241004_LT4_IN, 
+                    # VIDEO_SOURCE_20241004_LT4_OUT, 
+                    # VIDEO_SOURCE_20241004_LT5_IN, 
+                    # VIDEO_SOURCE_20241004_LT5_OUT
+                    ]
+    
+    VIDEO_SOURCE_LAPTOP = [
+        VIDEO_SOURCE_LT2_IN,
+        # VIDEO_SOURCE_LT2_OUT
+    ]
+
     video_source = [VIDEO_SOURCE_LT2_IN, 
                     VIDEO_SOURCE_LT2_OUT, 
-                    VIDEO_SOURCE_LT3_IN, 
-                    VIDEO_SOURCE_LT3_OUT, 
-                    VIDEO_SOURCE_LT4_IN, 
-                    VIDEO_SOURCE_LT4_OUT, 
-                    VIDEO_SOURCE_LT5_IN, 
-                    VIDEO_SOURCE_LT5_OUT]
+                    # VIDEO_SOURCE_LT3_IN, 
+                    # VIDEO_SOURCE_LT3_OUT, 
+                    # VIDEO_SOURCE_LT4_IN, 
+                    # VIDEO_SOURCE_LT4_OUT, 
+                    # VIDEO_SOURCE_LT5_IN, 
+                    # VIDEO_SOURCE_LT5_OUT
+                    ]
+
+    VIDEO_SOURCE_PC = [
+                        # fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4",
+                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+    ]
+
+    # VIDEO_SOURCE_PC = [
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+    #     # fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    #     # fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    # #     fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    # #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    # #    fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    # #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    # #     # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+    # #      fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    # #     fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+
+    # ]
 
     video_source1 = [VIDEO_SOURCE_LT2_IN]
 
     video_source2 = [VIDEO_SOURCE_LT2_IN, 
                     VIDEO_SOURCE_LT2_OUT]
-    
+
     VIDEO_SOURCE_23 = [VIDEO_SOURCE_LT2_IN, 
                     VIDEO_SOURCE_LT2_OUT, 
                     VIDEO_SOURCE_LT3_IN, 
@@ -77,9 +147,9 @@ class Config:
                   CAM_SOURCE_LT4_OUT, 
                   CAM_SOURCE_LT5_IN, 
                   CAM_SOURCE_LT5_OUT]
-    
+
     LINK = [f"192.168.1.10{i}" for i in range(1, 5)]
-    
+
     DRIVER_MATRIX = "CP210"
     DRIVER_MATRIX_NUM = "CP210"
     SERIAL_NUMBER_LT_2 = 'D200RBECA'
@@ -97,7 +167,7 @@ class Config:
     SERIAL_NUMBER_MATRIX_NUM_LT5 = '5626004963'
     SERIAL_NUMBER_MATRIX_TEXT_LT5 = '0003'
 
-    serials = [
+    SERIALS = [
         SERIAL_NUMBER_MATRIX_TEXT_LT2, SERIAL_NUMBER_MATRIX_NUM_LT2,
         SERIAL_NUMBER_MATRIX_TEXT_LT3, SERIAL_NUMBER_MATRIX_NUM_LT3,
         SERIAL_NUMBER_MATRIX_TEXT_LT4, SERIAL_NUMBER_MATRIX_NUM_LT4,
@@ -109,18 +179,42 @@ class Config:
     #     2: 'car',
     #     7: 'truck'
     # }
-    
+
     CLASS_NAMES = [2, 7, 5]
     CLASS_PLAT_NAMES = [8, 11, 12, 13]
-    
+
     # CLASS_PLAT_NAMES = {
     #     8: 'plat',
     #     11: "plat_indo",
     #     12: "plat_mobil",
     #     13: "plat_motor"
     # }
-    
+
     AREA = ["lantai_2"]
+
+    TRACKING_POINT2_F1_IN = [
+            (0.0185185185185185, 0.9875000000000000),
+            (0.0694444444444444, 0.6652777777777777),
+            (0.0250000000000000, 0.4152777777777778),
+            (0.3731481481481482, 0.1930555555555556),
+            (0.4953703703703703, 0.1888888888888889),
+            (0.6055555555555555, 0.2083333333333333),
+            (0.7962962962962963, 0.2736111111111111),
+            (0.9907407407407407, 0.5555555555555556),
+            (0.9879629629629629, 0.9861111111111112),
+        ]
+
+    TRACKING_POINT2_F1_OUT = [
+            (0.0185185185185185, 0.9875000000000000),
+            (0.0694444444444444, 0.6652777777777777),
+            (0.0250000000000000, 0.4152777777777778),
+            (0.3731481481481482, 0.1930555555555556),
+            (0.4953703703703703, 0.1888888888888889),
+            (0.6055555555555555, 0.2083333333333333),
+            (0.7962962962962963, 0.2736111111111111),
+            (0.9907407407407407, 0.5555555555555556),
+            (0.9879629629629629, 0.9861111111111112),
+        ]
 
     POINTS_BACKGROUND_LT2_IN = [(0.31574074074074077, 0.07222222222222222),
                                 (0.012962962962962963, 0.41388888888888886),
@@ -133,7 +227,7 @@ class Config:
                                 (0.6648148148148149, 0.002777777777777778),
                                 (0.2953703703703704, 0.005555555555555556),
                                 (0.31296296296296294, 0.075)]
-    
+
     POINTS_BACKGROUND_LT2_OUT = [(0.004629629629629629, 0.9875),
                                 (0.006481481481481481, 0.5930555555555556),
                                 (0.28055555555555556, 0.3458333333333333),
@@ -156,7 +250,7 @@ class Config:
                                 (0.6648148148148149, 0.002777777777777778),
                                 (0.2953703703703704, 0.005555555555555556),
                                 (0.31296296296296294, 0.075)]
-    
+
     POINTS_BACKGROUND_LT3_OUT = [(0.004629629629629629, 0.9875),
                                 (0.006481481481481481, 0.5930555555555556),
                                 (0.28055555555555556, 0.3458333333333333),
@@ -179,7 +273,7 @@ class Config:
                                 (0.6648148148148149, 0.002777777777777778),
                                 (0.2953703703703704, 0.005555555555555556),
                                 (0.31296296296296294, 0.075)]
-    
+
     POINTS_BACKGROUND_LT4_OUT = [(0.004629629629629629, 0.9875),
                                 (0.006481481481481481, 0.5930555555555556),
                                 (0.28055555555555556, 0.3458333333333333),
@@ -222,7 +316,7 @@ class Config:
     # POINT_LT2_2_END = (0.8111111111111111, 0.6708333333333333)
     # POINT_LT2_1_END_2 = (0.11203703703703703, 0.9875)
     # POINT_LT2_2_END_2 = (0.12222222222222222, 0.006944444444444444)
-    
+
     # POINT_LT3_1_START = (0.4027777777777778, 0.5208333333333334)
     # POINT_LT3_2_START = (0.674074074074074, 0.5263888888888889)
     # POINT_LT3_1_MIDDLE = (0.36574074074074076, 0.7)
@@ -246,8 +340,13 @@ class Config:
     # LT2
     POINT_LT2_IN_L_START = (0.34629629629629627, 0.3277777777777778)
     POINT_LT2_IN_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT2_IN_L_END = (0.05740740740740741, 0.6611111111111111)
-    POINT_LT2_IN_R_END = (0.6907407407407408, 0.6694444444444444)
+    # POINT_LT2_IN_L_END = (0.05740740740740741, 0.6611111111111111)
+    # POINT_LT2_IN_R_END = (0.6907407407407408, 0.6694444444444444)
+
+    POINT_LT2_IN_L_END = (0.15648148148148147, 0.5569444444444445)
+    POINT_LT2_IN_R_END = (0.7444444444444445, 0.5472222222222223)
+
+
     POINT_LT2_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
     # POINT_LT2_OUT_L_START = (0.35833333333333334, 0.39166666666666666)
     POINT_LT2_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
@@ -262,28 +361,29 @@ class Config:
     POINT_LT3_IN_R_END = (0.6907407407407408, 0.6694444444444444)
     POINT_LT3_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
     POINT_LT3_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT3_OUT_L_END = (0.05462962962962963, 0.6611111111111111)
-    POINT_LT3_OUT_R_END = (0.6907407407407408, 0.6694444444444444)
+    POINT_LT3_OUT_L_END = (0.017592592592592594, 0.8319444444444445)
+    POINT_LT3_OUT_R_END = (0.8092592592592592, 0.8055555555555556)
 
     # LT4
-    POINT_LT4_IN_L_START = (0.34629629629629627, 0.3277777777777778)
-    POINT_LT4_IN_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT4_IN_L_END = (0.05462962962962963, 0.6611111111111111)
-    POINT_LT4_IN_R_END = (0.6907407407407408, 0.6694444444444444)
+    POINT_LT4_IN_L_START = (0.375, 0.3541666666666667)
+    POINT_LT4_IN_R_START = (0.6333333333333333, 0.36944444444444446)
+    POINT_LT4_IN_L_END = (0.07592592592592592, 0.9291666666666667)
+    POINT_LT4_IN_R_END = (0.8027777777777778, 0.9097222222222222)
     POINT_LT4_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
     POINT_LT4_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT4_OUT_L_END = (0.05462962962962963, 0.6611111111111111)
-    POINT_LT4_OUT_R_END = (0.6907407407407408, 0.6694444444444444)
+    POINT_LT4_OUT_L_END = (0.05648148148148148, 0.6888888888888889)
+    POINT_LT4_OUT_R_END = (0.8842592592592593, 0.7111111111111111)
 
     # LT5
-    POINT_LT5_IN_L_START = (0.34629629629629627, 0.3277777777777778)
-    POINT_LT5_IN_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT5_IN_L_END = (0.05462962962962963, 0.6611111111111111)
-    POINT_LT5_IN_R_END = (0.6907407407407408, 0.6694444444444444)
-    POINT_LT5_OUT_L_START = (0.34629629629629627, 0.3277777777777778)
-    POINT_LT5_OUT_R_START = (0.5972222222222222, 0.32222222222222224)
-    POINT_LT5_OUT_L_END = (0.05462962962962963, 0.6611111111111111)
-    POINT_LT5_OUT_R_END = (0.6907407407407408, 0.6694444444444444)
+    POINT_LT5_IN_L_START = (0.4583333333333333, 0.39305555555555555)
+    POINT_LT5_IN_R_START = (0.6648148148148149, 0.4027777777777778)
+    POINT_LT5_IN_L_END = (0.10740740740740741, 0.9013888888888889)
+    POINT_LT5_IN_R_END = (0.8657407407407407, 0.8555555555555555)
+
+    POINT_LT5_OUT_L_START = (0.29074074074074074, 0.2111111111111111)
+    POINT_LT5_OUT_R_START = (0.5916666666666667, 0.1986111111111111)
+    POINT_LT5_OUT_L_END = (0.05277777777777778, 0.6611111111111111)
+    POINT_LT5_OUT_R_END = (0.9046296296296297, 0.6722222222222223)
 
 
     POLYGON_POINT_LT2_IN = [

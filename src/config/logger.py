@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 class Logger:
     CRITICAL = 50
@@ -10,24 +11,32 @@ class Logger:
     DEBUG = 10
     NOTSET = 0
     
-    def __init__(self, name: str):
-        # Create a logger object
+    def __init__(self, name: str, is_save: bool = False):
+        """
+        Initialize the logger.
+        If is_save=True, log to file. Otherwise, log only to the console.
+        """
+
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)  # Set to DEBUG to capture all levels
+        self.logger.setLevel(logging.DEBUG)  # Capture all levels
         
-        # Create handlers
-        file_handler = logging.FileHandler('logging.log')
-        console_handler = logging.StreamHandler()
-        
-        # Create a formatter and set it for handlers
+        # Create a formatter
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%d-%b-%y %H:%M:%S')
-        file_handler.setFormatter(formatter)
+
+        # Create handlers
+        console_handler = logging.StreamHandler()  # Always log to the console
         console_handler.setFormatter(formatter)
-        
-        # Add handlers to the logger
-        self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
 
+        if is_save:
+            # Log to file with daily log file name
+            log_filename = f'logging-{datetime.now().strftime("%Y%m%d")}.log'
+            file_handler = logging.FileHandler(log_filename)
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
 
     def write(self, message, level):
         # Map level to the appropriate logging method
@@ -46,5 +55,9 @@ class Logger:
         else:
             raise ValueError(f"Unknown level: {level}")
 
+# Example usage:
+logger = Logger("main", is_save=False)  # Logs only to the console
+# logger_console.write("This is a debug message on console only.", Logger.DEBUG)
 
-logger = Logger("main")
+# logger_file = Logger("main", is_save=True)  # Logs to both file and console
+# logger_file.write("This is an info message saved to the file and console.", Logger.INFO)
