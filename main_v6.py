@@ -4,6 +4,7 @@ import threading
 import multiprocessing as mp
 import json
 from ultralytics import YOLO
+import numpy as np
 import time
 
 from src.Integration.arduino import Arduino
@@ -38,7 +39,7 @@ class Wrapper:
     def __init__(self) -> None:
         self.previous_object_id = None
         self.object_id_count = {}
-        self.vehicle_plate_result_queues = [mp.Queue() for _ in range(2)]
+        self.vehicle_plate_result_queue_list = [mp.Queue() for _ in range(2)]
         self.plate_result_queues = [mp.Queue() for _ in range(2)]
         self.img_restoration_result_queues = [mp.Queue() for _ in range(2)]
         self.text_detection_result_queues = [mp.Queue() for _ in range(2)]
@@ -66,10 +67,16 @@ class Wrapper:
         
         self.queue_index = 0
 
+        self._model_built_events = [mp.Event() for _ in range(3)]
+        self.vehicle_plate_result_queue_list_2 = []
+
     def start(self):
         print("[Thread] Starting result processing thread...")
         self.result_processing_thread = threading.Thread(target=self.post_process_work_thread)
         self.result_processing_thread.start()
+
+        self.distribute_thread_handle = threading.Thread(target=self.distribute_work_thread)
+        self.distribute_thread_handle.start()
 
         for idx in range(1):
             self.start_detection_processes(idx)
@@ -78,26 +85,29 @@ class Wrapper:
         print(f"[Process] Starting image restoration process for Queue {idx + 1}...")
         image_restoration_process = mp.Process(
             target=image_restoration,
-            args=(self.stopped, self.vehicle_plate_result_queues[idx], self.img_restoration_result_queues[idx])
+            args=(self.stopped, self._model_built_events[0], self.vehicle_plate_result_queue_list[idx], self.img_restoration_result_queues[idx])
         )
-        self.image_restoration_processes.append(image_restoration_process)
         image_restoration_process.start()
+        self.image_restoration_processes.append(image_restoration_process)
 
         print(f"[Process] Starting text detection process for Queue {idx + 1}...")
         text_detection_process = mp.Process(
             target=text_detection,
-            args=(self.stopped, self.img_restoration_result_queues[idx], self.text_detection_result_queues[idx])
+            args=(self.stopped, self._model_built_events[1], self.img_restoration_result_queues[idx], self.text_detection_result_queues[idx])
         )
-        self.text_detection_processes.append(text_detection_process)
         text_detection_process.start()
+        self.text_detection_processes.append(text_detection_process)
 
         print(f"[Process] Starting character recognition process for Queue {idx + 1}...")
         char_recognition_process = mp.Process(
             target=character_recognition,
-            args=(self.stopped, self.text_detection_result_queues[idx], self.char_recognize_result_queues[idx])
+            args=(self.stopped, self._model_built_events[2], self.text_detection_result_queues[idx], self.char_recognize_result_queues[idx])
         )
-        self.char_recognition_processes.append(char_recognition_process)
         char_recognition_process.start()
+        self.char_recognition_processes.append(char_recognition_process)
+
+    def is_model_built(self):
+        return all([event.is_set() for event in self._model_built_events])
 
     def stop(self):
         print("[Controller] Stopping detection processes and threads...")
@@ -105,7 +115,7 @@ class Wrapper:
 
         # Put None in all queues to signal termination
         for idx in range(2):
-            put_queue_none(self.vehicle_plate_result_queues[idx])
+            put_queue_none(self.vehicle_plate_result_queue_list[idx])
             put_queue_none(self.plate_result_queues[idx])
             put_queue_none(self.img_restoration_result_queues[idx])
             put_queue_none(self.text_detection_result_queues[idx])
@@ -138,7 +148,7 @@ class Wrapper:
 
         # Clear all queues
         for idx in range(2):
-            clear_queue(self.vehicle_plate_result_queues[idx])
+            clear_queue(self.vehicle_plate_result_queue_list[idx])
             clear_queue(self.plate_result_queues[idx])
             clear_queue(self.img_restoration_result_queues[idx])
             clear_queue(self.text_detection_result_queues[idx])
@@ -146,111 +156,6 @@ class Wrapper:
 
         print("[Controller] All processes and threads stopped.")
 
-
-    # def post_process_work_thread(self):
-    #     previous_object_id = None
-    #     last_update_time = time.time()
-
-    #     while True:
-    #         if self.stopped.is_set():
-    #             break
-
-    #         try:
-    #             for idx in range(len(self.char_recognize_result_queues)):
-    #                 if idx >= len(self.char_recognize_result_queues):
-    #                     break
-
-    #                 queue = self.char_recognize_result_queues[idx]
-    #                 if not queue.empty():
-    #                     result = queue.get()
-
-    #                     if result is None:
-    #                         print(f"Queue {idx + 1}: Result is None")
-    #                         continue
-
-    #                     self._current_result = result
-    #                     object_id = result.get("object_id")
-    #                     floor_id = result.get("floor_id", 0)
-    #                     cam_id = result.get("cam_id", "")
-    #                     car_direction = result.get("car_direction", None)
-    #                     arduino_idx = result.get("arduino_idx", None)
-    #                     start_line = result.get("start_line", None)
-    #                     end_line = result.get("end_line", None)
-    #                     plate_no = result.get("plate_no", None)
-
-    #                     print(f'Queue {idx + 1}: object_id: {object_id}, start_line: {start_line}, '
-    #                         f'end_line: {end_line}, plate_no: {plate_no}, car_direction: {car_direction}')
-
-    #                     if object_id == previous_object_id:
-    #                         plate_no_data = {
-    #                             "plate_no": plate_no,
-    #                             "floor_id": floor_id,
-    #                             "cam_id": cam_id
-    #                         }
-    #                         self.container_plate_no.append(plate_no_data)
-    #                         print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
-    #                     else:
-
-    #                         current_time = time.time()
-    #                         if len(self.container_plate_no) > 0 and (
-    #                                 object_id != previous_object_id or current_time - last_update_time >= 3):
-    #                             self.process_plate_data(floor_id, cam_id, arduino_idx, car_direction)
-
-
-    #                         last_update_time = time.time()
-    #                         previous_object_id = object_id
-
-    #                         plate_no_data = {
-    #                             "plate_no": plate_no,
-    #                             "floor_id": floor_id,
-    #                             "cam_id": cam_id
-    #                         }
-    #                         self.container_plate_no.append(plate_no_data)
-    #                         print(f'Queue {idx + 1}: New plate_no: {plate_no}, object_id: {object_id}')
-
-    #         except Exception as e:
-    #             print(f"Error in post-process work thread: {e}")
-
-    # def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction):
-    #     """Memproses dan mengirim data plate number."""
-    #     plate_no_list = [data["plate_no"] for data in self.container_plate_no]
-    #     plate_no_max = most_freq(plate_no_list)
-    #     plate_no_detected = plate_no_max
-    #     status_plate_no = check_db(plate_no_detected)
-
-    #     plate_no_is_registered = True
-    #     if not status_plate_no:
-    #         logger.write(f"Warning, plate is unregistered: {plate_no_detected}", logger.WARN)
-    #         plate_no_is_registered = False
-
-    #     current_max_slot, current_slot_update, current_vehicle_total_update = parking_space_vehicle_counter(
-    #         floor_id=floor_id, cam_id=cam_id, arduino_idx=arduino_idx, car_direction=car_direction,
-    #         plate_no=plate_no_detected
-    #     )
-
-    #     matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
-    #     available_space = matrix_update.get_total()
-    #     self.total_slot = current_max_slot - available_space
-    #     self.last_result_plate_no = plate_no_detected
-
-    #     print(f"PLAT_NO: {plate_no_detected}, AVAILABLE SPACES: {available_space}, "
-    #         f"STATUS: {'TAMBAH' if not car_direction else 'KURANG'}, "
-    #         f"VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR: {floor_id}, CAMERA: {cam_id}, "
-    #         f"TOTAL_FRAME: {len(self.container_plate_no)}")
-
-    #     self.db_vehicle_history.create_vehicle_history_record(
-    #         plate_no=self.last_result_plate_no, floor_id=floor_id, camera=cam_id
-    #     )
-
-    #     char = "H" if plate_no_is_registered else "M"
-    #     matrix_text = f"{plate_no_detected},{char};"
-    #     # self.matrix_text.write_arduino(matrix_text)
-
-    #     # Reset container setelah proses
-    #     self.container_plate_no = []
-
-    #     if not self.db_plate.check_exist_plat(plate_no_detected):
-    #         logger.write(f"WARNING! NO PLATE IN DATABASE: {plate_no_detected}", logger.WARNING)
 
     def post_process_work_thread(self):
         previous_object_id = None
@@ -342,8 +247,68 @@ class Wrapper:
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
 
+    def distribute_work_thread(self):
+
+        while True:
+            if self.stopped.is_set():
+                break
+
+            plate_results = []
+            for i in range(len(self.vehicle_plate_result_queue_list_2)):
+                try:
+                    res = self.vehicle_plate_result_queue_list_2[i].get_nowait()
+                    if res is not None:
+                        plate_results.append(res)
+                except Exception as e:
+                    pass
+            
+            if len(plate_results) > 0:        
+                print("len(plate_results)", len(plate_results))
+                    # print(e)
+            # print("plate_result", plate_result)
+
+            # if plate_result is None:
+            #     continue
+            # # print(plate_result)
+            # sizes = [q.qsize() for q in self.vehicle_plate_result_queue_list]
+            # sorted_indices = np.argsort(sizes)
+            # print("sizes", sizes, "sorted_indices", sorted_indices)
+            # smallest_size_id = sorted_indices[0]
+            # self.vehicle_plate_result_queue_list[smallest_size_id].put(plate_result)
+
+        # print("vehicle_result", vehicle_result)
+        # if vehicle_result is not None:
+        #     object_id = vehicle_result.get("object_id")
+        #     start_line = vehicle_result.get("start_line", None)
+        #     end_line = vehicle_result.get("end_line", None)
+
+        #     if start_line and end_line:
+        #         # target_queue_index = 1 if object_id % 2 == 0 else 0
+        #         target_queue_index = 0
+
+        #         if object_id not in self.object_id_count:
+        #             self.object_id_count[object_id] = 0
+
+        #         if self.object_id_count[object_id] < 1:
+        #             # if object_id != self.previous_object_id:
+        #             #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, NEW queue: {target_queue_index}")
+        #             # else:
+        #             #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, queue: {target_queue_index}")
+
+        #             print("vehicle_result", vehicle_result)
+        #             print(self.vehicle_plate_result_queue_list[target_queue_index].qsize())
+
+        #             self.vehicle_plate_result_queue_list[target_queue_index].put(vehicle_result)
+
+        #             self.object_id_count[object_id] += 1
+        #             self.previous_object_id = object_id
+                # else:
+                #     print(f"object_id: {object_id} has reached the max limit of 7 occurrences.")
+
+
     def distribute_vehicle_result(self, vehicle_result):
-        if vehicle_result:
+        # print("vehicle_result", vehicle_result)
+        if vehicle_result is not None:
             object_id = vehicle_result.get("object_id")
             start_line = vehicle_result.get("start_line", None)
             end_line = vehicle_result.get("end_line", None)
@@ -361,12 +326,16 @@ class Wrapper:
                     # else:
                     #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, queue: {target_queue_index}")
 
-                    self.vehicle_plate_result_queues[target_queue_index].put(vehicle_result)
+                    print("vehicle_result", vehicle_result)
+                    print(self.vehicle_plate_result_queue_list[target_queue_index].qsize())
+
+                    self.vehicle_plate_result_queue_list[target_queue_index].put(vehicle_result)
 
                     self.object_id_count[object_id] += 1
                     self.previous_object_id = object_id
                 # else:
                 #     print(f"object_id: {object_id} has reached the max limit of 7 occurrences.")
+    
 
     def char_data_parsed(self, vehicle_plate_result):
         if vehicle_plate_result:
@@ -391,6 +360,9 @@ class Wrapper:
                     # "end_line": end_line
                 }
                 print(json.dumps(result, indent=4))
+    
+    # def process_detection_result(self, result):
+    #     self.vehicle_detection_result.put(result)
 
     def main(self):
         IS_DEBUG = True
@@ -399,19 +371,18 @@ class Wrapper:
         # Start processes
         self.start()
 
-        # Initialize and start cameras
-        caps = [CameraV1(video, is_video=True) for video in video_source]
-        for cap in caps:
-            print(f"Starting camera: {cap}")
-            cap.start()
+        while not self.is_model_built():
+            time.sleep(0.1)
+            print("Loading recognition models...")
+            
 
         plat_detects = [None] * len(video_source)
         arduino_devices = [Arduino(baudrate=115200, serial_number=serial) for serial in config.SERIALS]
-        frames = [None] * len(caps)
+        frames = [None] * len(video_source)
         total_slots = {}
 
         # Set up detection controllers and matrix controllers
-        for i, cap in enumerate(caps):
+        for i in range(len(video_source)):
             idx, cam_position = check_floor(i)
 
             if idx not in total_slots:
@@ -425,28 +396,56 @@ class Wrapper:
             self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
             self.matrix_controller.start(self.matrix_controller.get_total())
 
-            plat_detects[i] = DetectionControllerV6(arduino_text)
+            self.vehicle_plate_result_queue_list_2.append(mp.Queue())
+            plat_detects[i] = DetectionControllerV6(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue_list_2[i])
             plat_detects[i].start()
+
+        while not all([m.is_model_built() for m in plat_detects]):
+            time.sleep(0.1)
+            print("Loading detection models...")
+
+        # Initialize and start cameras
+        caps = [CameraV1(video, is_video=True) for video in video_source]
+        for cap in caps:
+            print(f"Starting camera: {cap}")
+            cap.start()
 
         try:
             print("Opening cameras...")
             while True:
                 for i, cap in enumerate(caps):
                     idx, cam_position = check_floor(i)
-                    ret, frames[i] = cap.read()
+                    num, frames[i] = cap.read()
 
-                    if not ret:
-                        print(f"Failed to read frame from camera {i}")
+                    if frames[i] is None:
+                        print("frames[i]", frames[i])
                         continue
+
+                    # if not ret:
+                    #     print(f"Failed to read frame from camera {i}")
+                    #     continue
 
                     # frames[i] = cv2.resize(frames[i], (1080, 720))
                     if plat_detects[i] is not None:
                         plat_detects[i].process_frame(frames[i], floor_id=idx, cam_id=cam_position)
-                        vehicle_result = plat_detects[i].get_vehicle_plate_results()
+                        # vehicle_result = plat_detects[i].vehicle_plate_result_queue()
 
-                        self.char_data_parsed(vehicle_result)
+                        # if vehicle_result:
+                        #     floor_id = vehicle_result.get('floor_id', 0)
+                        #     cam_id = vehicle_result.get('cam_id', "")
+                        #     car_direction = vehicle_result.get('car_direction')
 
-                        self.distribute_vehicle_result(vehicle_result)
+                        #     if cam_id == "OUT":
+                        #         result = {
+                        #             "floor_id": floor_id,
+                        #             "cam_id": cam_id,
+                        #             "car_direction": car_direction
+                        #         }
+                        #         print(json.dumps(result, indent=4))
+
+                        # self.char_data_parsed(vehicle_result)
+
+                        # self.distribute_vehicle_result(vehicle_result)
 
                     # Check if 'q' key is pressed to exit
                     if cv2.waitKey(1) & 0xFF == ord('q'):

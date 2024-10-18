@@ -21,9 +21,8 @@ from src.controllers.utils.util import convert_bbox_to_decimal, convert_decimal_
 
 
 class VehicleDetector:
-    def __init__(self, vehicle_model, plate_model, vehicle_plate_result_queue):
+    def __init__(self, vehicle_model, plate_model):
         self.model = vehicle_model
-        self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.car_direction = None
         self.prev_centroid = None
@@ -228,7 +227,7 @@ class VehicleDetector:
     def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, poly_points, tracking_points, is_save=False):
         if frame is None or frame.size == 0:
             print("Empty or invalid frame received.")
-            return None, []
+            return None
 
         height, width = frame.shape[:2]
         area_selection = self.convert_normalized_to_pixel(tracking_points, (height, width))
@@ -238,7 +237,7 @@ class VehicleDetector:
         cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
         if cropped_frame is None or cropped_frame.size == 0:
             print("Cropped frame is empty.")
-            return None, []
+            return None
 
         # Preprocess the cropped frame
         preprocessed_image = self.preprocess(cropped_frame)
@@ -289,6 +288,7 @@ class VehicleDetector:
                             self.pd.save_cropped_plate(plate_results)
                         vehicle_plate_data = {
                             "object_id": object_id,
+                            "bbox": filtered_boxes,
                             "bg_color": bg_color,
                             "frame": plate,
                             "floor_id": floor_id,
@@ -300,14 +300,16 @@ class VehicleDetector:
                         }
 
                         if filtered_boxes:
-                            self.vehicle_plate_result_queue.put(vehicle_plate_data)
                             self.frame_count += 1
-                        # print(f"Saved and put data for object_id: {object_id}, frame_count: {self.frame_count}")
+
+                            return vehicle_plate_data
+
+                        print(f"Saved and put data for object_id: {object_id}, frame_count: {self.frame_count}")
                     else:
-                        # print(f"Skipping saving and putting data for object_id: {object_id}, frame_count: {self.frame_count}")
+                        print(f"Skipping saving and putting data for object_id: {object_id}, frame_count: {self.frame_count}")
                         break
 
-        return vehicle_frame, filtered_boxes
+        return None
 
 
     def draw_box(self, frame, boxes):

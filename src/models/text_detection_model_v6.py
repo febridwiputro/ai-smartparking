@@ -16,8 +16,9 @@ from src.models.utils.text_detection_util import (
 
 logging = Logger("text_detection_model", is_save=False)
 
-def text_detection(stopped, plate_result_queue, text_detection_result_queue):
+def text_detection(stopped, model_built_event, plate_result_queue, text_detection_result_queue):
     detector = TextDetector()
+    model_built_event.set()
 
     while not stopped.is_set():
         try:

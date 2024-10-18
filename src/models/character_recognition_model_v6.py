@@ -52,7 +52,7 @@ class ModelAndLabelLoader:
             logging.write(f'Could not load labels: {e}', logging.DEBUG)
             return None
 
-def character_recognition(stopped, text_detection_result_queue, char_recognize_result_queue):
+def character_recognition(stopped, model_built_event, text_detection_result_queue, char_recognize_result_queue):
     char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
     char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
     label_path = config.LABEL_CHAR_RECOGNITION_PATH
@@ -61,6 +61,7 @@ def character_recognition(stopped, text_detection_result_queue, char_recognize_r
     char_label = ModelAndLabelLoader.load_labels(label_path)
 
     cr = CharacterRecognize(models=char_model, labels=char_label)
+    model_built_event.set()
 
     # cr = character_recognize
 

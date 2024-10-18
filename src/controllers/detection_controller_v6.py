@@ -38,10 +38,10 @@ from src.controllers.utils.display import draw_box
 
 
 class DetectionControllerV6:
-    def __init__(self, arduino_idx):
+    def __init__(self, arduino_idx, vehicle_plate_result_queue=None):
         self.clicked_points = []
         self.arduino_idx = arduino_idx
-        self.vehicle_plate_result_queue = mp.Queue()
+        self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.stopped = mp.Event()
         self.vehicle_thread = None
         self.vehicle_bounding_boxes = []
@@ -68,14 +68,17 @@ class DetectionControllerV6:
         self.db_floor = FloorController()
         self.db_vehicle_history = VehicleHistoryController()
 
+        self._model_built_event = mp.Event()
+        # self.callback_process_result_func = callback_process_result_func
+
     def start(self):
         print("[Thread] Starting vehicle detection thread...")
         self.vehicle_thread = threading.Thread(target=self.detect_vehicle_work_thread)
         self.vehicle_thread.start()
 
-        print("[Thread] Starting result processing thread...")
-        self.vehicle_processing_thread = threading.Thread(target=self.vehicle_process_work_thread)
-        self.vehicle_processing_thread.start()
+        # print("[Thread] Starting result processing thread...")
+        # self.vehicle_processing_thread = threading.Thread(target=self.vehicle_process_work_thread)
+        # self.vehicle_processing_thread.start()
 
     def process_frame(self, frame, floor_id, cam_id, is_debug=True):
         self._current_frame = frame.copy()
@@ -105,11 +108,11 @@ class DetectionControllerV6:
 
         window_name = f"FLOOR {floor_id}: {cam_id}"
         show_cam(window_name, frame)
-        cv2.setMouseCallback(
-            window_name, 
-            self._mouse_event_debug if is_debug else self._mouse_event, 
-            param=frame
-        )
+        # cv2.setMouseCallback(
+        #     window_name, 
+        #     self._mouse_event_debug if is_debug else self._mouse_event, 
+        #     param=frame
+        # )
 
     def _mouse_event_debug(self, event, x, y, flags, frame):
         """Handle mouse events in debug mode."""
@@ -129,30 +132,30 @@ class DetectionControllerV6:
             print(f"Clicked coordinates: ({x}, {y})")
             print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
 
-    def get_vehicle_plate_results(self):
-        return self._current_result
+    # def get_vehicle_plate_results(self):
+    #     return self._current_result
     
-    def vehicle_process_work_thread(self):
-        while True:
-            if self.stopped.is_set():
-                break
-            try:
-                result = self.vehicle_plate_result_queue.get()
+    # def vehicle_process_work_thread(self):
+    #     while True:
+    #         if self.stopped.is_set():
+    #             break
+    #         try:
+    #             result = self.vehicle_plate_result_queue.get()
 
-                if result is None:
-                    print("vehicle_plate_result_queue is None", result)
-                    continue
+    #             if result is None:
+    #                 print("vehicle_plate_result_queue is None", result)
+    #                 continue
 
-                self._current_result = result
+    #             self._current_result = result
 
-            except Exception as e:
-                print(f"Error in vehicle_plate_result_queue work thread: {e}")
-
+    #         except Exception as e:
+    #             print(f"Error in vehicle_plate_result_queue work thread: {e}")
 
     def detect_vehicle_work_thread(self):
         vehicle_model = YOLO(config.MODEL_PATH)
         plate_model = YOLO(config.MODEL_PATH_PLAT_v2)
-        vehicle_detector = VehicleDetector(vehicle_model, plate_model, self.vehicle_plate_result_queue)
+        vehicle_detector = VehicleDetector(vehicle_model, plate_model)
+        self._model_built_event.set()
 
         while True:
             if self.stopped.is_set():
@@ -174,13 +177,40 @@ class DetectionControllerV6:
             try:
                 if frame is None or frame.size == 0:
                     print("Empty or invalid frame received.")
-                    return None
+                    # return None
+                    continue
 
-                _, self.car_bboxes = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, poly_points=self.poly_points, tracking_points=self.tracking_points)
+                vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, poly_points=self.poly_points, tracking_points=self.tracking_points)
+
+                print("vehicle_plate_data", vehicle_plate_data)
+
+                if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):
+                    # vehicle_plate_data = {
+                    #     "object_id": vehicle_plate_data["object_id"],
+                    #     "bg_color": vehicle_plate_data["bg_color"],
+                    #     "frame": vehicle_plate_data["frame"],
+                    #     "floor_id": vehicle_plate_data["floor_id"],
+                    #     "cam_id": vehicle_plate_data["cam_id"],
+                    #     "arduino_idx": vehicle_plate_data["arduino_idx"],
+                    #     "car_direction": vehicle_plate_data["car_direction"],
+                    #     "start_line": vehicle_plate_data["start_line"],
+                    #     "end_line": vehicle_plate_data["end_line"]
+                    # }
+                    bbox = vehicle_plate_data.pop("bbox")
+
+                    # if self.callback_process_result_func is not None:
+                    #     self.callback_process_result_func(vehicle_plate_data)
+
+                    if self.vehicle_plate_result_queue is not None:
+                        print("size", self.vehicle_plate_result_queue.qsize())
+                        self.vehicle_plate_result_queue.put(vehicle_plate_data)
 
                 # print("self.car_bboxes: ", self.car_bboxes)
             except Exception as e:
                 print(f"Error in vehicle_detector: {e}")
+
+    def is_model_built(self):
+        return self._model_built_event.is_set()
 
     def stop(self):
         print("[Controller] Stopping detection processes and threads...")

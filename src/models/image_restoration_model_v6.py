@@ -14,8 +14,9 @@ from src.models.gan_model import GanModel
 
 
 
-def image_restoration(stopped, plate_result_queue, img_restoration_result_queue):
+def image_restoration(stopped, model_built_event, plate_result_queue, img_restoration_result_queue):
     img_restore = ImageRestoration()
+    model_built_event.set()
 
     while not stopped.is_set():
         try:
