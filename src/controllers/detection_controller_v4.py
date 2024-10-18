@@ -88,7 +88,7 @@ class DetectionControllerV4:
         total_slot = slot["slot"]
         vehicle_total = slot["vehicle_total"]
 
-        self.poly_points, frame = crop_frame(frame=frame, height=self.height, width=self.width, floor_id=floor_id, cam_id=cam_id)
+        self.poly_points, tracking_point, frame = crop_frame(frame=frame, height=self.height, width=self.width, floor_id=floor_id, cam_id=cam_id)
 
         get_plate_floor_id_history = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id=floor_id)
         last_plate_no = get_plate_floor_id_history["plate_no"]

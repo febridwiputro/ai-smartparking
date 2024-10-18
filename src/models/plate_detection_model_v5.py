@@ -12,12 +12,12 @@ from src.controllers.utils.util import check_background
 import gc
 
 
-
 def plate_detection(stopped, vehicle_result_queue, plate_result_queue):
     plate_model_path = config.MODEL_PATH_PLAT_v2
     plate_model = YOLO(plate_model_path)
     plate_detector = PlateDetector(plate_model)
     frame_count = 0
+    prev_object_id = None
 
     while not stopped.is_set():
         try:
@@ -35,35 +35,21 @@ def plate_detection(stopped, vehicle_result_queue, plate_result_queue):
             start_line = vehicle_data.get('start_line', False)
             end_line = vehicle_data.get('end_line', False)
 
-            # Create an empty frame to use in results
-            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
+            print(f"cur object_id: {object_id}, prev object_id: {prev_object_id}")
 
-            # Reset frame_count if both lines are False
-            if not start_line and not end_line:
+            if object_id != prev_object_id:
                 frame_count = 0
-                result = {
-                    "object_id": object_id,
-                    "bg_color": None,
-                    "frame": empty_frame,
-                    "floor_id": floor_id,
-                    "cam_id": cam_id,
-                    "arduino_idx": arduino_idx,
-                    "car_direction": car_direction,
-                    "start_line": start_line,
-                    "end_line": end_line
-                }
-                plate_result_queue.put(result)
-                continue
+                prev_object_id = object_id
 
-            # Process only if both start_line and end_line are True
-            if car_frame is not None and start_line and end_line:
+            if car_frame is not None:
+                # print(car_frame)
                 plate_results = plate_detector.detect_plate(car_frame)
 
                 for plate in plate_results:
                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
                     bg_color = check_background(gray_plate, False)
 
-                    if frame_count < 5:
+                    if frame_count < 10:
                         plate_detector.save_cropped_plate(plate_results)
                         result = {
                             "object_id": object_id,
@@ -77,20 +63,16 @@ def plate_detection(stopped, vehicle_result_queue, plate_result_queue):
                             "end_line": end_line
                         }
 
-                        plate_result_queue.put(result)
-                        frame_count += 1
-
-            # Reset frame count if either start_line or end_line is not True
-            if not start_line or not end_line:
-                frame_count = 0
-            
-            del vehicle_data
-            gc.enable()
-            gc.collect()
-            gc.disable()
+                        plate_result_queue.put(result) 
+                        frame_count += 1  
+                        # print(f"Saved and put data for object_id: {object_id}, frame_count: {frame_count}")
+                    else:
+                        # print(f"Skipping saving and putting data for object_id: {object_id}, frame_count: {frame_count}")
+                        break 
 
         except Exception as e:
             print(f"Error in plate detection: {e}")
+
 
 
 # def plate_detection(stopped, vehicle_result_queue, plate_result_queue):
@@ -197,6 +179,7 @@ class PlateDetector:
             return []
 
         cropped_plates = self.get_cropped_plates(frame, bounding_boxes)
+        # print("cropped_plates: ", cropped_plates)
 
         if is_save:
             self.save_cropped_plate(cropped_plates)
@@ -253,7 +236,8 @@ class PlateDetector:
             x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
             cropped_plate = frame[y1:y2, x1:x2]
 
-            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+            # if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+            if cropped_plate.size > 0:
                 cropped_plates.append(cropped_plate)
 
         return cropped_plates
