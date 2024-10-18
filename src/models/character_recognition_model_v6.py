@@ -393,7 +393,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=True)
+            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=False)
 
             return final_string
 
@@ -415,7 +415,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=True)
+            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=False)
 
             return final_string
 

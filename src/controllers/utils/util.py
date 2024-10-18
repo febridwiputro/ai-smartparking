@@ -9,6 +9,7 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from src.view.show_cam import show_cam, show_text, show_line
+from src.controllers.matrix_controller import MatrixController
 
 db_plate = PlatController()
 db_floor = FloorController()
@@ -250,7 +251,7 @@ def convert_bbox_to_decimal(img_dims, polygons):
         normalized_pol = [
             (bbox[0] / width, bbox[1] / height) for bbox in pol
         ]
-        normalized_polygons.extend(normalized_pol)  # Flatten to a single list
+        normalized_polygons.extend(normalized_pol)
 
     return normalized_polygons
 
@@ -277,7 +278,7 @@ def check_db(text):
         # print("plat ada di DB : ", self.text)
         return True
 
-def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, plate_no):
+def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, plate_no, container_plate_no, plate_no_is_registered):
     current_floor_position, current_cam_position = floor_id, cam_id
     current_data = db_floor.get_slot_by_id(current_floor_position)
     current_slot = current_data["slot"]
@@ -306,7 +307,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
     # print("get_plate_history: ", get_plate_history)
 
     # NAIK / MASUK
-    if car_direction:
+    if not car_direction:
         # if get_plate_history:
         #     if get_plate_history[0]['floor_id'] != current_floor_position:
         #         print(f"Update vehicle history karena floor_id tidak sesuai: {get_plate_history[0]['floor_id']} != {current_floor_position}")
@@ -363,11 +364,11 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
         #         self.db_floor.update_vehicle_total_by_id(id=current_floor_position, new_vehicle_total=current_vehicle_total_update)
         #         print(f"Updated current_slot to {current_slot_update} and vehicle_total to {current_vehicle_total_update}")
 
-        print("VEHICLE - IN")
-        print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
+        # print("VEHICLE - IN")
+        # print(f'CURRENT FLOOR : {current_floor_position} && PREV FLOOR {prev_floor_position}')  
 
         if current_slot == 0:
-            print("UPDATE 0")
+            # print("UPDATE 0")
             current_slot_update = current_slot
             db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -407,7 +408,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
 
             if prev_floor_position > 1:
                 if prev_slot == 0:
-                    print("IN 1")
+                    # print("IN 1")
                     if prev_vehicle_total > prev_max_slot:
                         prev_slot_update = prev_slot
                         db_floor.update_slot_by_id(id=prev_floor_position, new_slot=prev_slot_update)
@@ -422,7 +423,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
                         db_floor.update_vehicle_total_by_id(id=prev_floor_position, new_vehicle_total=prev_vehicle_total_update)                            
 
                 elif prev_slot > 0 and prev_slot < prev_max_slot:
-                    print("IN 2")
+                    # print("IN 2")
                     prev_slot_update = prev_slot + 1
                     # print("prev_slot_update: ", prev_slot_update)
                     # print("prev_slot_update: ", prev_slot_update)
@@ -435,11 +436,11 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
 
     # TURUN / KELUAR
     else:
-        print("VEHICLE - OUT")
-        print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
+        # print("VEHICLE - OUT")
+        # print(f'CURRENT FLOOR : {current_floor_position} && NEXT FLOOR {next_floor_position}')            
         if current_slot == 0:
             if current_vehicle_total > 0 and current_vehicle_total <= current_max_slot:
-                print("CURRENT OUT 1")
+                # print("CURRENT OUT 1")
                 current_slot_update = current_slot + 1
                 db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -448,12 +449,12 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
 
                 if next_floor_position > 1:
                     if next_slot == 0:
-                        print("NEXT OUT 1")
+                        # print("NEXT OUT 1")
                         if next_vehicle_total >= next_max_slot:
                             next_vehicle_total_update = next_vehicle_total_update + 1
                             db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                     elif next_slot > 0 and next_slot <= next_max_slot:
-                        print("NEXT OUT 2")
+                        # print("NEXT OUT 2")
                         next_slot_update = next_slot - 1
                         db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
@@ -461,7 +462,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
                         db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
             elif current_vehicle_total > current_max_slot:
-                print("CURRENT OUT 2")
+                # print("CURRENT OUT 2")
                 current_slot_update = current_slot
                 db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -483,11 +484,11 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
 
         elif current_slot > 0 and current_slot <= current_max_slot:
             if current_slot == 18:
-                print("CURRENT OUT 3")
+                # print("CURRENT OUT 3")
                 current_slot_update = current_slot
                 db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)                    
             else:
-                print("CURRENT OUT 4")
+                # print("CURRENT OUT 4")
                 current_slot_update = current_slot + 1
                 db_floor.update_slot_by_id(id=current_floor_position, new_slot=current_slot_update)
 
@@ -500,7 +501,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
 
             if next_floor_position > 1:
                 if next_slot == 0:
-                    print("NEXT OUT 3")
+                    # print("NEXT OUT 3")
                     if next_vehicle_total > next_max_slot:
                         next_slot_update = next_slot
                         db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
@@ -508,21 +509,48 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
                         next_vehicle_total_update = next_vehicle_total + 1
                         db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                 elif next_slot > 0 and next_slot <= next_max_slot:
-                    print("NEXT OUT 4")
+                    # print("NEXT OUT 4")
                     next_slot_update = next_slot - 1
                     db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                     next_vehicle_total_update = next_vehicle_total + 1
                     db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
                 elif next_slot > next_max_slot:
-                    print("NEXT OUT 5")
+                    # print("NEXT OUT 5")
                     next_slot_update = next_slot
                     db_floor.update_slot_by_id(id=next_floor_position, new_slot=next_slot_update)
 
                     next_vehicle_total_update = next_vehicle_total + 1
                     db_floor.update_vehicle_total_by_id(id=next_floor_position, new_vehicle_total=next_vehicle_total_update)
 
-        print("current_slot_update: ", current_slot_update)
-        print("next_vehicle_total_update: ", next_vehicle_total_update)
+        # print("current_slot_update: ", current_slot_update)
+        # print("next_vehicle_total_update: ", next_vehicle_total_update)
+
+        # print(f'parking_spaces_available: {total_slot}, car_total: {vehicle_total}')
+
+    matrix_update = MatrixController(arduino_idx, max_car=current_max_slot, total_car=current_slot_update)
+    available_space = matrix_update.get_total()
+
+    print(f"PLAT_NO : {plate_no}, AVAILABLE PARKING SPACES : {available_space}, "
+        f"STATUS : {'TAMBAH' if not car_direction else 'KURANG'}, "
+        f"VEHICLE_TOTAL: {current_vehicle_total_update}, FLOOR : {floor_id}, "
+        f"CAMERA : {cam_id}, TOTAL_FRAME: {len(container_plate_no)}")
+
+    db_vehicle_history.create_vehicle_history_record(
+        plate_no=plate_no,
+        floor_id=floor_id,
+        camera=cam_id
+    )
+
+    char = "H" if plate_no_is_registered else "M"
+    matrix_text = f"{plate_no},{char};"
+    # self.matrix_text.write_arduino(matrix_text)
+
+    if not db_plate.check_exist_plat(plate_no):
+        plate_no_is_registered = False
+        logger.write(
+            f"WARNING THERE IS NO PLATE IN DATABASE!!! text: {plate_no}, status: {car_direction}",
+            logger.WARNING
+        )
 
     return current_max_slot, current_slot_update, current_vehicle_total_update

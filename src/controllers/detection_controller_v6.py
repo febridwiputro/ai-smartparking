@@ -95,7 +95,7 @@ class DetectionControllerV6:
         last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
         plate_no = last_plate_no if last_plate_no else ""
 
-        # add_overlay(frame, floor_id, cam_id, self.poly_points, plate_no, total_slot, vehicle_total)
+        add_overlay(frame, floor_id, cam_id, self.poly_points, plate_no, total_slot, vehicle_total)
 
         if is_debug:
             draw_points_and_lines(frame, self.clicked_points)

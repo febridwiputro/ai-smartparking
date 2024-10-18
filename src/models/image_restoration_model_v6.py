@@ -87,7 +87,7 @@ class ImageRestoration:
         self.gan_model = GanModel()
         self.saved_dir = 'image_restoration_saved'
 
-    def process_image(self, image, is_save=True):
+    def process_image(self, image, is_save=False):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         resized_image = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
 
