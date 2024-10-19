@@ -248,6 +248,15 @@ def draw_points_and_lines(frame, clicked_points):
             end_point = clicked_points[(i + 1) % len(clicked_points)]
             cv2.line(frame, start_point, end_point, (255, 0, 0), 2)
 
+
+def resize_image(image, max_width, max_height):
+    height, width = image.shape[:2]
+    if width > max_width or height > max_height:
+        scale = max_width / width if width > height else max_height / height
+        image = cv2.resize(image, (0, 0), fx=scale, fy=scale)
+    return image
+
+
 def crop_frame(frame, height, width, floor_id, cam_id):
     # polygons_point = [ config.POINTS_BACKGROUND_LT2_OUT]
 
@@ -275,12 +284,19 @@ def crop_frame(frame, height, width, floor_id, cam_id):
         # polygon_point = config.POLYGON_POINT_LT2_OUT
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
+        
+        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
+        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 3:
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
+        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
+        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 4:
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT4_IN if cam_id == "IN" else config.POLYGON_POINT_LT4_OUT
+        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
+        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 5:
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT5_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT

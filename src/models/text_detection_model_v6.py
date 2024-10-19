@@ -75,6 +75,8 @@ def text_detection(stopped, model_built_event, plate_result_queue, text_detectio
 
         except Exception as e:
             print(f"Error in text detection: {e}")
+        
+    del detector
 
 
 class EasyOCRNet:

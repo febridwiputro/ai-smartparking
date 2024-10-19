@@ -283,7 +283,7 @@ class VehicleDetector:
                     gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
                     bg_color = check_background(gray_plate, False)
 
-                    if self.frame_count < 3:
+                    if self.frame_count < 5:
                         if is_save:
                             self.pd.save_cropped_plate(plate_results)
                         vehicle_plate_data = {

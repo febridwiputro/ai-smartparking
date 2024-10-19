@@ -82,6 +82,8 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
 
         except Exception as e:
             print(f"Error in image_restoration: {e}")
+        
+    del img_restore
 
 class ImageRestoration:
     def __init__(self):
