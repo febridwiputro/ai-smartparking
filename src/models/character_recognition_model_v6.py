@@ -124,6 +124,8 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
 
         except Exception as e:
             print(f"Error in character recognition: {e}")
+    
+    del cr, char_model
 
 
 class CharacterRecognize:

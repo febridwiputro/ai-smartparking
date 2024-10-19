@@ -21,8 +21,8 @@ class Config:
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
     VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
-    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
-    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
+    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
     MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
     MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
@@ -102,14 +102,23 @@ class Config:
                     # VIDEO_SOURCE_LT5_OUT
                     ]
 
+    # VIDEO_SOURCE_PC = [
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    # ]
+
     VIDEO_SOURCE_PC = [
                         # fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4",
                         fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
                         fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
                         fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
                         # fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
                         # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
     ]

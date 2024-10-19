@@ -1,4 +1,5 @@
 import os
+import time
 import tensorflow as tf
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all logs (1 = INFO, 2 = WARNING, 3 = ERROR)
@@ -32,7 +33,8 @@ from src.controllers.utils.util import (
     parking_space_vehicle_counter,
     add_overlay,
     draw_points_and_lines,
-    draw_tracking_points
+    draw_tracking_points,
+    resize_image
 )
 from src.controllers.utils.display import draw_box
 
@@ -44,7 +46,6 @@ class DetectionControllerV6:
         self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.stopped = mp.Event()
         self.vehicle_thread = None
-        self.vehicle_bounding_boxes = []
         self.floor_id = 0
         self.cam_id = ""
         self._current_frame = None
@@ -55,20 +56,15 @@ class DetectionControllerV6:
         self.plate_no = ""
         self.centroids = []
         self.width, self.height = 0, 0
-        self.status_register = False
-        self.car_direction = None
-        self.prev_centroid = None
-        self.num_skip_centroid = 0
-        self.centroid_sequence = []
         self.car_bboxes = []
         self.poly_points = []
         self.tracking_points = []
-        self.last_result_plate_no = ""
 
         self.db_floor = FloorController()
         self.db_vehicle_history = VehicleHistoryController()
 
         self._model_built_event = mp.Event()
+        self.lock_frame = threading.Lock()
         # self.callback_process_result_func = callback_process_result_func
 
     def start(self):
@@ -80,76 +76,18 @@ class DetectionControllerV6:
         # self.vehicle_processing_thread = threading.Thread(target=self.vehicle_process_work_thread)
         # self.vehicle_processing_thread.start()
 
-    def process_frame(self, frame, floor_id, cam_id, is_debug=True):
-        self._current_frame = frame.copy()
-        self.floor_id, self.cam_id = floor_id, cam_id
-        height, width = frame.shape[:2]
+    # def process_frame(self, frame, floor_id, cam_id):
+    #     self._current_frame = frame.copy()
+    #     self.floor_id, self.cam_id = floor_id, cam_id
+    #     height, width = frame.shape[:2]
 
-        slot = self.db_floor.get_slot_by_id(floor_id)
-        total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
+    #     self.poly_points, self.tracking_points, frame = crop_frame(
+    #         frame=frame, height=height, width=width, 
+    #         floor_id=floor_id, cam_id=cam_id
+    #     )
 
-        self.poly_points, self.tracking_points, frame = crop_frame(
-            frame=frame, height=height, width=width, 
-            floor_id=floor_id, cam_id=cam_id
-        )
-
-        draw_tracking_points(frame, self.tracking_points, (height, width))
-
-        last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
-        plate_no = last_plate_no if last_plate_no else ""
-
-        add_overlay(frame, floor_id, cam_id, self.poly_points, plate_no, total_slot, vehicle_total)
-
-        if is_debug:
-            draw_points_and_lines(frame, self.clicked_points)
-            draw_box(frame=frame, boxes=self.car_bboxes)
-        else:
-            draw_box(frame=frame, boxes=self.car_bboxes)
-
-        window_name = f"FLOOR {floor_id}: {cam_id}"
-        show_cam(window_name, frame)
-        # cv2.setMouseCallback(
-        #     window_name, 
-        #     self._mouse_event_debug if is_debug else self._mouse_event, 
-        #     param=frame
-        # )
-
-    def _mouse_event_debug(self, event, x, y, flags, frame):
-        """Handle mouse events in debug mode."""
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.clicked_points.append((x, y))
-            print(f"Clicked coordinates: ({x}, {y})")
-
-            normalized_points = convert_bbox_to_decimal((frame.shape[:2]), [self.clicked_points])
-            print_normalized_points(normalized_points)
-
-            draw_points_and_lines(frame, self.clicked_points)
-            show_cam(f"FLOOR {self.floor_id}: {self.cam_id}", frame)
-
-    def _mouse_event(self, event, x, y, flags, frame):
-        """Handle mouse events for normal mode."""
-        if event == cv2.EVENT_LBUTTONDOWN:
-            print(f"Clicked coordinates: ({x}, {y})")
-            print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
-
-    # def get_vehicle_plate_results(self):
-    #     return self._current_result
-    
-    # def vehicle_process_work_thread(self):
-    #     while True:
-    #         if self.stopped.is_set():
-    #             break
-    #         try:
-    #             result = self.vehicle_plate_result_queue.get()
-
-    #             if result is None:
-    #                 print("vehicle_plate_result_queue is None", result)
-    #                 continue
-
-    #             self._current_result = result
-
-    #         except Exception as e:
-    #             print(f"Error in vehicle_plate_result_queue work thread: {e}")
+    def process_frame(self, frame_bundle: dict):
+        self._current_frame = frame_bundle
 
     def detect_vehicle_work_thread(self):
         vehicle_model = YOLO(config.MODEL_PATH)
@@ -159,30 +97,59 @@ class DetectionControllerV6:
 
         while True:
             if self.stopped.is_set():
+                # print("self.stopped.is_set()")
                 break
+            
+            # print("loop here", time.time())
 
-            if self._current_frame is None or self._current_frame.size == 0:
+            # if self._current_frame is None or self._current_frame.size == 0:
+            #     print("self._current_frame is None or self._current_frame.size == 0")
+            #     continue
+
+            if self._current_frame is None or len(self._current_frame) == 0:
+                print("Empty or invalid frame received.")
+                time.sleep(0.1)
                 continue
 
-            frame = self._current_frame.copy()
+            frame_bundle = self._current_frame.copy()
+
+            frame = frame_bundle["frame"]
+            floor_id = frame_bundle["floor_id"]
+            cam_id = frame_bundle["cam_id"]
 
             if frame is None or frame.size == 0:
                 print("Empty or invalid frame received.")
+                time.sleep(0.1)
                 continue
+
+            # print(frame.shape)
             
             # self.car_detection_result = result dari yolo
             # TODO model detect disimi
             # put cropped car
             # pakai try except
             try:
-                if frame is None or frame.size == 0:
-                    print("Empty or invalid frame received.")
-                    # return None
-                    continue
+                # self.floor_id, self.cam_id = floor_id, cam_id
+                height, width = frame.shape[:2]
 
-                vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, poly_points=self.poly_points, tracking_points=self.tracking_points)
+                poly_points, tracking_points, _ = crop_frame(
+                    frame=frame, height=height, width=width, 
+                    floor_id=floor_id, cam_id=cam_id
+                )
 
-                print("vehicle_plate_data", vehicle_plate_data)
+                # print("frame.shape", frame.shape)
+
+                # frame_resized = resize_image(frame, 720, 720)
+                # print(frame_resized.shape)
+                # results = vehicle_model.predict(frame, conf=0.25, device="cuda:0", verbose=False, classes=[2, 7, 5])
+                # print(results)
+                # print("masukkkkkkk")
+                # bboxes = [result.boxes.xyxyn.cpu() for result in results]
+                # print(bboxes)
+
+                vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, poly_points=poly_points, tracking_points=tracking_points)
+
+                # print("vehicle_plate_data", vehicle_plate_data)
 
                 if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):
                     # vehicle_plate_data = {
@@ -202,7 +169,8 @@ class DetectionControllerV6:
                     #     self.callback_process_result_func(vehicle_plate_data)
 
                     if self.vehicle_plate_result_queue is not None:
-                        print("size", self.vehicle_plate_result_queue.qsize())
+                        # print("vehicle_plate_data", vehicle_plate_data)
+                        print("size: ", self.vehicle_plate_result_queue.qsize())
                         self.vehicle_plate_result_queue.put(vehicle_plate_data)
 
                 # print("self.car_bboxes: ", self.car_bboxes)
