@@ -281,24 +281,16 @@ def crop_frame(frame, height, width, floor_id, cam_id):
         return "", np.array([]), np.array([])
 
     if floor_id == 2:
-        # polygon_point = config.POLYGON_POINT_LT2_OUT
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
-        
-        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
-        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 3:
-        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
+        tracking_point = config.TRACKING_POINT2_F3_IN if cam_id == "IN" else config.TRACKING_POINT2_F3_OUT
         polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
-        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
-        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 4:
-        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
+        tracking_point = config.TRACKING_POINT2_F4_IN if cam_id == "IN" else config.TRACKING_POINT2_F4_OUT
         polygon_point = config.POLYGON_POINT_LT4_IN if cam_id == "IN" else config.POLYGON_POINT_LT4_OUT
-        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_IN
-        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_IN
     elif floor_id == 5:
-        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
+        tracking_point = config.TRACKING_POINT2_F5_IN if cam_id == "IN" else config.TRACKING_POINT2_F5_OUT
         polygon_point = config.POLYGON_POINT_LT5_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT
     else:
         return "", np.array([]), np.array([])
