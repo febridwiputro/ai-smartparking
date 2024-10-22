@@ -4,6 +4,9 @@ from ultralytics import YOLO
 import os
 from datetime import datetime
 from shapely.geometry import Polygon
+import csv
+import pandas as pd
+import time 
 
 from src.config.config import config
 from src.Integration.service_v1.controller.plat_controller import PlatController
@@ -11,6 +14,7 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.centroid_tracking import CentroidTracker
+from src.controllers.utils.util import check_background
 
 def show_cam(text, image, max_width=1080, max_height=720):
     res_img = resize_image(image, max_width, max_height)
@@ -100,27 +104,27 @@ def show_yolo(frame, object_info, color, draw_centroid=False):
         x1, y1, x2, y2 = map(int, bbox)
 
         # Draw the bounding box
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1)
         
         # Display the object details (ID, confidence)
-        cv2.putText(frame, f"{class_name} ID: {object_id}, Conf: {confidence:.2f}", 
-                    (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 
-                    0.5, color, 2)
+        # cv2.putText(frame, f"{class_name} ID: {object_id}, Conf: {confidence:.2f}", 
+        #             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 
+        #             0.5, color, 1)
 
         # Optionally draw the centroid
         if draw_centroid:
             centroid_x = (x1 + x2) // 2
             centroid_y = (y1 + y2) // 2
             cv2.circle(frame, (centroid_x, centroid_y), 5, (255, 0, 0), -1)
-            cv2.putText(frame, "Centroid", (centroid_x - 20, centroid_y - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            # cv2.putText(frame, "Centroid", (centroid_x - 20, centroid_y - 10), 
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
 
 def add_overlay(frame, floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total):
-    # show_text(f"Floor : {floor_id} {cam_id}", frame, 5, 50)
-    # show_text(f"Plate No. : {plate_no}", frame, 5, 100)
-    # color = (0, 255, 0) if total_slot > 0 else (0, 0, 255)
-    # show_text(f"P. Spaces Available : {total_slot}", frame, 5, 150, color)
-    # show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
+    show_text(f"Floor : {floor_id} {cam_id}", frame, 5, 50)
+    show_text(f"Plate No. : {plate_no}", frame, 5, 100)
+    color = (0, 255, 0) if total_slot > 0 else (0, 0, 255)
+    show_text(f"P. Spaces Available : {total_slot}", frame, 5, 150, color)
+    show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
 
     show_line(frame, poly_points[0], poly_points[1])
     show_line(frame, poly_points[2], poly_points[3])
@@ -132,7 +136,7 @@ def draw_points_and_lines(frame, clicked_points):
         for i in range(len(clicked_points)):
             start_point = clicked_points[i]
             end_point = clicked_points[(i + 1) % len(clicked_points)]
-            cv2.line(frame, start_point, end_point, (255, 0, 0), 2)
+            cv2.line(frame, start_point, end_point, (255, 0, 0), 1)
 
 def draw_box(frame, boxes):
     for box in boxes:
@@ -169,28 +173,29 @@ def convert_decimal_to_bbox(img_dims, polygons):
     #         polygons[i][index] = (int(bbox[0] * width), int(bbox[1] * height))
     return polygons_np.round().astype(int)
 
-def define_tracking_polygon(frame, height, width, floor_id, cam_id):
-    if frame.shape[0] == () or frame.shape[1] == ():
-        return "", np.array([]), np.array([])
-
+def define_tracking_polygon(height, width, floor_id, cam_id):
     if floor_id == 2:
         tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
         polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
+        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F2_OUT
     elif floor_id == 3:
         tracking_point = config.TRACKING_POINT2_F3_IN if cam_id == "IN" else config.TRACKING_POINT2_F3_OUT
         polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
+        POLY_BOX = config.POLY_BBOX_F3_IN if cam_id == "IN" else config.POLY_BBOX_F3_OUT
     elif floor_id == 4:
         tracking_point = config.TRACKING_POINT2_F4_IN if cam_id == "IN" else config.TRACKING_POINT2_F4_OUT
         polygon_point = config.POLYGON_POINT_LT4_IN if cam_id == "IN" else config.POLYGON_POINT_LT4_OUT
+        POLY_BOX = config.POLY_BBOX_F4_IN if cam_id == "IN" else config.POLY_BBOX_F4_OUT
     elif floor_id == 5:
         tracking_point = config.TRACKING_POINT2_F5_IN if cam_id == "IN" else config.TRACKING_POINT2_F5_OUT
         polygon_point = config.POLYGON_POINT_LT5_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT
+        POLY_BOX = config.POLY_BBOX_F5_IN if cam_id == "IN" else config.POLY_BBOX_F5_OUT
     else:
-        return "", np.array([]), np.array([])
+        return [], []
 
     poly_points = convert_decimal_to_bbox((height, width), polygon_point)
     
-    return poly_points, tracking_point
+    return poly_points, tracking_point, POLY_BOX
 
 def point_position(line1, line2, point, inverse=False):
     x1, y1 = line1
@@ -206,12 +211,11 @@ def point_position(line1, line2, point, inverse=False):
         return True if not inverse else False
 
 class VehicleDetector:
-    def __init__(self, model_path, video_path, floor_id, cam_id, output_folder="output"):
+    def __init__(self, model_path, video_path, floor_id, cam_id, is_vehicle_model, output_folder="output"):
         self.floor_id = floor_id
         self.cam_id = cam_id
+        self.is_vehicle_model = is_vehicle_model
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
-        # self.class_names = ['car', 'plate', 'truck']
-        self.class_names = ['car', 'bus', 'truck']
         self.model = YOLO(model_path)
         self.video_path = video_path
         self.output_folder = output_folder
@@ -221,16 +225,19 @@ class VehicleDetector:
         self.num_skip_centroid = 0
         self.previous_centroids = {}
         self.object_status = {}
-        
-        # self.tracking_points = config.TRACKING_POINT2_F1_IN
-        # self.poly_points = config.POLYGON_POINT_LT2_IN
-        self.tracking_points = config.TRACKING_POINT2_F1_OUT
-        self.poly_points = [config.POLYGON_POINT_LT2_OUT]
 
+        self.tracking_points = []
+        self.poly_points = []
+        self.poly_bbox = []
         self.centroids = None
         self.clicked_points = []
         self.car_bboxes = []
         self.plate_info = []
+        self.arduino_idx = 0
+
+        self.frame_count = 0
+        self.prev_object_id = None
+        self.frame_count_per_object = {}
 
         self.db_plate = PlatController()
         self.db_floor = FloorController()
@@ -238,6 +245,19 @@ class VehicleDetector:
         self.db_vehicle_history = VehicleHistoryController()
 
         os.makedirs(self.output_folder, exist_ok=True)
+
+        # self.class_names = ['car', 'bus', 'truck'] if self.is_vehicle_model else ['car', 'plate', 'truck']
+        self.class_index = [2, 7, 5] if self.is_vehicle_model else [0, 1, 2]
+        # self.class_indices = self.get_class_indices()
+
+        self.video_path = video_path  # Ensure video path is stored in the class
+
+    # def get_class_indices(self):
+    #     """Map class names to indices based on the model's available classes."""
+    #     available_classes = self.model.names  # Get class names from the YOLO model
+    #     class_indices = [i for i, name in available_classes.items() if name in self.class_names]
+    #     return class_indices
+
 
     def save_plate(self, frame, plate_box, is_save=True):
         """Save the detected plate without bounding box to disk."""
@@ -293,13 +313,7 @@ class VehicleDetector:
             draw_points_and_lines(frame, self.clicked_points)
             show_cam(f"FLOOR {self.floor_id}: {self.cam_id}", frame)
 
-    def _mouse_event(self, event, x, y, flags, frame):
-        """Handle mouse events for normal mode."""
-        if event == cv2.EVENT_LBUTTONDOWN:
-            print(f"Clicked coordinates: ({x}, {y})")
-            print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
-
-    def process_frame(self, frame, floor_id, cam_id, is_debug=True):
+    def show_display(self, frame, cropped_frame, floor_id, cam_id, tracking_points, poly_bbox, car_info, plate_info, is_centroid_inside, is_debug=True):
         self._current_frame = frame.copy()
         self.floor_id, self.cam_id = floor_id, cam_id
         height, width = frame.shape[:2]
@@ -307,76 +321,206 @@ class VehicleDetector:
         slot = self.db_floor.get_slot_by_id(floor_id)
         total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
 
-        self.poly_points, self.tracking_points= define_tracking_polygon(
-            frame=frame, height=height, width=width, 
-            floor_id=floor_id, cam_id=cam_id
-        )
-
-        draw_tracking_points(frame, self.tracking_points, (height, width))
+        draw_tracking_points(frame, tracking_points, (height, width))
 
         last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
         plate_no = last_plate_no if last_plate_no else ""
 
-        add_overlay(frame, floor_id, cam_id, self.poly_points, plate_no, total_slot, vehicle_total)
+        # add_overlay(frame, floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
+
+        frame = self.show_polygon_area(frame, poly_bbox, is_centroid_inside)
+
+        show_yolo(cropped_frame, car_info, color=(255, 255, 255), draw_centroid=True)
+        if is_centroid_inside:
+            show_yolo(cropped_frame, plate_info, color=(255, 255, 255))
+
+        window_name = f"FLOOR {floor_id}: {cam_id}"
+        show_cam(window_name, frame)
 
         if is_debug:
             draw_points_and_lines(frame, self.clicked_points)
             draw_box(frame=frame, boxes=self.car_bboxes)
             show_yolo(frame, self.plate_info, color=(0, 0, 255))
+
+            cv2.setMouseCallback(
+                window_name, 
+                self._mouse_event_debug, 
+                param=frame
+            )
+            
         else:
             draw_box(frame=frame, boxes=self.car_bboxes)
 
-        window_name = f"FLOOR {floor_id}: {cam_id}"
-        show_cam(window_name, frame)
-
-        cv2.setMouseCallback(
-            window_name, 
-            self._mouse_event_debug if is_debug else self._mouse_event, 
-            param=frame
-        )
-
-    def process_car(self, results, frame):
+    def process_car(self, results):
         """Process the detection of cars and return car information."""
         car_boxes = []
         car_info = []
+
+        self.class_names = ['car', 'bus', 'truck'] if self.is_vehicle_model else ['car', 'plate', 'truck']
+
         for r in results[0].boxes:
             if r.id is not None and r.cls is not None and r.conf is not None:
                 class_id = int(r.cls.item())
                 object_id = int(r.id.item())
                 bbox = r.xyxy[0].cpu().numpy().tolist()
                 confidence = float(r.conf.item())
-                print("class_id: ", class_id)
-                # class_name = self.class_names[class_id]
 
-                # if class_name == "car" or class_name == "bus" or class_name == "truck":
-                car_boxes.append(bbox)
-                car_info.append((object_id, confidence, bbox, str(class_id)))
+                # print("class_id: ", class_id)
+                if class_id == 0:
+                    print(f'object_id: {object_id}')
+
+                class_name = self.class_names[class_id]
+                
+                if self.is_vehicle_model:
+                    if class_name in ["car", "bus", "truck"]:
+                        car_boxes.append(bbox)
+                        car_info.append((object_id, confidence, bbox, str(class_id)))
+                else:
+                    if class_name == "car":
+                        car_boxes.append(bbox)
+                        car_info.append((object_id, confidence, bbox, str(class_id)))
 
         return car_boxes, car_info
 
-    def process_plate(self, results, original_frame, car_boxes, is_save=True):
-        """Process the detection of plates within car bounding boxes and return plate info."""
-        plate_info = []  # Store plate object info for return
-        for r in results[0].boxes:
-            if r.id is not None and r.cls is not None and r.conf is not None:
-                class_id = int(r.cls.item())
-                class_name = self.class_names[class_id]
+    def is_valid_cropped_plate(self, cropped_plate):
+        """Check if the cropped plate meets the size requirements and save dimensions to a CSV file."""
+        height, width = cropped_plate.shape[:2]
+        print(f'height: {height} & width: {width}')
+        
+        # Save height and width to CSV
+        # self.save_dimensions_to_csv(height, width)
+        self.save_dimensions_to_excel(height, width)
 
-                if class_name == "plate":
-                    bbox = r.xyxy[0].cpu().numpy().tolist()
-                    confidence = float(r.conf.item())
-                    plate_x1, plate_y1, plate_x2, plate_y2 = map(int, bbox)
+        if height < 30 or width < 90:
+            return False
+        if height >= width:
+            return False
+        compare = abs(height - width)
+        if compare <= 35 or compare >= 80:
+            return False
 
-                    # Check if plate is inside any car bounding box
-                    for car_box in car_boxes:
-                        car_x1, car_y1, car_x2, car_y2 = map(int, car_box)
+        # if height < 55 or width < 100:
+        #     return False
+        # if height >= width:
+        #     return False
+        # compare = abs(height - width)
+        # if compare <= 110 or compare >= 400:
+        #     return Falseq
+        return True
 
-                        if (car_x1 <= plate_x1 <= car_x2 and car_y1 <= plate_y1 <= car_y2) and \
-                           (car_x1 <= plate_x2 <= car_x2 and car_y1 <= plate_y2 <= car_y2):
-                            plate_info.append((r.id.item(), confidence, bbox, class_name))  # Collect plate data
-                            self.save_plate(original_frame, bbox, is_save)
+    def save_dimensions_to_excel(self, height, width):
+        """Save height and width to an Excel file named with the current date."""
+        # Get the current date
+        current_date = datetime.now()
+        filename = current_date.strftime("%Y_%m_%d") + ".xlsx"
 
-        return plate_info
+        # Create a DataFrame for the new entry
+        new_data = pd.DataFrame([[height, width]], columns=['Height', 'Width'])
+
+        # Check if the file already exists
+        if os.path.isfile(filename):
+            # Append the new data to the existing file
+            with pd.ExcelWriter(filename, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
+                new_data.to_excel(writer, index=False, header=False, startrow=writer.sheets['Sheet1'].max_row)
+        else:
+            # Create a new file and write the data
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                new_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+    def save_dimensions_to_csv(self, height, width):
+        """Save height and width to a CSV file named with the current date."""
+        # Get the current date
+        current_date = datetime.now()
+        filename = current_date.strftime("%Y_%m_%d") + ".csv"
+
+        # Write height and width to CSV file
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            # Check if the file is empty to write the header
+            file.seek(0, 2)  # Move to the end of the file
+            if file.tell() == 0:
+                writer.writerow(['Height', 'Width'])  # Write header if file is empty
+            writer.writerow([height, width])  # Write height and width
+
+    # def is_valid_cropped_plate(self, cropped_plate):
+    #     """Check if the cropped plate meets the size requirements."""
+    #     height, width = cropped_plate.shape[:2]
+    #     print(f'height: {height} & width: {width}')
+    #     if height < 55 or width < 100:
+    #         return False
+    #     if height >= width:
+    #         return False
+    #     compare = abs(height - width)
+    #     if compare <= 110 or compare >= 400:
+    #         return False
+    #     return True
+
+    def get_cropped_plates(self, frame, boxes):
+        """
+        Extract cropped plate images based on bounding boxes.
+        Args:
+            frame: The original image/frame.
+            boxes: List of bounding boxes (each box is [x1, y1, x2, y2]).
+
+        Returns:
+            cropped_plates: List of cropped plate images.
+        """
+        height, width, _ = frame.shape
+        cropped_plates = []
+
+        for box in boxes:
+            # Ensure that box is a list or tuple and contains valid coordinates
+            if isinstance(box, (list, tuple)) and len(box) == 4:
+                x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
+                cropped_plate = frame[y1:y2, x1:x2]
+
+                if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+                # if cropped_plate.size > 0:
+                    cropped_plates.append(cropped_plate)
+
+        return cropped_plates
+
+    # def get_cropped_plates(self, frame, boxes):
+    #     """
+    #     Extract cropped plate images based on bounding boxes.
+    #     Args:
+    #         frame: The original image/frame.
+    #         boxes: List of bounding boxes (each box is [x1, y1, x2, y2]).
+
+    #     Returns:
+    #         cropped_plates: List of cropped plate images.
+    #     """
+    #     height, width, _ = frame.shape
+    #     cropped_plates = []
+
+    #     for box in boxes:
+    #         x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
+    #         cropped_plate = frame[y1:y2, x1:x2]
+
+    #         if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+    #             cropped_plates.append(cropped_plate)
+
+    #     return cropped_plates
+
+
+    def save_cropped_plate(self, cropped_plates):
+        """
+        Save the cropped plate regions as image files.
+        Args:
+            cropped_plates: List of cropped plate images.
+        """
+        import os
+        from datetime import datetime
+
+        if not os.path.exists('plate_saved'):
+            os.makedirs('plate_saved')
+
+        for i, cropped_plate in enumerate(cropped_plates):
+            if cropped_plate.size > 0:
+                timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+                filename = f'plate_saved/{timestamp}.jpg'
+
+                cv2.imwrite(filename, cropped_plate)
 
     def is_car_out(self, boxes):
         sorted_boxes = sorted(boxes, key=lambda x: x[3], reverse=True)
@@ -471,7 +615,6 @@ class VehicleDetector:
         ]
         return pixel_points
 
-
     def crop_frame_with_polygon(self, frame, poly_points):
         """Crop the frame to the area inside the polygon."""
 
@@ -506,7 +649,7 @@ class VehicleDetector:
 
             # Cek apakah centroid berada di dalam poligon
             if self.is_point_in_polygon(centroid, polygon_points):
-                print(f"Object {car_id} entered the area.")
+                # print(f"Object {car_id} entered the area.")
                 return True  # Jika ada yang masuk, kembalikan True
 
         return False  # Tidak ada objek yang masuk
@@ -563,8 +706,96 @@ class VehicleDetector:
 
         return frame
 
+    def process_plate(self, results, original_frame, car_boxes, is_save=True):
+        """Process the detection of plates within car bounding boxes and return plate info."""
+        plate_info = []
 
-    def process_video(self, is_save=True):
+        for r in results[0].boxes:
+            if r.id is not None and r.cls is not None and r.conf is not None:
+                class_id = int(r.cls.item())
+                class_name = self.class_names[class_id]
+
+                if class_name == "plate":
+                    plate_bbox = r.xyxy[0].cpu().numpy().tolist()
+                    confidence = float(r.conf.item())
+                    plate_x1, plate_y1, plate_x2, plate_y2 = map(int, plate_bbox)
+
+                    for car_box in car_boxes:
+                        car_x1, car_y1, car_x2, car_y2 = map(int, car_box)
+
+                        if (car_x1 <= plate_x1 <= car_x2 and car_y1 <= plate_y1 <= car_y2) and \
+                           (car_x1 <= plate_x2 <= car_x2 and car_y1 <= plate_y2 <= car_y2):
+                            plate_info.append((r.id.item(), confidence, plate_bbox, class_name))
+                            cropped_plates = self.get_cropped_plates(original_frame, [plate_bbox])
+                            # if cropped_plate:
+                            #     self.save_cropped_plate(cropped_plate)
+
+                            return plate_info, cropped_plates
+
+    def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
+        height, width = frame.shape[:2]
+        original_frame = frame.copy()
+
+        area_selection = self.convert_normalized_to_pixel(tracking_points, (height, width))
+        cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
+        cropped_frame_copy = cropped_frame.copy()
+
+        results = self.model.track(cropped_frame, conf=0.25, persist=True, verbose=False)
+
+        self.car_bboxes, car_info = self.process_car(results)
+
+        for car_bbox in self.car_bboxes:
+            self.centroids = self.get_centroid_object(car_bbox)
+
+        direction = self.is_car_out(self.car_bboxes)
+        if direction is not None or self.car_direction is None:
+            self.car_direction = direction
+
+        for (object_id, confidence, bbox, class_name) in car_info:
+            self.object_id = object_id
+
+        is_centroid_inside = self.check_car_touch_line(car_info, poly_bbox)
+
+        if is_centroid_inside and not self.is_vehicle_model:
+            self.plate_info, plate_frames = self.process_plate(results, original_frame, self.car_bboxes)
+
+            if self.object_id != self.prev_object_id:
+                self.frame_count_per_object[self.object_id] = 0
+
+            if self.object_id not in self.frame_count_per_object:
+                self.frame_count_per_object[self.object_id] = 0
+
+            if self.frame_count_per_object[self.object_id] < 7:
+                for plate_frame in plate_frames:
+                    self.save_cropped_plate([plate_frame])
+
+                    gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
+                    bg_color = check_background(gray_plate, False)
+
+                    vehicle_plate_data = {
+                        "object_id": self.object_id,
+                        "bbox": self.car_bboxes,
+                        "bg_color": bg_color,
+                        "frame": plate_frame,
+                        "floor_id": floor_id,
+                        "cam_id": cam_id,
+                        "arduino_idx": arduino_idx,
+                        "car_direction": self.car_direction,
+                        "start_line": True,
+                        "end_line": True
+                    }
+
+                    self.frame_count_per_object[self.object_id] += 1
+                    self.prev_object_id = self.object_id
+
+                    return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
+
+            else:
+                print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
+
+        return {}, cropped_frame_copy, is_centroid_inside, car_info
+
+    def process_video(self):
         """Process the video to detect cars, track directions, and process plates."""
         cap = cv2.VideoCapture(self.video_path)
         
@@ -577,156 +808,15 @@ class VehicleDetector:
             frame = cv2.resize(frame, (1080, 720))
             height, width = frame.shape[:2]
             self.frame_size = (width, height)
-            original_frame = frame.copy()
 
-            self.poly_points, self.tracking_points= define_tracking_polygon(
-                frame=frame, height=height, width=width, 
+            self.poly_points, self.tracking_points, self.poly_bbox = define_tracking_polygon(
+                height=height, width=width, 
                 floor_id=self.floor_id, cam_id=self.cam_id
             )
 
-            area_selection = self.convert_normalized_to_pixel(self.tracking_points, (height, width))
-
-            cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
-            cropped_frame_copy = cropped_frame.copy()
-            if cropped_frame is None or cropped_frame.size == 0:
-                print("Cropped frame is empty.")
-                continue
-
-            self.process_frame(frame, floor_id=self.floor_id, cam_id=self.cam_id, is_debug=True)
-
-            results = self.model.track(cropped_frame, conf=0.25, persist=True, verbose=False, classes=config.CLASS_NAMES)
-            # results = self.model.track(cropped_frame, conf=0.25, persist=True, verbose=False)
-            self.car_bboxes, car_info = self.process_car(results, frame)
-
-            show_yolo(cropped_frame, car_info, color=(0, 255, 0), draw_centroid=True)
-            for car_bbox in self.car_bboxes:
-                self.centroids = self.get_centroid_object(car_bbox)
-            # self.centroids = self.get_centroid(results, line_pos=True)
-
-            direction = self.is_car_out(self.car_bboxes)
-            if direction is not None or self.car_direction is None:
-                self.car_direction = direction
-                # print("Car direction: ", self.car_direction)
-
-            # # Convert polygon points to pixel coordinates
-            # pixel_polygon_points = convert_normalized_to_pixel(self.poly_points, (height, width))
-            # show_line(cropped_frame, pixel_polygon_points[0], pixel_polygon_points[1])
-            # show_line(cropped_frame, pixel_polygon_points[2], pixel_polygon_points[3])
-
-            # start_line, end_line = self.check_car_touch_line(
-            #     car_info, self.poly_points, inverse=self.car_direction
-            # )
-
-            if self.floor_id == 2:
-                if self.cam_id == "IN":
-                    POLY_BOX = [
-                        (0.2694444444444444, 0.5375000000000000),
-                        (0.3527777777777778, 0.3291666666666667),
-                        (0.6037037037037037, 0.3208333333333334),
-                        (0.7611111111111111, 0.5111111111111111),
-                    ]               
-                else:
-                    # POLY_BOX_F2_OUT
-    
-                    # POLY_BOX_F2_OUT = [
-                    #     (0.2, 0.51),  # (Top-left)
-                    #     (0.3, 0.45),  # (Bottom-left)
-                    #     (0.6, 0.45),  # (Bottom-right)
-                    #     (0.65, 0.51)   # (Top-right)
-                    # ]
-
-                    POLY_BOX = [
-                        (0.1, 0.6),  # Point A (Top-left)
-                        (0.36, 0.4),  # Point B (Bottom-left)
-                        (0.6, 0.4),  # Point C (Bottom-right)
-                        (0.7, 0.6)   # Point D (Top-right)
-                    ]
-            elif self.floor_id == 3:
-                if self.cam_id == "IN":
-                    POLY_BOX = [
-                        (0.2138888888888889, 0.9),
-                        (0.3240740740740741, 0.4083333333333333),
-                        (0.6064814814814815, 0.4000000000000000),
-                        (0.8407407407407408, 0.9),
-                    ]             
-                else:
-                    # POLY_BOX_F2_OUT
-    
-                    # POLY_BOX_F2_OUT = [
-                    #     (0.2, 0.51),  # (Top-left)
-                    #     (0.3, 0.45),  # (Bottom-left)
-                    #     (0.6, 0.45),  # (Bottom-right)
-                    #     (0.65, 0.51)   # (Top-right)
-                    # ]
-
-                    POLY_BOX = [
-                        (0.1, 0.6),  # Point A (Top-left)
-                        (0.36, 0.4),  # Point B (Bottom-left)
-                        (0.6, 0.4),  # Point C (Bottom-right)
-                        (0.7, 0.6)   # Point D (Top-right)
-                    ]
-            elif self.floor_id == 4:
-                if self.cam_id == "IN":  
-                    POLY_BOX = [
-                        (0.2648148148148148, 0.9847222222222223),
-                        (0.4388888888888889, 0.4069444444444444),
-                        (0.5805555555555556, 0.4069444444444444),
-                        (0.8314814814814815, 0.9847222222222223),
-                    ]
-                    # POLY_BOX = [
-                    #     (0.2805555555555556, 0.6944444444444444),
-                    #     (0.3879629629629630, 0.4263888888888889),
-                    #     (0.5351851851851852, 0.4291666666666666),
-                    #     (0.6388888888888888, 0.7055555555555556),
-                    # ]
-
-
-                else:
-                    # POLY_BOX_F2_OUT
-    
-                    # POLY_BOX_F2_OUT = [
-                    #     (0.2, 0.51),  # (Top-left)
-                    #     (0.3, 0.45),  # (Bottom-left)
-                    #     (0.6, 0.45),  # (Bottom-right)
-                    #     (0.65, 0.51)   # (Top-right)
-                    # ]
-
-                    POLY_BOX = [
-                        (0.2129629629629630, 0.7861111111111111),
-                        (0.3638888888888889, 0.4555555555555555),
-                        (0.5518518518518518, 0.4597222222222222),
-                        (0.6740740740740740, 0.8125000000000000),
-                    ]
-            elif self.floor_id == 5:
-                if self.cam_id == "IN":  
-                    POLY_BOX = [
-                        (0.3046296296296296, 0.9486111111111111),
-                        (0.4425925925925926, 0.5111111111111111),
-                        (0.6555555555555556, 0.5152777777777777),
-                        (0.8314814814814815, 0.9319444444444445),
-                    ]
-
-
-                else:
-                    # POLY_BOX_F2_OUT
-
-                    POLY_BOX = [
-                    (0.2398148148148148, 0.6972222222222222),
-                    (0.3546296296296296, 0.3694444444444445),
-                    (0.5305555555555556, 0.3680555555555556),
-                    (0.6481481481481481, 0.6916666666666667),
-                ]
-
-            is_centroid_inside = self.check_car_touch_line(car_info, POLY_BOX)
-            cropped_frame = self.show_polygon_area(cropped_frame, POLY_BOX, is_centroid_inside)
-
-            # if is_centroid_inside:
-            #     # print(f'Start line: {start_line}, End line: {end_line}')
-            #     self.plate_info = self.process_plate(results, cropped_frame_copy, self.car_bboxes, is_save)
-
-            #     show_yolo(cropped_frame, self.plate_info, color=(0, 0, 255))
-
-            cv2.imshow("Cropped YOLOv8 Tracking", cropped_frame)
+            vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = self.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, tracking_points=self.tracking_points, poly_bbox=self.poly_bbox)
+            # print("vehicle_plate_data: ", vehicle_plate_data)
+            self.show_display(frame, cropped_frame=cropped_frame, floor_id=self.floor_id, cam_id=self.cam_id, tracking_points=self.tracking_points, poly_bbox=self.poly_bbox, is_centroid_inside=is_centroid_inside, car_info=car_info, plate_info=self.plate_info)
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
@@ -734,38 +824,71 @@ class VehicleDetector:
         cap.release()
         cv2.destroyAllWindows()
 
-# Example usage:
+
 if __name__ == "__main__":
     # model_path = r"C:\Users\DOT\Documents\febri\weights\yolo11n.pt"
     # model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
-    # model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
-    model_path = r"C:\Users\DOT\Documents\febri\weights\yolov8n.pt"
+    model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
+    # model_path = r"C:\Users\DOT\Documents\febri\weights\yolov8n.pt"
     # video_path = r'D:\engine\smart_parking\dataset\cctv\z.mp4'
     # video_path = r'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
 
-    FLOOR_ID = 4
+    FLOOR_ID = 2
     CAM_ID = "IN"
+    IS_VEHICLE_MODEL = False
+    IS_CAMERA = False
 
-    if FLOOR_ID == 2:
-        if CAM_ID == "IN":
-            video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
-        else:
-            video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
-    elif FLOOR_ID == 3:
-        if CAM_ID == "IN":
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
-        else:
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
-    elif FLOOR_ID == 4:
-        if CAM_ID == "IN":
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
-        else:
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
-    elif FLOOR_ID == 5:
-        if CAM_ID == "IN":
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
-        else:
-            video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+    if IS_CAMERA:
+        CAM_SOURCE_LT = {
+            2: {
+                "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.11'
+            },
+            3: {
+                "IN": 'rtsp://admin:Passw0rd@192.168.1.12',
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.13'
+            },
+            4: {
+                "IN": 'rtsp://admin:Passw0rd@192.168.1.14',
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.15'
+            },
+            5: {
+                "IN": 'rtsp://admin:Passw0rd@192.168.1.16',
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.27'
+            }
+        }
 
-    detector = VehicleDetector(model_path, video_path, floor_id=FLOOR_ID, cam_id=CAM_ID)
-    detector.process_video(is_save=True)
+        try:
+            video_path = CAM_SOURCE_LT[FLOOR_ID][CAM_ID]
+        except KeyError:
+            raise ValueError(f"Invalid FLOOR_ID {FLOOR_ID} or CAM_ID {CAM_ID}")
+    
+    else:
+        if FLOOR_ID == 2:
+            if CAM_ID == "IN":
+                # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.10_01_20241022164924927.mp4"
+
+            else:
+                # video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.11_01_20241022165050277.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.11_01_20241022165758745.mp4"
+        elif FLOOR_ID == 3:
+            if CAM_ID == "IN":
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+            else:
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+        elif FLOOR_ID == 4:
+            if CAM_ID == "IN":
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
+            else:
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
+        elif FLOOR_ID == 5:
+            if CAM_ID == "IN":
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
+            else:
+                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+
+
+    detector = VehicleDetector(model_path, video_path, floor_id=FLOOR_ID, cam_id=CAM_ID, is_vehicle_model=IS_VEHICLE_MODEL)
+    detector.process_video()

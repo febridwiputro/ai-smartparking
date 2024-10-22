@@ -10,7 +10,7 @@ import time
 from src.Integration.arduino import Arduino
 from src.config.config import config
 from src.controllers.matrix_controller import MatrixController
-from src.controllers.detection_controller_v6 import DetectionControllerV6
+from src.controllers.detection_controller_v7 import DetectionControllerV7
 from src.models.cam_model import CameraV1
 from src.controllers.utils.util import check_floor
 from src.view.show_cam import show_cam, show_text, show_line
@@ -19,9 +19,9 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.multiprocessing_util import put_queue_none, clear_queue
-from src.models.image_restoration_model_v6 import image_restoration
-from src.models.text_detection_model_v6 import text_detection
-from src.models.character_recognition_model_v6 import character_recognition, ModelAndLabelLoader
+from src.models.image_restoration_model_v7 import image_restoration
+from src.models.text_detection_model_v7 import text_detection
+from src.models.character_recognition_model_v7 import character_recognition, ModelAndLabelLoader
 from src.config.logger import logger
 from src.view.show_cam import resize_image
 from src.controllers.utils.util import (
@@ -449,7 +449,7 @@ class Wrapper:
             print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
 
     def main(self):
-        IS_DEBUG = False
+        IS_DEBUG = True
         video_source = config.VIDEO_SOURCE_PC if IS_DEBUG else config.CAM_SOURCE_LT
 
         # Start processes
@@ -488,7 +488,7 @@ class Wrapper:
             print("Loading detection models...")
 
         # Initialize and start cameras
-        caps = [CameraV1(video, is_video=False) for video in video_source]
+        caps = [CameraV1(video, is_video=True) for video in video_source]
         for cap in caps:
             print(f"Starting camera: {cap}")
             cap.start()
@@ -503,60 +503,54 @@ class Wrapper:
                         num, frames[i] = cap.read()
     
                         if frames[i] is None:
-                            print("frames[i] None", frames[i])
+                            # print("frames[i] None", frames[i])
                             continue
-
-                        # print(f'frames[i]: ', frames[i])
-
+    
                         # print("process frame", num)
                         plat_detects[i].process_frame({
                             "frame": frames[i].copy(),
                             "floor_id": floor_id,
                             "cam_id": cam_id
                         })
-
-                        # print(f'plat_detects[i]: ', plat_detects[i])
-
-                        if self.vehicle_plate_result_queue is not None:
-                            # frames[i] = cv2.resize(frames[i], (1080, 720))
-                            height, width = frames[i].shape[:2]
-        
-                            slot = self.db_floor.get_slot_by_id(floor_id)
-                            total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
-        
-                            poly_points, tracking_points, frames[i] = crop_frame(
-                                frame=frames[i], height=height, width=width,
-                                floor_id=floor_id, cam_id=cam_id
-                            )
-        
-                            draw_tracking_points(frames[i], tracking_points, (height, width))
-        
-                            last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
-                            plate_no = last_plate_no if last_plate_no else ""
-        
-                            add_overlay(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
-        
-                            # if IS_DEBUG:
-                            #     draw_points_and_lines(frame, self.clicked_points)
-                            #     draw_box(frame=frame, boxes=self.car_bboxes)
-                            # else:
-                            #     draw_box(frame=frame, boxes=self.car_bboxes)
-        
-                            # window_name = f"FLOOR {floor_id}: {cam_id}"
-                            # show_cam(window_name, frame)
-                            # cv2.setMouseCallback(
-                            #     window_name,
-                            #     self._mouse_event_debug if is_debug else self._mouse_event,
-                            #     param=frame
-                            # )
-                    # if frames is not None:
+                        # frames[i] = cv2.resize(frames[i], (1080, 720))
+                        height, width = frames[i].shape[:2]
+    
+                        slot = self.db_floor.get_slot_by_id(floor_id)
+                        total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
+    
+                        poly_points, tracking_points, frames[i] = crop_frame(
+                            frame=frames[i], height=height, width=width,
+                            floor_id=floor_id, cam_id=cam_id
+                        )
+    
+                        draw_tracking_points(frames[i], tracking_points, (height, width))
+    
+                        last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
+                        plate_no = last_plate_no if last_plate_no else ""
+    
+                        add_overlay(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
+    
+                        # if IS_DEBUG:
+                        #     draw_points_and_lines(frame, self.clicked_points)
+                        #     draw_box(frame=frame, boxes=self.car_bboxes)
+                        # else:
+                        #     draw_box(frame=frame, boxes=self.car_bboxes)
+    
+                        # window_name = f"FLOOR {floor_id}: {cam_id}"
+                        # show_cam(window_name, frame)
+                        # cv2.setMouseCallback(
+                        #     window_name,
+                        #     self._mouse_event_debug if is_debug else self._mouse_event,
+                        #     param=frame
+                        # )
+                    
                     # print("masuk frame_show")
                     frame_show = create_grid(frames, rows=2, cols=3, frame_size=640, padding=5)
                     cv2.imshow(f"Camera", frame_show)
                     # cv2.imshow(f"Camera", frames[0])
                     # print("keluar frame_show")
                 except Exception as e:
-                    print("Error: get_frame from process_frame", e)
+                    print("Error", e)
 
                 # Check if 'q' key is pressed to exit
                 if cv2.waitKey(1) & 0xFF == ord('q'):
