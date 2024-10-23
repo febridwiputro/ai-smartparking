@@ -34,11 +34,10 @@ from src.controllers.utils.util import (
     parking_space_vehicle_counter,
     print_normalized_points,
     most_freq, 
-    add_overlay,
     draw_points_and_lines,
     draw_tracking_points
 )
-from src.controllers.utils.display import draw_box
+from src.controllers.utils.display import draw_box, add_overlay_v6
 
 
 def create_grid(frames, rows, cols, frame_size=None, padding=5, bg_color=(0, 0, 0)):
@@ -449,7 +448,7 @@ class Wrapper:
             print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
 
     def main(self):
-        IS_DEBUG = False
+        IS_DEBUG = True
         video_source = config.VIDEO_SOURCE_PC if IS_DEBUG else config.CAM_SOURCE_LT
 
         # Start processes
@@ -488,7 +487,7 @@ class Wrapper:
             print("Loading detection models...")
 
         # Initialize and start cameras
-        caps = [CameraV1(video, is_video=False) for video in video_source]
+        caps = [CameraV1(video, is_video=True) for video in video_source]
         for cap in caps:
             print(f"Starting camera: {cap}")
             cap.start()
@@ -534,7 +533,7 @@ class Wrapper:
                             last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
                             plate_no = last_plate_no if last_plate_no else ""
         
-                            add_overlay(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
+                            add_overlay_v6(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
         
                             # if IS_DEBUG:
                             #     draw_points_and_lines(frame, self.clicked_points)

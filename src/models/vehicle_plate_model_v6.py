@@ -224,7 +224,7 @@ class VehicleDetector:
     #     cropped_frame = masked_frame[y:y+h, x:x+w]
     #     return cropped_frame
 
-    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, poly_points, tracking_points, is_save=False):
+    def detect_vehicle(self, arduino_idx, frame: np.ndarray, floor_id: int, cam_id: str, poly_points, tracking_points, is_save=True):
         if frame is None or frame.size == 0:
             print("Empty or invalid frame received.")
             return None

@@ -31,12 +31,10 @@ from src.controllers.utils.util import (
     find_closest_strings_dict, 
     check_db, 
     parking_space_vehicle_counter,
-    add_overlay,
     draw_points_and_lines,
     draw_tracking_points,
     resize_image
 )
-from src.controllers.utils.display import draw_box
 
 
 class DetectionControllerV6:

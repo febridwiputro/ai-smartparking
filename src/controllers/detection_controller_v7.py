@@ -14,7 +14,7 @@ from ultralytics import YOLO
 
 from src.config.config import config
 from src.config.logger import logger
-from src.models.vehicle_plate_model_v6 import VehicleDetector
+from src.models.vehicle_plate_model_v7 import VehicleDetector
 from utils.multiprocessing_util import put_queue_none, clear_queue
 
 from src.view.show_cam import show_cam, show_text, show_line
@@ -31,12 +31,12 @@ from src.controllers.utils.util import (
     find_closest_strings_dict, 
     check_db, 
     parking_space_vehicle_counter,
-    add_overlay,
     draw_points_and_lines,
     draw_tracking_points,
-    resize_image
+    resize_image,
+    convert_normalized_to_pixel_lines,
+    define_tracking_polygon
 )
-from src.controllers.utils.display import draw_box
 
 
 class DetectionControllerV7:
@@ -59,6 +59,7 @@ class DetectionControllerV7:
         self.car_bboxes = []
         self.poly_points = []
         self.tracking_points = []
+        self.vehicle_plate_result = False
 
         self.db_floor = FloorController()
         self.db_vehicle_history = VehicleHistoryController()
@@ -72,40 +73,20 @@ class DetectionControllerV7:
         self.vehicle_thread = threading.Thread(target=self.detect_vehicle_work_thread)
         self.vehicle_thread.start()
 
-        # print("[Thread] Starting result processing thread...")
-        # self.vehicle_processing_thread = threading.Thread(target=self.vehicle_process_work_thread)
-        # self.vehicle_processing_thread.start()
-
-    # def process_frame(self, frame, floor_id, cam_id):
-    #     self._current_frame = frame.copy()
-    #     self.floor_id, self.cam_id = floor_id, cam_id
-    #     height, width = frame.shape[:2]
-
-    #     self.poly_points, self.tracking_points, frame = crop_frame(
-    #         frame=frame, height=height, width=width, 
-    #         floor_id=floor_id, cam_id=cam_id
-    #     )
-
     def process_frame(self, frame_bundle: dict):
         self._current_frame = frame_bundle
 
     def detect_vehicle_work_thread(self):
-        vehicle_model = YOLO(config.MODEL_PATH)
-        plate_model = YOLO(config.MODEL_PATH_PLAT_v2)
-        vehicle_detector = VehicleDetector(vehicle_model, plate_model)
+        vehicle_plate_model = YOLO(config.MODEL_VEHICLE_PLATE_PATH)
+        # vehicle_model = YOLO(config.MODEL_PATH)
+        # plate_model = YOLO(config.MODEL_PATH_PLAT_v2)
+        vehicle_detector = VehicleDetector(vehicle_plate_model, is_vehicle_model=False)
         self._model_built_event.set()
 
         while True:
             if self.stopped.is_set():
-                # print("self.stopped.is_set()")
                 break
             
-            # print("loop here", time.time())
-
-            # if self._current_frame is None or self._current_frame.size == 0:
-            #     print("self._current_frame is None or self._current_frame.size == 0")
-            #     continue
-
             if self._current_frame is None or len(self._current_frame) == 0:
                 print("Empty or invalid frame received.")
                 time.sleep(0.1)
@@ -122,36 +103,24 @@ class DetectionControllerV7:
                 time.sleep(0.1)
                 continue
 
-            # print(frame.shape)
-            
-            # self.car_detection_result = result dari yolo
-            # TODO model detect disimi
-            # put cropped car
-            # pakai try except
             try:
-                # self.floor_id, self.cam_id = floor_id, cam_id
                 height, width = frame.shape[:2]
 
-                poly_points, tracking_points, _ = crop_frame(
-                    frame=frame, height=height, width=width, 
+                poly_points, tracking_points, poly_bbox = define_tracking_polygon(
+                    height=height, width=width, 
                     floor_id=floor_id, cam_id=cam_id
                 )
 
-                # print("frame.shape", frame.shape)
+                # frame_resize = cv2.resize(frame, (1080, 1920))
+                # frame_resize = cv2.resize(frame, (1440, 2560))
 
-                # frame_resized = resize_image(frame, 720, 720)
-                # print(frame_resized.shape)
-                # results = vehicle_model.predict(frame, conf=0.25, device="cuda:0", verbose=False, classes=[2, 7, 5])
-                # print(results)
-                # print("masukkkkkkk")
-                # bboxes = [result.boxes.xyxyn.cpu() for result in results]
-                # print(bboxes)
+                vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = vehicle_detector.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, tracking_points=tracking_points, poly_bbox=poly_bbox)
 
-                vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, poly_points=poly_points, tracking_points=tracking_points)
-
-                # print("vehicle_plate_data", vehicle_plate_data)
+                # vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, poly_points=poly_points, tracking_points=tracking_points)
 
                 if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):
+
+                    # print("vehicle_plate_data:" , vehicle_plate_data)
                     # vehicle_plate_data = {
                     #     "object_id": vehicle_plate_data["object_id"],
                     #     "bg_color": vehicle_plate_data["bg_color"],
@@ -163,17 +132,16 @@ class DetectionControllerV7:
                     #     "start_line": vehicle_plate_data["start_line"],
                     #     "end_line": vehicle_plate_data["end_line"]
                     # }
-                    bbox = vehicle_plate_data.pop("bbox")
+                    # bbox = vehicle_plate_data.pop("bbox")
 
                     # if self.callback_process_result_func is not None:
                     #     self.callback_process_result_func(vehicle_plate_data)
 
                     if self.vehicle_plate_result_queue is not None:
-                        # print("vehicle_plate_data", vehicle_plate_data)
+                        # self.vehicle_plate_result = is_centroid_inside
                         print("size: ", self.vehicle_plate_result_queue.qsize())
                         self.vehicle_plate_result_queue.put(vehicle_plate_data)
 
-                # print("self.car_bboxes: ", self.car_bboxes)
             except Exception as e:
                 print(f"Error in vehicle_detector: {e}")
 

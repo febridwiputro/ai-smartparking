@@ -34,57 +34,19 @@ from src.controllers.utils.util import (
     parking_space_vehicle_counter,
     print_normalized_points,
     most_freq, 
-    add_overlay,
     draw_points_and_lines,
-    draw_tracking_points
+    draw_tracking_points,
+    define_tracking_polygon
 )
-from src.controllers.utils.display import draw_box
 
+from src.controllers.utils.display import (
+    draw_box,
+    show_display,
+    show_polygon_area,
+    add_overlay,
+    create_grid
+)
 
-def create_grid(frames, rows, cols, frame_size=None, padding=5, bg_color=(0, 0, 0)):
-    """
-    Create a grid of frames (images).
-
-    Parameters:
-    - frames (list): List of frames (images) in BGR format.
-    - rows (int): Number of rows in the grid.
-    - cols (int): Number of columns in the grid.
-    - frame_size (tuple): Optional (width, height) to resize each frame.
-    - padding (int): Space between frames in pixels.
-    - bg_color (tuple): Background color for padding (BGR).
-
-    Returns:
-    - grid (np.ndarray): Final grid image.
-    """
-    expected_num_frames = rows * cols
-    current_num_frames = len(frames)
-    if current_num_frames < expected_num_frames:
-        for i in range(expected_num_frames - current_num_frames):
-            frames.append(np.zeros_like(frames[0]))
-    elif current_num_frames > expected_num_frames:
-        raise ValueError(f"Expected {rows * cols} frames, but got {len(frames)}.")
-
-    # Resize frames if needed
-    if frame_size:
-        frames = [resize_image(frame, frame_size, frame_size) for frame in frames]
-
-    # Get frame dimensions
-    height, width, _ = frames[0].shape
-
-    # Create an empty grid with padding
-    grid_height = rows * height + (rows - 1) * padding
-    grid_width = cols * width + (cols - 1) * padding
-    grid = np.full((grid_height, grid_width, 3), bg_color, dtype=np.uint8)
-
-    # Populate the grid with frames
-    for i in range(rows):
-        for j in range(cols):
-            y = i * (height + padding)
-            x = j * (width + padding)
-            frame = frames[i * cols + j]
-            grid[y:y + height, x:x + width] = frame
-
-    return grid
 
 
 class Wrapper:
@@ -110,6 +72,7 @@ class Wrapper:
         self.vehicle_bounding_boxes = []
         self.floor_id = 0
         self.cam_id = ""
+        self.max_num_frame = 5
         self._current_frame = None
         self._current_result = None
         self.result_processing_thread = None
@@ -216,11 +179,11 @@ class Wrapper:
 
         print("[Controller] All processes and threads stopped.")
 
-
     def post_process_work_thread(self):
         previous_object_id = None
         prev_floor_id = None
         prev_cam_id = None
+        object_id_count = 0
 
         while True:
             if self.stopped.is_set():
@@ -239,76 +202,92 @@ class Wrapper:
                             print(f"Queue {idx + 1}: Result is None")
                             continue
 
+                        # Extract data from the result
                         self._current_result = result
                         object_id = result.get("object_id")
-                        floor_id = result.get("floor_id", 0)
-                        cam_id = result.get("cam_id", "")
-                        car_direction = result.get("car_direction", None)
-                        arduino_idx = result.get("arduino_idx", None)
-                        start_line = result.get("start_line", None)
-                        end_line = result.get("end_line", None)
-                        plate_no = result.get("plate_no", None)
+                        floor_id = result.get("floor_id")
+                        cam_id = result.get("cam_id")
+                        car_direction = result.get("car_direction")
+                        arduino_idx = result.get("arduino_idx")
+                        plate_no = result.get("plate_no")
 
-                        # Check if the current object matches the previous one, including floor_id and cam_id.
+                        # Check if object details match the previous one
                         if (
-                            object_id == previous_object_id and 
-                            floor_id == prev_floor_id and 
+                            object_id == previous_object_id and
+                            floor_id == prev_floor_id and
                             cam_id == prev_cam_id
                         ):
-                            plate_no_data = {
+                            object_id_count += 1  # Increment count
+                            print(f"object_id_count ====== : {object_id_count}")
+
+                            # Add plate number data to the container
+                            self.container_plate_no.append({
                                 "plate_no": plate_no,
                                 "floor_id": floor_id,
                                 "cam_id": cam_id
-                            }
-                            self.container_plate_no.append(plate_no_data)
+                            })
+
                             print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
 
+                            # Trigger logic when count reaches 4
+                            if object_id_count == self.max_num_frame:
+                                self.process_plate_data(floor_id, cam_id, arduino_idx, car_direction)
+
                         else:
-                            if len(self.container_plate_no) > 0:
-                                plate_no_list = [data["plate_no"] for data in self.container_plate_no]
-                                plate_no_max = most_freq(plate_no_list)
-                                plate_no_detected = plate_no_max
-                                status_plate_no = check_db(plate_no_detected)
+                            # Process the collected plate data if available
+                            if self.container_plate_no:
+                                self.process_plate_data(floor_id, cam_id, arduino_idx, car_direction)
 
-                                plate_no_is_registered = True
-                                if not status_plate_no:
-                                    logger.write(
-                                        f"Warning, plate is unregistered, reading container text!! : {plate_no_detected}",
-                                        logger.WARN
-                                    )
-                                    plate_no_is_registered = False
-
-                                current_max_slot, current_slot_update, current_vehicle_total_update = parking_space_vehicle_counter(
-                                    floor_id=floor_id,
-                                    cam_id=cam_id,
-                                    arduino_idx=arduino_idx,
-                                    car_direction=car_direction,
-                                    plate_no=plate_no_detected,
-                                    container_plate_no=self.container_plate_no,
-                                    plate_no_is_registered=plate_no_is_registered
-                                )
-
-                                # Reset the container after processing
-                                self.container_plate_no = []
-
-                            # Update the previous state variables
+                            # Reset and store the new object details
                             previous_object_id = object_id
                             prev_floor_id = floor_id
                             prev_cam_id = cam_id
+                            object_id_count = 1  # Reset to 1 (new object)
 
-                            plate_no_data = {
+                            # Add initial plate number data
+                            self.container_plate_no = [{
                                 "plate_no": plate_no,
                                 "floor_id": floor_id,
                                 "cam_id": cam_id
-                            }
-                            self.container_plate_no.append(plate_no_data)
+                            }]
+
                             print(f'Queue {idx + 1}: New plate_no: {plate_no}, object_id: {object_id}')
 
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
 
-    def distribute_work_thread(self):
+    def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction):
+        """
+        Processes plate number data and updates the parking status.
+        """
+        plate_no_list = [data["plate_no"] for data in self.container_plate_no]
+        plate_no_max = most_freq(plate_no_list)
+        status_plate_no = check_db(plate_no_max)
 
+        plate_no_is_registered = True
+        if not status_plate_no:
+            logger.write(
+                f"Warning, plate is unregistered, reading container text!! : {plate_no_max}",
+                logger.WARN
+            )
+            plate_no_is_registered = False
+
+        # Update parking space and vehicle counters
+        parking_space_vehicle_counter(
+            floor_id=floor_id,
+            cam_id=cam_id,
+            arduino_idx=arduino_idx,
+            car_direction=car_direction,
+            plate_no=plate_no_max,
+            container_plate_no=self.container_plate_no,
+            plate_no_is_registered=plate_no_is_registered
+        )
+
+        # Reset container and object ID count
+        self.container_plate_no = []
+        print("Processed plate data and cleared the container.")
+
+    def distribute_work_thread(self):
         while True:
             if self.stopped.is_set():
                 break
@@ -317,118 +296,12 @@ class Wrapper:
             
                 vehicle_plate_data = self.vehicle_plate_result_queue.get()
     
-            # plate_results = []
-            # for i in range(len(self.vehicle_plate_result_queue_list_2)):
-            #     try:
-            #         res = self.vehicle_plate_result_queue_list_2[i].get_nowait()
-            #         if res is not None:
-            #             plate_results.append(res)
-            #     except Exception as e:
-            #         pass
-            #
-            # if len(plate_results) > 0:
-                # print("len(plate_results)", len(plate_results))
-                    # print(e)
-            # print("plate_result", plate_result)
-
-            # if plate_result is None:
-            #     continue
-            # # print(plate_result)
                 sizes = [q.qsize() for q in self.vehicle_plate_result_queue_list]
                 sorted_indices = np.argsort(sizes)
-                print("sizes", sizes, "sorted_indices", sorted_indices)
                 smallest_size_id = sorted_indices[0]
                 self.vehicle_plate_result_queue_list[smallest_size_id].put(vehicle_plate_data)
             except Exception as e:
                 print("Error at distribute_work_thread", e)
-
-        # print("vehicle_result", vehicle_result)
-        # if vehicle_result is not None:
-        #     object_id = vehicle_result.get("object_id")
-        #     start_line = vehicle_result.get("start_line", None)
-        #     end_line = vehicle_result.get("end_line", None)
-
-        #     if start_line and end_line:
-        #         # target_queue_index = 1 if object_id % 2 == 0 else 0
-        #         target_queue_index = 0
-
-        #         if object_id not in self.object_id_count:
-        #             self.object_id_count[object_id] = 0
-
-        #         if self.object_id_count[object_id] < 1:
-        #             # if object_id != self.previous_object_id:
-        #             #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, NEW queue: {target_queue_index}")
-        #             # else:
-        #             #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, queue: {target_queue_index}")
-
-        #             print("vehicle_result", vehicle_result)
-        #             print(self.vehicle_plate_result_queue_list[target_queue_index].qsize())
-
-        #             self.vehicle_plate_result_queue_list[target_queue_index].put(vehicle_result)
-
-        #             self.object_id_count[object_id] += 1
-        #             self.previous_object_id = object_id
-                # else:
-                #     print(f"object_id: {object_id} has reached the max limit of 7 occurrences.")
-
-
-    def distribute_vehicle_result(self, vehicle_result):
-        # print("vehicle_result", vehicle_result)
-        if vehicle_result is not None:
-            object_id = vehicle_result.get("object_id")
-            start_line = vehicle_result.get("start_line", None)
-            end_line = vehicle_result.get("end_line", None)
-
-            if start_line and end_line:
-                # target_queue_index = 1 if object_id % 2 == 0 else 0
-                target_queue_index = 0
-
-                if object_id not in self.object_id_count:
-                    self.object_id_count[object_id] = 0
-
-                if self.object_id_count[object_id] < 5:
-                    # if object_id != self.previous_object_id:
-                    #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, NEW queue: {target_queue_index}")
-                    # else:
-                    #     print(f"object_id: {object_id}, start_line: {start_line}, end_line: {end_line}, queue: {target_queue_index}")
-
-                    print("vehicle_result", vehicle_result)
-                    print(self.vehicle_plate_result_queue_list[target_queue_index].qsize())
-
-                    self.vehicle_plate_result_queue_list[target_queue_index].put(vehicle_result)
-
-                    self.object_id_count[object_id] += 1
-                    self.previous_object_id = object_id
-                # else:
-                #     print(f"object_id: {object_id} has reached the max limit of 7 occurrences.")
-    
-
-    def char_data_parsed(self, vehicle_plate_result):
-        if vehicle_plate_result:
-            # bg_color = last_result.get("bg_color", None)
-            # plate_frame = last_result.get("frame", "")
-            floor_id = vehicle_plate_result.get('floor_id', 0)
-            cam_id = vehicle_plate_result.get('cam_id', "")
-            # arduino_idx = last_result.get('arduino_idx')
-            car_direction = vehicle_plate_result.get('car_direction')
-            # start_line = last_result.get('start_line', False)
-            # end_line = last_result.get('end_line', False)
-
-            if car_direction:
-                result = {
-                    # "bg_color": bg_color,
-                    # "frame": "",
-                    "floor_id": floor_id,
-                    "cam_id": cam_id,
-                    # "arduino_idx": str(arduino_idx),
-                    "car_direction": car_direction,
-                    # "start_line": start_line,
-                    # "end_line": end_line
-                }
-                print(json.dumps(result, indent=4))
-    
-    # def process_detection_result(self, result):
-    #     self.vehicle_detection_result.put(result)
 
     def _mouse_event_debug(self, event, x, y, flags, frame):
         """Handle mouse events in debug mode."""
@@ -464,7 +337,6 @@ class Wrapper:
         frames = [None] * len(video_source)
         total_slots = {}
 
-        # Set up detection controllers and matrix controllers
         for i in range(len(video_source)):
             idx, cam_position = check_floor(i)
 
@@ -479,8 +351,7 @@ class Wrapper:
             self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
             self.matrix_controller.start(self.matrix_controller.get_total())
 
-            # self.vehicle_plate_result_queue_list_2.append(mp.Queue())
-            plat_detects[i] = DetectionControllerV6(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue)
+            plat_detects[i] = DetectionControllerV7(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue)
             plat_detects[i].start()
 
         while not all([m.is_model_built() for m in plat_detects]):
@@ -496,40 +367,44 @@ class Wrapper:
         try:
             print("Opening cameras...")
             while True:
-                
                 try:
                     for i, cap in enumerate(caps):
                         floor_id, cam_id = check_floor(i)
                         num, frames[i] = cap.read()
     
                         if frames[i] is None:
-                            # print("frames[i] None", frames[i])
+                            print("frames[i] None", frames[i])
                             continue
-    
-                        # print("process frame", num)
+
+                        # print("frames[i]: ", frames[i].shape)
+
                         plat_detects[i].process_frame({
                             "frame": frames[i].copy(),
                             "floor_id": floor_id,
-                            "cam_id": cam_id
+                            "cam_id": cam_id,
                         })
+
                         # frames[i] = cv2.resize(frames[i], (1080, 720))
                         height, width = frames[i].shape[:2]
     
                         slot = self.db_floor.get_slot_by_id(floor_id)
                         total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
     
-                        poly_points, tracking_points, frames[i] = crop_frame(
-                            frame=frames[i], height=height, width=width,
+
+                        poly_points, tracking_points, poly_bbox = define_tracking_polygon(
+                            height=height, width=width, 
                             floor_id=floor_id, cam_id=cam_id
                         )
-    
+
                         draw_tracking_points(frames[i], tracking_points, (height, width))
-    
+
                         last_plate_no = self.db_vehicle_history.get_vehicle_history_by_floor_id(floor_id)["plate_no"]
                         plate_no = last_plate_no if last_plate_no else ""
+
+                        add_overlay(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total, poly_bbox=poly_bbox)
     
-                        add_overlay(frames[i], floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total)
-    
+                        # show_display(frames[i], frames[i], floor_id, cam_id, tracking_points, plate_no=plate_no, poly_bbox=poly_bbox, car_info, plate_info, is_centroid_inside, is_debug=True)
+
                         # if IS_DEBUG:
                         #     draw_points_and_lines(frame, self.clicked_points)
                         #     draw_box(frame=frame, boxes=self.car_bboxes)
@@ -543,14 +418,15 @@ class Wrapper:
                         #     self._mouse_event_debug if is_debug else self._mouse_event,
                         #     param=frame
                         # )
-                    
+
+                    # if frames is not None:
                     # print("masuk frame_show")
-                    frame_show = create_grid(frames, rows=2, cols=3, frame_size=640, padding=5)
+                    frame_show = create_grid(frames, rows=2, cols=2, frame_size=720, padding=5)
                     cv2.imshow(f"Camera", frame_show)
                     # cv2.imshow(f"Camera", frames[0])
                     # print("keluar frame_show")
                 except Exception as e:
-                    print("Error", e)
+                    print("Error: get_frame from process_frame", e)
 
                 # Check if 'q' key is pressed to exit
                 if cv2.waitKey(1) & 0xFF == ord('q'):

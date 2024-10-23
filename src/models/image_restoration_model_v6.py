@@ -27,14 +27,14 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
 
             # Extract all relevant fields from plate_result
             object_id = plate_result.get("object_id")
-            plate_image = plate_result.get("frame", None)
-            bg_color = plate_result.get("bg_color", None)
-            floor_id = plate_result.get("floor_id", 0)
-            cam_id = plate_result.get("cam_id", "")
-            arduino_idx = plate_result.get("arduino_idx", None)
-            car_direction = plate_result.get("car_direction", None)
-            start_line = plate_result.get("start_line", None)
-            end_line = plate_result.get("end_line", None)
+            plate_image = plate_result.get("frame")
+            bg_color = plate_result.get("bg_color")
+            floor_id = plate_result.get("floor_id")
+            cam_id = plate_result.get("cam_id")
+            arduino_idx = plate_result.get("arduino_idx")
+            car_direction = plate_result.get("car_direction")
+            start_line = plate_result.get("start_line")
+            end_line = plate_result.get("end_line")
 
             if plate_image is None:
                 continue
@@ -51,7 +51,7 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
                     "arduino_idx": arduino_idx,
                     "car_direction": car_direction,
                     "start_line": start_line,
-                    "end_line": end_line
+                    "end_line": end_line,
                 }
                 img_restoration_result_queue.put(result)
                 continue
@@ -70,7 +70,8 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
                 "arduino_idx": arduino_idx,
                 "car_direction": car_direction,
                 "start_line": start_line,
-                "end_line": end_line
+                "end_line": end_line,
+
             }
 
             img_restoration_result_queue.put(result)

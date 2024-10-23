@@ -73,15 +73,15 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                 continue
             
             object_id = text_result.get("object_id")
-            bg_color = text_result.get("bg_color", None)
-            cropped_images = text_result.get("frame", None)
-            floor_id = text_result.get("floor_id", 0)
-            cam_id = text_result.get("cam_id", "")
-            arduino_idx = text_result.get("arduino_idx", None)
-            car_direction = text_result.get("car_direction", None)
-            start_line = text_result.get("start_line", False)  # Default to False
-            end_line = text_result.get("end_line", False)  # Default to False
-
+            bg_color = text_result.get("bg_color")
+            cropped_images = text_result.get("frame")
+            floor_id = text_result.get("floor_id")
+            cam_id = text_result.get("cam_id")
+            arduino_idx = text_result.get("arduino_idx")
+            car_direction = text_result.get("car_direction")
+            start_line = text_result.get("start_line")
+            end_line = text_result.get("end_line")
+            is_centroid_inside = text_result.get("is_centroid_inside")
             # print(f'start_line: {start_line} & end_line: {end_line}')
 
             empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
@@ -96,7 +96,8 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                     "arduino_idx": arduino_idx,
                     "car_direction": car_direction,
                     "start_line": start_line,
-                    "end_line": end_line
+                    "end_line": end_line,
+                    "is_centroid_inside": is_centroid_inside
                 }
                 char_recognize_result_queue.put(char_recognize_result)
                 continue
@@ -112,7 +113,8 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                 "arduino_idx": arduino_idx,
                 "car_direction": car_direction,
                 "start_line": start_line,
-                "end_line": end_line
+                "end_line": end_line,
+                "is_centroid_inside": is_centroid_inside
             }
 
             char_recognize_result_queue.put(char_recognize_result)

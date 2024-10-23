@@ -36,6 +36,7 @@ def text_detection(stopped, model_built_event, plate_result_queue, text_detectio
             car_direction = restoration_result.get("car_direction", None)
             start_line = restoration_result.get("start_line", False)
             end_line = restoration_result.get("end_line", False)
+            is_centroid_inside = restoration_result.get("is_centroid_inside")
 
             empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
 
@@ -49,7 +50,8 @@ def text_detection(stopped, model_built_event, plate_result_queue, text_detectio
                     "arduino_idx": arduino_idx,
                     "car_direction": car_direction,
                     "start_line": start_line,
-                    "end_line": end_line
+                    "end_line": end_line,
+                    "is_centroid_inside": is_centroid_inside
                 }
                 text_detection_result_queue.put(result)
                 continue
@@ -68,7 +70,8 @@ def text_detection(stopped, model_built_event, plate_result_queue, text_detectio
                 "arduino_idx": arduino_idx,
                 "car_direction": car_direction,
                 "start_line": start_line,
-                "end_line": end_line
+                "end_line": end_line,
+                "is_centroid_inside": is_centroid_inside
             }
 
             text_detection_result_queue.put(result)

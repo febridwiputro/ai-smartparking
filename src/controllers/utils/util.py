@@ -26,6 +26,116 @@ init(autoreset=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_centroid(results, line_pos):
+    """Calculate centroids from detection results and determine tracking information."""
+    # Extract bounding boxes from the results
+    boxes = results[0].boxes.xyxy.cpu().tolist()
+    detection = []
+    
+    for result in boxes:
+        x1, y1, x2, y2 = map(int, result)
+        centroid_x = (x1 + x2) / 2 if line_pos else x1  # Use center X or left X based on line_pos
+        centroid_y = y2 if line_pos else (y1 + y2) / 2  # Use bottom Y or center Y based on line_pos
+        detection.append([centroid_x, centroid_y])
+
+    # Get tracking estimates if any
+    estimate_tracking, self.track_id = self.get_tracking_centroid(detection)
+    return detection if estimate_tracking != () else estimate_tracking
+
+def is_point_in_polygon(point, polygon):
+    """
+    Algoritma Ray Casting untuk cek apakah titik berada di dalam poligon.
+    """
+    x, y = point
+    n = len(polygon)
+    inside = False
+
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[(i + 1) % n]
+
+        intersect = ((yi > y) != (yj > y)) and \
+                    (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+
+        if intersect:
+            inside = not inside
+
+    return inside
+
+def convert_bbox_to_decimal(img_dims, polygons):
+    height, width = img_dims
+    # normalized_polygons = [
+    #     # ((bbox[0] / width, bbox[1] / height), (bbox[2] / width, bbox[3] / height)) for bbox in polygons
+    #     (bbox[0] / width, bbox[1] / height) for bbox in polygons
+    # ]
+
+    normalized_polygons = []
+    for bbox in polygons:
+        if isinstance(bbox, list):  # If it's a list of tuples
+            normalized_bbox = [(pt[0] / width, pt[1] / height) for pt in bbox]
+        else:  # If it's a simple tuple (x, y, w, h)
+            normalized_bbox = (bbox[0] / width, bbox[1] / height, bbox[2] / width, bbox[3] / height)
+        normalized_polygons.append(normalized_bbox)
+
+    return normalized_polygons
+
+def convert_decimal_to_bbox(img_dims, polygons):
+    polygons_np = np.array(polygons)
+    height, width = img_dims
+    size = np.array([width, height], dtype=float)
+    polygons_np *= size
+    # height, width = img_dims
+    # for i, pol in enumerate(polygons):
+    #     for index, bbox in enumerate(pol):
+    #         polygons[i][index] = (int(bbox[0] * width), int(bbox[1] * height))
+    return polygons_np.round().astype(int)
+
+def define_tracking_polygon(height, width, floor_id, cam_id):
+    if floor_id == 2:
+        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
+        polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
+        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F2_OUT
+    elif floor_id == 3:
+        tracking_point = config.TRACKING_POINT2_F3_IN if cam_id == "IN" else config.TRACKING_POINT2_F3_OUT
+        polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
+        POLY_BOX = config.POLY_BBOX_F3_IN if cam_id == "IN" else config.POLY_BBOX_F3_OUT
+    elif floor_id == 4:
+        tracking_point = config.TRACKING_POINT2_F4_IN if cam_id == "IN" else config.TRACKING_POINT2_F4_OUT
+        polygon_point = config.POLYGON_POINT_LT4_IN if cam_id == "IN" else config.POLYGON_POINT_LT4_OUT
+        POLY_BOX = config.POLY_BBOX_F4_IN if cam_id == "IN" else config.POLY_BBOX_F4_OUT
+    elif floor_id == 5:
+        tracking_point = config.TRACKING_POINT2_F5_IN if cam_id == "IN" else config.TRACKING_POINT2_F5_OUT
+        polygon_point = config.POLYGON_POINT_LT5_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT
+        POLY_BOX = config.POLY_BBOX_F5_IN if cam_id == "IN" else config.POLY_BBOX_F5_OUT
+    else:
+        return [], []
+
+    poly_points = convert_decimal_to_bbox((height, width), polygon_point)
+    
+    return poly_points, tracking_point, POLY_BOX
+
+def point_position(line1, line2, point, inverse=False):
+    x1, y1 = line1
+    x2, y2 = line2
+    px, py = point
+    A = y2 - y1
+    B = x1 - x2
+    C = x2 * y1 - x1 * y2
+    d = A * px + B * py + C
+    if d > 0:
+        return False if not inverse else True
+    elif d < 0:
+        return True if not inverse else False
+
+def convert_normalized_to_pixel_lines(point, frame_size):
+    """
+    Konversi titik normalisasi (0-1) ke koordinat piksel.
+    """
+    x_norm, y_norm = point
+    width, height = frame_size
+    return int(x_norm * width), int(y_norm * height)
+
+
 def check_background(gray_image, verbose=False):
     _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
     white_pixels = np.sum(binary_image == 255)
@@ -96,77 +206,77 @@ def check_background(gray_image, verbose=False):
     else:
         return "bg_unknown"
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def check_background(gray_image, verbose=False):
-    _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
-    white_pixels = np.sum(binary_image == 255)
-    black_pixels = np.sum(binary_image == 0)
+# def check_background(gray_image, verbose=False):
+#     _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
+#     white_pixels = np.sum(binary_image == 255)
+#     black_pixels = np.sum(binary_image == 0)
 
-    bgr_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
-    hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
+#     bgr_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
+#     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
 
-    lower_green = np.array([35, 50, 50])
-    upper_green = np.array([85, 255, 255])
+#     lower_green = np.array([35, 50, 50])
+#     upper_green = np.array([85, 255, 255])
 
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([30, 255, 255])
+#     lower_yellow = np.array([20, 100, 100])
+#     upper_yellow = np.array([30, 255, 255])
 
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
+#     lower_red1 = np.array([0, 100, 100])
+#     upper_red1 = np.array([10, 255, 255])
+#     lower_red2 = np.array([160, 100, 100])
+#     upper_red2 = np.array([180, 255, 255])
 
-    lower_blue = np.array([100, 150, 0])
-    upper_blue = np.array([140, 255, 255])
+#     lower_blue = np.array([100, 150, 0])
+#     upper_blue = np.array([140, 255, 255])
 
-    mask_green = cv2.inRange(hsv_image, lower_green, upper_green)
-    mask_yellow = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
-    mask_red1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
-    mask_red2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
-    mask_red = mask_red1 + mask_red2
-    mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
+#     mask_green = cv2.inRange(hsv_image, lower_green, upper_green)
+#     mask_yellow = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
+#     mask_red1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
+#     mask_red2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
+#     mask_red = mask_red1 + mask_red2
+#     mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
 
-    green_pixels = np.sum(mask_green == 255)
-    yellow_pixels = np.sum(mask_yellow == 255)
-    red_pixels = np.sum(mask_red == 255)
-    blue_pixels = np.sum(mask_blue == 255)
+#     green_pixels = np.sum(mask_green == 255)
+#     yellow_pixels = np.sum(mask_yellow == 255)
+#     red_pixels = np.sum(mask_red == 255)
+#     blue_pixels = np.sum(mask_blue == 255)
 
-    if abs(black_pixels - blue_pixels) / max(black_pixels, blue_pixels) < 0.1:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " BLACK-BLUE PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_black_blue"
+#     if abs(black_pixels - blue_pixels) / max(black_pixels, blue_pixels) < 0.1:
+#         if verbose:
+#             logging.info('=' * 80)
+#             logging.info('=' * 30 + " BLACK-BLUE PLATE " + '=' * 30)
+#             logging.info('=' * 80)
+#         return "bg_black_blue"
 
-    if white_pixels > black_pixels and white_pixels > green_pixels and white_pixels > yellow_pixels and white_pixels > red_pixels and white_pixels > blue_pixels:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " WHITE PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_white"
+#     if white_pixels > black_pixels and white_pixels > green_pixels and white_pixels > yellow_pixels and white_pixels > red_pixels and white_pixels > blue_pixels:
+#         if verbose:
+#             logging.info('=' * 80)
+#             logging.info('=' * 30 + " WHITE PLATE " + '=' * 30)
+#             logging.info('=' * 80)
+#         return "bg_white"
 
-    elif black_pixels > white_pixels and black_pixels > green_pixels and black_pixels > yellow_pixels and black_pixels > red_pixels and black_pixels > blue_pixels:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " BLACK PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_black"
+#     elif black_pixels > white_pixels and black_pixels > green_pixels and black_pixels > yellow_pixels and black_pixels > red_pixels and black_pixels > blue_pixels:
+#         if verbose:
+#             logging.info('=' * 80)
+#             logging.info('=' * 30 + " BLACK PLATE " + '=' * 30)
+#             logging.info('=' * 80)
+#         return "bg_black"
 
-    elif green_pixels > white_pixels and green_pixels > yellow_pixels and green_pixels > red_pixels and green_pixels > blue_pixels:
-        return "bg_green"
+#     elif green_pixels > white_pixels and green_pixels > yellow_pixels and green_pixels > red_pixels and green_pixels > blue_pixels:
+#         return "bg_green"
 
-    elif yellow_pixels > white_pixels and yellow_pixels > green_pixels and yellow_pixels > red_pixels and yellow_pixels > blue_pixels:
-        return "bg_yellow"
+#     elif yellow_pixels > white_pixels and yellow_pixels > green_pixels and yellow_pixels > red_pixels and yellow_pixels > blue_pixels:
+#         return "bg_yellow"
 
-    elif red_pixels > white_pixels and red_pixels > green_pixels and red_pixels > yellow_pixels and red_pixels > blue_pixels:
-        return "bg_red"
+#     elif red_pixels > white_pixels and red_pixels > green_pixels and red_pixels > yellow_pixels and red_pixels > blue_pixels:
+#         return "bg_red"
 
-    elif blue_pixels > white_pixels and blue_pixels > green_pixels and blue_pixels > yellow_pixels and blue_pixels > red_pixels:
-        return "bg_blue"
+#     elif blue_pixels > white_pixels and blue_pixels > green_pixels and blue_pixels > yellow_pixels and blue_pixels > red_pixels:
+#         return "bg_blue"
 
-    else:
-        return "bg_unknown"
+#     else:
+#         return "bg_unknown"
 
 def check_floor(cam_idx):
     cam_map = {
@@ -227,15 +337,10 @@ def draw_tracking_points(frame, points, img_dims):
     for point in pixel_points:
         cv2.circle(frame, point, 5, (0, 0, 255), -1)
 
-def add_overlay(frame, floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total):
-    """Add text and lines to the frame."""
-    show_text(f"Floor : {floor_id} {cam_id}", frame, 5, 50)
-    show_text(f"Plate No. : {plate_no}", frame, 5, 100)
-    color = (0, 255, 0) if total_slot > 0 else (0, 0, 255)
-    show_text(f"P. Spaces Available : {total_slot}", frame, 5, 150, color)
-    show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
-    show_line(frame, poly_points[0], poly_points[1])
-    show_line(frame, poly_points[2], poly_points[3])
+def convert_normalized_to_pixel(points, img_dims):
+    height, width = img_dims
+    pixel_points = [(int(x * width), int(y * height)) for (x, y) in points]
+    return pixel_points
 
 def draw_points_and_lines(frame, clicked_points):
     """Draw all clicked points and connect them to form a closed shape."""

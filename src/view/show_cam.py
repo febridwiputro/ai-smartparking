@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 
 
+
+
 def show_cam(text, image, max_width=1080, max_height=720):
     res_img = resize_image(image, max_width, max_height)
     cv2.imshow(text, res_img)

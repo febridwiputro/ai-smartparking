@@ -23,6 +23,7 @@ class Config:
     VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
     MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
     # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
+    MODEL_VEHICLE_PLATE_PATH = os.path.join(BASE_DIR, "weights/vehicle_plate_model.pt")
     MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
     MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
     MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
@@ -111,6 +112,13 @@ class Config:
     #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
     # ]
 
+    VIDEO_SOURCE_PC = [
+        fr'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4',
+        fr'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_2024102217293382.mp4',
+        # fr'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4',
+        # fr'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.12_01_20241022164946751.mp4'
+    ]
+
     # VIDEO_SOURCE_PC = [
     #                     # fr"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4",
     #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
@@ -123,16 +131,16 @@ class Config:
     #                     # fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
     # ]
 
-    VIDEO_SOURCE_PC = [
-                        fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
-                        fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
-                        fr'C:\Users\DOT\Documents\febri\video\LT_3_IN.mp4',
-                        fr'C:\Users\DOT\Documents\febri\video\LT_3_OUT.mp4',
-                        fr'C:\Users\DOT\Documents\febri\video\LT_4_IN.mp4',
-                        fr'C:\Users\DOT\Documents\febri\video\LT_4_OUT.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
-                        # fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
-    ]
+    # VIDEO_SOURCE_PC = [
+    #                     fr'C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4',
+    #                     fr'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4',
+    #                     fr'C:\Users\DOT\Documents\febri\video\LT_3_IN.mp4',
+    #                     fr'C:\Users\DOT\Documents\febri\video\LT_3_OUT.mp4',
+    #                     # fr'C:\Users\DOT\Documents\febri\video\LT_4_IN.mp4',
+    #                     # fr'C:\Users\DOT\Documents\febri\video\LT_4_OUT.mp4',
+    #                     # fr'C:\Users\DOT\Documents\febri\video\LT_5_IN.mp4',
+    #                     # fr'C:\Users\DOT\Documents\febri\video\LT_5_OUT.mp4',
+    # ]
 
     video_source1 = [VIDEO_SOURCE_LT2_IN]
 
@@ -227,10 +235,12 @@ class Config:
             # ]
 
     POLY_BBOX_F2_OUT = [
-    (0.2212962962962963, 0.5750000000000000),
+    # (0.2212962962962963, 0.5750000000000000),
+    (0.3333333333333333, 0.4013888888888889),
     (0.4185185185185185, 0.2750000000000000),
     (0.5444444444444444, 0.2763888888888889),
-    (0.6129629629629629, 0.5750000000000000),
+    # (0.6129629629629629, 0.5750000000000000),
+    (0.5740740740740741, 0.4083333333333333),
 ]
 
     # POLY_BBOX_F3_IN = [

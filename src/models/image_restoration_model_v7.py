@@ -35,6 +35,7 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
             car_direction = plate_result.get("car_direction", None)
             start_line = plate_result.get("start_line", None)
             end_line = plate_result.get("end_line", None)
+            is_centroid_inside = plate_result.get("is_centroid_inside")
 
             if plate_image is None:
                 continue
@@ -51,7 +52,8 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
                     "arduino_idx": arduino_idx,
                     "car_direction": car_direction,
                     "start_line": start_line,
-                    "end_line": end_line
+                    "end_line": end_line,
+                    "is_centroid_inside": is_centroid_inside
                 }
                 img_restoration_result_queue.put(result)
                 continue
@@ -70,7 +72,8 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
                 "arduino_idx": arduino_idx,
                 "car_direction": car_direction,
                 "start_line": start_line,
-                "end_line": end_line
+                "end_line": end_line,
+                "is_centroid_inside": is_centroid_inside
             }
 
             img_restoration_result_queue.put(result)
