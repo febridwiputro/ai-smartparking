@@ -179,6 +179,116 @@ class Wrapper:
 
         print("[Controller] All processes and threads stopped.")
 
+    # def post_process_work_thread(self):
+    #     previous_object_id = None
+    #     prev_floor_id = None
+    #     prev_cam_id = None
+    #     object_id_count = 0
+
+    #     while True:
+    #         if self.stopped.is_set():
+    #             break
+
+    #         try:
+    #             for idx, queue in enumerate(self.char_recognize_result_queues):
+    #                 if queue.empty():
+    #                     continue
+
+    #                 result = queue.get()
+    #                 if result is None:
+    #                     print(f"Queue {idx + 1}: Result is None")
+    #                     continue
+
+    #                 # Extract data from the result
+    #                 self._current_result = result
+    #                 object_id = result.get("object_id")
+    #                 floor_id = result.get("floor_id")
+    #                 cam_id = result.get("cam_id")
+    #                 car_direction = result.get("car_direction")
+    #                 arduino_idx = result.get("arduino_idx")
+    #                 plate_no = result.get("plate_no")
+
+    #                 # Check if object details match the previous one
+    #                 if (object_id == previous_object_id and
+    #                     floor_id == prev_floor_id and
+    #                     cam_id == prev_cam_id):
+                        
+    #                     object_id_count += 1  # Increment count
+    #                     print(f"object_id_count ====== : {object_id_count}")
+
+    #                     # Add plate number data to the container
+    #                     self.container_plate_no.append({
+    #                         "plate_no": plate_no,
+    #                         "floor_id": floor_id,
+    #                         "cam_id": cam_id
+    #                     })
+
+    #                     print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
+
+    #                     # Trigger process if object_id_count == 3
+    #                     if object_id_count == 3:
+    #                         self.process_plate_data(
+    #                             floor_id, cam_id, arduino_idx, car_direction
+    #                         )
+    #                         object_id_count = 0  # Reset count after processing
+
+    #                 else:
+    #                     # If object_id_count != 3, store previous data and reset count
+    #                     if self.container_plate_no:
+    #                         print(f"Storing data for different object. Previous: {previous_object_id}, New: {object_id}")
+                        
+    #                     # Reset count and store new object details without losing old data
+    #                     object_id_count = 1  # Start fresh with new object
+                        
+    #                     previous_object_id = object_id
+    #                     prev_floor_id = floor_id
+    #                     prev_cam_id = cam_id
+
+    #                     # Append new plate number to the existing data
+    #                     self.container_plate_no.append({
+    #                         "plate_no": plate_no,
+    #                         "floor_id": floor_id,
+    #                         "cam_id": cam_id
+    #                     })
+
+    #                     print(f'Queue {idx + 1}: New plate_no: {plate_no}, object_id: {object_id}')
+
+    #         except Exception as e:
+    #             print(f"Error in post-process work thread: {e}")
+
+    # def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction):
+    #     """
+    #     Processes plate number data and updates the parking status.
+    #     """
+    #     plate_no_list = [data["plate_no"] for data in self.container_plate_no]
+    #     plate_no_max = most_freq(plate_no_list)
+    #     status_plate_no = check_db(plate_no_max)
+
+    #     plate_no_is_registered = True
+    #     if not status_plate_no:
+    #         logger.write(
+    #             f"Warning, plate is unregistered, reading container text!! : {plate_no_max}",
+    #             logger.WARN
+    #         )
+    #         plate_no_is_registered = False
+
+    #     # Update parking space and vehicle counters
+    #     parking_space_vehicle_counter(
+    #         floor_id=floor_id,
+    #         cam_id=cam_id,
+    #         arduino_idx=arduino_idx,
+    #         car_direction=car_direction,
+    #         plate_no=plate_no_max,
+    #         container_plate_no=self.container_plate_no,
+    #         plate_no_is_registered=plate_no_is_registered
+    #     )
+
+    #     # Reset container after processing
+    #     self.container_plate_no = []
+    #     print("Processed plate data and cleared the container.")
+
+
+
     def post_process_work_thread(self):
         previous_object_id = None
         prev_floor_id = None
@@ -322,7 +432,7 @@ class Wrapper:
             print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
 
     def main(self):
-        IS_DEBUG = True
+        IS_DEBUG = False
         video_source = config.VIDEO_SOURCE_PC if IS_DEBUG else config.CAM_SOURCE_LT
 
         # Start processes
@@ -359,7 +469,7 @@ class Wrapper:
             print("Loading detection models...")
 
         # Initialize and start cameras
-        caps = [CameraV1(video, is_video=True) for video in video_source]
+        caps = [CameraV1(video, is_video=False) for video in video_source]
         for cap in caps:
             print(f"Starting camera: {cap}")
             cap.start()

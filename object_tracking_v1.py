@@ -867,7 +867,7 @@ if __name__ == "__main__":
         if FLOOR_ID == 2:
             if CAM_ID == "IN":
                 # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.10_01_20241022164924927.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4"
 
             else:
                 # video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'

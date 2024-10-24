@@ -16,6 +16,10 @@ sys.path.append(this_path)
 
 from src.config.config import config
 from src.config.logger import Logger
+from src.controllers.utils.util import (
+    check_background
+)
+
 
 # Set TF_CPP_MIN_LOG_LEVEL to suppress warnings
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -324,62 +328,139 @@ class CharacterRecognize:
         final_plate = ""
         resized_images = []
 
+        # Menentukan tinggi minimum dari gambar-gambar yang valid
         min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
 
+        # Resize setiap gambar dan simpan informasi frame dan bg_color
         for img in cropped_images:
-            original_height = img.shape[0]
-            original_width = img.shape[1]
+            original_height, original_width = img.shape[:2]
 
             if original_height > 0:
                 new_width = int(original_width * (min_height / original_height))
                 if new_width > 0:
                     resized_img = cv2.resize(img, (new_width, min_height))
-                    resized_images.append(resized_img)
+
+                    # Pastikan gambar memiliki 3 channel sebelum konversi ke grayscale
+                    if len(resized_img.shape) == 3 and resized_img.shape[2] == 3:
+                        gray_plate = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
+                    else:
+                        gray_plate = resized_img  # Jika sudah grayscale, gunakan langsung
+
+                    bg_color = check_background(gray_plate, False)
+
+                    print("bg_color === ", bg_color)
+
+                    text_info = {
+                        "frame": resized_img,
+                        "bg_color": bg_color,
+                        "width": new_width
+                    }
+
+                    resized_images.append(text_info)
                 else:
                     logging.warning(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
             else:
                 logging.warning('Skipped resizing due to invalid image height', logging.DEBUG)
 
         if resized_images:
-            channels = resized_images[0].shape[2] if len(resized_images[0].shape) == 3 else 1
-            concatenated_image = resized_images[0]
+            # Mencari frame dengan lebar terbesar dan mengambil bg_color-nya
+            largest_image = max(resized_images, key=lambda x: x["width"])
+            selected_bg_color = largest_image["bg_color"]
+            channels = largest_image["frame"].shape[2] if len(largest_image["frame"].shape) == 3 else 1
 
-            if bg_status == "bg_black":
-                bg_color = "bg_black"
+            # Membuat color_separator berdasarkan bg_color dari gambar dengan width terbesar
+            if selected_bg_color == "bg_black":
                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
-
-            elif bg_status == "bg_white":
-                bg_color = "bg_white"
+            elif selected_bg_color == "bg_white":
+                color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
+            else:  # bg_red
+                color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
                 if channels == 3:
-                    color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
-                else:
-                    color_separator = np.ones((min_height, 10), dtype=np.uint8) * 255
-
-            else:
-                bg_color = "bg_red"
-                if channels == 3:
-                    color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
                     color_separator[:, :, 2] = 255
-                else:
-                    color_separator = np.zeros((min_height, 10), dtype=np.uint8)
 
-            for img in resized_images[1:]:
+            # Menggabungkan semua frame dengan separator
+            concatenated_image = resized_images[0]["frame"]
+            for img_info in resized_images[1:]:
+                img = img_info["frame"]
                 if img.shape[0] != min_height:
                     logging.warning(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
                     img = cv2.resize(img, (img.shape[1], min_height))
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
 
-            final_plate = self.process_character(concatenated_image, bg_color)
-
+            # Memproses karakter dan mengembalikan hasil akhir
+            final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:
             logging.write("No valid images to merge", logging.DEBUG)
 
         return final_plate
 
+
+
+    # def process_image(self, cropped_images, bg_status):
+    #     bg_color = ""
+    #     final_plate = ""
+    #     resized_images = []
+
+    #     min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
+
+    #     for img in cropped_images:
+    #         original_height = img.shape[0]
+    #         original_width = img.shape[1]
+
+    #         if original_height > 0:
+    #             new_width = int(original_width * (min_height / original_height))
+    #             if new_width > 0:
+    #                 resized_img = cv2.resize(img, (new_width, min_height))
+
+    #                 resized_images.append(resized_img)
+    #             else:
+    #                 logging.warning(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
+    #         else:
+    #             logging.warning('Skipped resizing due to invalid image height', logging.DEBUG)
+
+    #     if resized_images:
+    #         channels = resized_images[0].shape[2] if len(resized_images[0].shape) == 3 else 1
+    #         concatenated_image = resized_images[0]
+
+    #         if bg_status == "bg_black":
+    #             bg_color = "bg_black"
+    #             color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
+
+    #         elif bg_status == "bg_white":
+    #             bg_color = "bg_white"
+    #             if channels == 3:
+    #                 color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
+    #             else:
+    #                 color_separator = np.ones((min_height, 10), dtype=np.uint8) * 255
+
+    #         else:
+    #             bg_color = "bg_red"
+    #             if channels == 3:
+    #                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
+    #                 color_separator[:, :, 2] = 255
+    #             else:
+    #                 color_separator = np.zeros((min_height, 10), dtype=np.uint8)
+
+    #         for img in resized_images[1:]:
+    #             if img.shape[0] != min_height:
+    #                 logging.warning(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
+    #                 img = cv2.resize(img, (img.shape[1], min_height))
+
+    #             concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
+
+    #         final_plate = self.process_character(concatenated_image, bg_color)
+
+    #     else:
+    #         logging.write("No valid images to merge", logging.DEBUG)
+
+    #     return final_plate
+
     def process_character(self, img_bgr, bg_color, verbose=False):
         final_string = ''
         result_string = ''
+
+        # print("bg_color ======================= ", bg_color)
 
         if bg_color == "bg_black":
             crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=False, output_dir="output_chars_3", verbose=False)
@@ -398,7 +479,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=False)
+            display_results(img_bgr, inv_image, segmented_image, crop_characters, final_string, result_string, is_save=True)
 
             return final_string
 
@@ -420,7 +501,7 @@ class CharacterRecognize:
             if verbose:
                 logging.write('=' * 20 + f' AFTER PLATE NO: {final_string} ' + '=' * 20, logging.DEBUG)
 
-            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=False)
+            display_results(img_bgr, inv_image, img_segment, char_list, final_string, result_string, is_save=True)
 
             return final_string
 

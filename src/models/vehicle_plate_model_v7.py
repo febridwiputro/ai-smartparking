@@ -90,22 +90,58 @@ class VehicleDetector:
             draw_points_and_lines(frame, self.clicked_points)
             show_cam(f"FLOOR {self.floor_id}: {self.cam_id}", frame)
 
-    def is_valid_cropped_plate(self, cropped_plate):
+    def is_valid_cropped_plate(self, cropped_plate, floor_id, cam_id):
         """Check if the cropped plate meets the size requirements and save dimensions to a CSV file."""
         height, width = cropped_plate.shape[:2]
         print(f'height: {height} & width: {width}')
-        
+
         # Save height and width to CSV
         # self.save_dimensions_to_csv(height, width)
-        # self.save_dimensions_to_excel(height, width)
+        self.save_dimensions_to_excel(height, width)
 
-        if height < 30 or width < 90:
-            return False
-        if height >= width:
-            return False
-        compare = abs(height - width)
-        if compare <= 35 or compare >= 80:
-            return False
+        if floor_id == 2:
+            if cam_id == "IN":
+                if height < 30 or width < 105:
+                    return False
+                if height >= width:
+                    return False
+                compare = abs(height - width)
+                if compare <= 35 or compare >= 80:
+                    return False
+            else:
+                if height < 40 or width < 75 or width >= 200:
+                    return False
+                if height >= width:
+                    return False
+                # compare = abs(height - width)
+                # if compare <= 35 or compare >= 80:
+                #     return False
+
+        elif floor_id == 3:
+            if cam_id == "IN":
+                # if height < 30 or width < 90:
+                #     return False
+                if height >= width:
+                    return False
+                # compare = abs(height - width)
+                # if compare <= 35 or compare >= 80:
+                #     return False
+            else:
+                if height < 30 or width < 90 or width >= 150:
+                    return False
+                if height >= width:
+                    return False
+                compare = abs(height - width)
+                if compare <= 35 or compare >= 85: # 120:
+                    return False
+        else:
+            if height < 30 or width < 90:
+                return False
+            if height >= width:
+                return False
+            compare = abs(height - width)
+            if compare <= 35 or compare >= 80:
+                return False
 
         # if height < 55 or width < 100:
         #     return False
@@ -116,11 +152,15 @@ class VehicleDetector:
         #     return Falseq
         return True
 
-    def save_dimensions_to_excel(self, height, width):
+    def save_dimensions_to_excel(self, height, width, floor_id, cam_id):
         """Save height and width to an Excel file named with the current date."""
         current_date = datetime.now()
-        filename = current_date.strftime("%Y_%m_%d") + ".xlsx"
-        new_data = pd.DataFrame([[height, width]], columns=['Height', 'Width'])
+        current_date_format = current_date.strftime("%Y_%m_%d") 
+        timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+   
+        filename = current_date_format + ".xlsx"
+
+        new_data = pd.DataFrame([[height, width, floor_id, cam_id, timestamp]], columns=['height', 'width', 'floor_id', 'cam_id', 'created_date'])
 
         if os.path.isfile(filename):
             with pd.ExcelWriter(filename, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
@@ -340,7 +380,7 @@ class VehicleDetector:
 
         return car_boxes, car_info
 
-    def process_plate(self, results, original_frame, car_boxes, is_save=True):
+    def process_plate(self, results, original_frame, car_boxes, floor_id, cam_id, is_save=True):
         """Process the detection of plates within the original frame size and return plate info."""
         plate_info = []
         cropped_plates = []
@@ -349,8 +389,6 @@ class VehicleDetector:
         bounding_boxes = results[0].boxes.xyxy.cpu().numpy().tolist() if results else []
         if not bounding_boxes:
             return plate_info, cropped_plates
-
-        height, width = original_frame.shape[:2]  # Get original frame dimensions
 
         for r in results[0].boxes:
             if r.id is not None and r.cls is not None and r.conf is not None:
@@ -374,10 +412,18 @@ class VehicleDetector:
                             plate_info.append((r.id.item(), confidence, plate_bbox, class_name))
                             
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
-                            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+                            if cropped_plate.size > 0: 
+                            # and self.is_valid_cropped_plate(cropped_plate, floor_id, cam_id): 
+                                # Save height and width to CSV
+                                # self.save_dimensions_to_csv(height, width)
+
+                                height, width = cropped_plate.shape[:2]  # Get original frame dimensions
+
+                                print(f'height: {height} & width: {width}')
+                                self.save_dimensions_to_excel(height, width, floor_id, cam_id)                                
+                            # 
                                 cropped_plates.append(cropped_plate)
 
-                            # if is_save:
                             #     self.save_cropped_plate([cropped_plate])
 
                             return plate_info, cropped_plates
@@ -413,7 +459,7 @@ class VehicleDetector:
         is_centroid_inside = self.check_car_touch_line(frame_size, car_info, poly_bbox)
 
         if is_centroid_inside and not self.is_vehicle_model:
-            self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes)
+            self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes, floor_id, cam_id)
 
             for (object_id, confidence, bbox, class_name) in self.plate_info:
                 self.plate_bbox = bbox

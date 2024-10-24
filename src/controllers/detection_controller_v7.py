@@ -113,9 +113,10 @@ class DetectionControllerV7:
 
                 # frame_resize = cv2.resize(frame, (1080, 1920))
                 # frame_resize = cv2.resize(frame, (1440, 2560))
+                # frame = cv2.resize(frame, (1080, 720))
 
                 vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = vehicle_detector.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, tracking_points=tracking_points, poly_bbox=poly_bbox)
-
+                # print("vehicle_plate_data: ", vehicle_plate_data)
                 # vehicle_plate_data = vehicle_detector.detect_vehicle(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, poly_points=poly_points, tracking_points=tracking_points)
 
                 if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):

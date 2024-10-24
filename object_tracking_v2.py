@@ -473,19 +473,48 @@ class VehicleDetector:
     def is_valid_cropped_plate(self, cropped_plate):
         """Check if the cropped plate meets the size requirements and save dimensions to a CSV file."""
         height, width = cropped_plate.shape[:2]
-        # print(f'height: {height} & width: {width}')
+        print(f'height: {height} & width: {width}')
         
         # Save height and width to CSV
         # self.save_dimensions_to_csv(height, width)
-        # self.save_dimensions_to_excel(height, width)
+        self.save_dimensions_to_excel(height, width)
 
-        if height < 30 or width < 90:
+        # if floor_id == 2:
+        #     if cam_id == "IN":
+        #         if height < 30 or width < 100:
+        #             return False
+        #         if height >= width:
+        #             return False
+        #         compare = abs(height - width)
+        #         if compare <= 35 or compare >= 80:
+        #             return False
+
+        # elif floor_id == 3:
+        #     if cam_id == "OUT":
+        #         if height < 30 or width < 90 or width >= 150:
+        #             return False
+        #         if height >= width:
+        #             return False
+        #         compare = abs(height - width)
+        #         if compare <= 35 or compare >= 85: # 120:
+        #             return False
+        # else:
+        #     if height < 30 or width < 90:
+        #         return False
+        #     if height >= width:
+        #         return False
+        #     compare = abs(height - width)
+        #     if compare <= 35 or compare >= 80:
+        #         return False
+
+
+        if height < 30 or width >= 80 or width <= 70:
             return False
         if height >= width:
             return False
-        compare = abs(height - width)
-        if compare <= 35 or compare >= 80:
-            return False
+        # compare = abs(height - width)
+        # if compare <= 35 or compare >= 80:
+        #     return False
 
         # if height < 55 or width < 100:
         #     return False
@@ -860,6 +889,7 @@ class VehicleDetector:
                             
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
                             if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+                            # if cropped_plate.size > 0 :
                                 cropped_plates.append(cropped_plate)
 
                             # if is_save:
@@ -994,7 +1024,7 @@ if __name__ == "__main__":
     FLOOR_ID = 2
     CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = False
+    IS_CAMERA = True
 
     if IS_CAMERA:
         CAM_SOURCE_LT = {
@@ -1025,17 +1055,24 @@ if __name__ == "__main__":
         if FLOOR_ID == 2:
             if CAM_ID == "IN":
                 # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_IN_192.168.1.10_01_20241024142756346.mp4"
 
             else:
                 # video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_2024102217293382.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_2024102217293382.mp4"
                 # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.11_01_20241022165758745.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_OUT_192.168.1.11_01_20241024142707319.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\192.168.1.11_01_20241024170751959.mp4"
         elif FLOOR_ID == 3:
             if CAM_ID == "IN":
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+                # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.12_01_20241022164946751.mp4'
+                # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4"
             else:
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+                # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
+                # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
         elif FLOOR_ID == 4:
             if CAM_ID == "IN":
                 video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
