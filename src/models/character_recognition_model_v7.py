@@ -306,7 +306,7 @@ class CharacterRecognize:
             body = match.group(3)
             suffix = match.group(4)
 
-            modified_middle = middle.replace('T', '1').replace('I', '1').replace('D', '0').replace('B', '8').replace('Q', '0')
+            modified_middle = middle.replace('T', '1').replace('I', '1').replace('D', '0').replace('B', '8').replace('Q', '0').replace('J', '1')
 
             if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}", logging.DEBUG):
                 modified_suffix = suffix.replace('0', 'Q').replace('8', 'O')

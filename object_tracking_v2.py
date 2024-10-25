@@ -1073,7 +1073,8 @@ if __name__ == "__main__":
                 # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
                 # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
                 # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
+                video_path = r"C:\Users\DOT\Documents\febri\video\F3_OUT_20241025_1.mp4"
         elif FLOOR_ID == 4:
             if CAM_ID == "IN":
                 video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
