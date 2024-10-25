@@ -72,7 +72,7 @@ class Wrapper:
         self.vehicle_bounding_boxes = []
         self.floor_id = 0
         self.cam_id = ""
-        self.max_num_frame = 5
+        self.max_num_frame = 3
         self._current_frame = None
         self._current_result = None
         self.result_processing_thread = None
@@ -339,7 +339,6 @@ class Wrapper:
 
                             print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
 
-                            # Trigger logic when count reaches 4
                             if object_id_count == self.max_num_frame:
                                 self.process_plate_data(floor_id, cam_id, arduino_idx, car_direction)
 
@@ -403,7 +402,6 @@ class Wrapper:
                 break
                 
             try:
-            
                 vehicle_plate_data = self.vehicle_plate_result_queue.get()
     
                 sizes = [q.qsize() for q in self.vehicle_plate_result_queue_list]
@@ -430,6 +428,16 @@ class Wrapper:
         if event == cv2.EVENT_LBUTTONDOWN:
             print(f"Clicked coordinates: ({x}, {y})")
             print(convert_bbox_to_decimal((frame.shape[:2]), [[[x, y]]]))
+
+    def draw_points_and_lines(self, frame):
+        """Draw points and lines on the frame."""
+        for point in self.clicked_points:
+            cv2.circle(frame, point, 5, (0, 0, 255), -1)  # Draw red points
+        if len(self.clicked_points) > 1:
+            for i in range(len(self.clicked_points)):
+                start_point = self.clicked_points[i]
+                end_point = self.clicked_points[(i + 1) % len(self.clicked_points)]
+                cv2.line(frame, start_point, end_point, (255, 0, 0), 1)  # Draw blue lines
 
     def main(self):
         IS_DEBUG = False
@@ -468,8 +476,8 @@ class Wrapper:
             time.sleep(0.1)
             print("Loading detection models...")
 
-        # Initialize and start cameras
-        caps = [CameraV1(video, is_video=False) for video in video_source]
+        is_video = True if IS_DEBUG else False
+        caps = [CameraV1(video, is_video=is_video) for video in video_source]
         for cap in caps:
             print(f"Starting camera: {cap}")
             cap.start()
@@ -483,7 +491,8 @@ class Wrapper:
                         num, frames[i] = cap.read()
     
                         if frames[i] is None:
-                            print("frames[i] None", frames[i])
+                            print("frame {i} is None", frames[i])
+                            frames[i] = np.zeros((1440, 2560, 3), dtype=np.uint8)
                             continue
 
                         # print("frames[i]: ", frames[i].shape)
@@ -496,11 +505,11 @@ class Wrapper:
 
                         # frames[i] = cv2.resize(frames[i], (1080, 720))
                         height, width = frames[i].shape[:2]
+                        # print(height, width)
     
                         slot = self.db_floor.get_slot_by_id(floor_id)
                         total_slot, vehicle_total = slot["slot"], slot["vehicle_total"]
     
-
                         poly_points, tracking_points, poly_bbox = define_tracking_polygon(
                             height=height, width=width, 
                             floor_id=floor_id, cam_id=cam_id

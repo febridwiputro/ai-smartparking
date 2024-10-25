@@ -44,7 +44,7 @@ class VehicleDetector:
         self.car_bboxes = []
         self.plate_info = []
         self.arduino_idx = 0
-        self.max_num_frame = 5
+        self.max_num_frame = 3
         self.frame_count = 0
         self.prev_object_id = None
         self.frame_count_per_object = {}
@@ -93,24 +93,24 @@ class VehicleDetector:
     def is_valid_cropped_plate(self, cropped_plate, floor_id, cam_id):
         """Check if the cropped plate meets the size requirements and save dimensions to a CSV file."""
         height, width = cropped_plate.shape[:2]
-        print(f'height: {height} & width: {width}')
+        # print(f'height: {height} & width: {width}')
 
         # Save height and width to CSV
         # self.save_dimensions_to_csv(height, width)
-        self.save_dimensions_to_excel(height, width)
+        # self.save_dimensions_to_excel(height, width)
 
         if floor_id == 2:
             if cam_id == "IN":
-                if height < 30 or width < 105:
-                    return False
+                # if height < 30 or width < 105:
+                #     return False
                 if height >= width:
                     return False
-                compare = abs(height - width)
-                if compare <= 35 or compare >= 80:
-                    return False
+                # compare = abs(height - width)
+                # if compare <= 35 or compare >= 80:
+                #     return False
             else:
-                if height < 40 or width < 75 or width >= 200:
-                    return False
+                # if height < 35 or width < 75 or width >= 200:
+                #     return False
                 if height >= width:
                     return False
                 # compare = abs(height - width)
@@ -127,21 +127,21 @@ class VehicleDetector:
                 # if compare <= 35 or compare >= 80:
                 #     return False
             else:
-                if height < 30 or width < 90 or width >= 150:
-                    return False
+                # if height < 30 or width < 90 or width >= 150:
+                #     return False
                 if height >= width:
                     return False
-                compare = abs(height - width)
-                if compare <= 35 or compare >= 85: # 120:
-                    return False
+                # compare = abs(height - width)
+                # if compare <= 35 or compare >= 85: # 120:
+                #     return False
         else:
-            if height < 30 or width < 90:
-                return False
+            # if height < 30 or width < 90:
+            #     return False
             if height >= width:
                 return False
-            compare = abs(height - width)
-            if compare <= 35 or compare >= 80:
-                return False
+            # compare = abs(height - width)
+            # if compare <= 35 or compare >= 80:
+            #     return False
 
         # if height < 55 or width < 100:
         #     return False
@@ -384,8 +384,8 @@ class VehicleDetector:
         """Process the detection of plates within the original frame size and return plate info."""
         plate_info = []
         cropped_plates = []
+        num_add_size = 5
 
-        # Extract bounding boxes from results if available
         bounding_boxes = results[0].boxes.xyxy.cpu().numpy().tolist() if results else []
         if not bounding_boxes:
             return plate_info, cropped_plates
@@ -396,12 +396,10 @@ class VehicleDetector:
                 class_name = self.class_names[class_id]
 
                 if class_name == "plate":
-                    # Extract plate bounding box and confidence
                     plate_bbox = r.xyxy[0].cpu().numpy().tolist()
                     confidence = float(r.conf.item())
                     plate_x1, plate_y1, plate_x2, plate_y2 = map(int, plate_bbox)
 
-                    # Check if the plate is inside any detected car bounding box
                     for car_box in car_boxes:
                         car_x1, car_y1, car_x2, car_y2 = map(int, car_box)
 
@@ -411,20 +409,21 @@ class VehicleDetector:
                         ):
                             plate_info.append((r.id.item(), confidence, plate_bbox, class_name))
                             
+                            plate_y1 = max(plate_y1 - num_add_size, 0)
+                            plate_y2 = min(plate_y2 + num_add_size, original_frame.shape[0])
+                            plate_x1 = max(plate_x1 - num_add_size, 0)
+                            plate_x2 = min(plate_x2 + num_add_size, original_frame.shape[1])
+
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
-                            if cropped_plate.size > 0: 
-                            # and self.is_valid_cropped_plate(cropped_plate, floor_id, cam_id): 
+                            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate, floor_id, cam_id): 
                                 # Save height and width to CSV
                                 # self.save_dimensions_to_csv(height, width)
 
-                                height, width = cropped_plate.shape[:2]  # Get original frame dimensions
-
+                                height, width = cropped_plate.shape[:2]
                                 print(f'height: {height} & width: {width}')
                                 self.save_dimensions_to_excel(height, width, floor_id, cam_id)                                
-                            # 
                                 cropped_plates.append(cropped_plate)
-
-                            #     self.save_cropped_plate([cropped_plate])
+                                # self.save_cropped_plate([cropped_plate])
 
                             return plate_info, cropped_plates
 
@@ -434,7 +433,6 @@ class VehicleDetector:
     def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
         height, width = frame.shape[:2]
         frame_size = (width, height)
-        original_frame = frame.copy()
 
         area_selection = self.convert_normalized_to_pixel(tracking_points, (height, width))
         cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
@@ -453,16 +451,23 @@ class VehicleDetector:
         if direction is not None or self.car_direction is None:
             self.car_direction = direction
 
-        for (object_id, confidence, bbox, class_name) in car_info:
-            self.object_id = object_id
+        # for (object_id, confidence, bbox, class_name) in car_info:
+        #     self.object_id = object_id
+        
+        self.object_id = car_info[0][0] if car_info else None
 
         is_centroid_inside = self.check_car_touch_line(frame_size, car_info, poly_bbox)
 
         if is_centroid_inside and not self.is_vehicle_model:
             self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes, floor_id, cam_id)
 
-            for (object_id, confidence, bbox, class_name) in self.plate_info:
-                self.plate_bbox = bbox
+            # for (object_id, confidence, bbox, class_name) in self.plate_info:
+            #     self.plate_bbox = bbox
+
+            if self.plate_info:
+                self.plate_bbox = self.plate_info[0][2]
+            else:
+                self.plate_bbox = None
 
             if self.object_id != self.prev_object_id:
                 self.frame_count_per_object[self.object_id] = 0

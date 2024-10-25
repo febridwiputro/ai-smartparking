@@ -348,8 +348,6 @@ class CharacterRecognize:
 
                     bg_color = check_background(gray_plate, False)
 
-                    print("bg_color === ", bg_color)
-
                     text_info = {
                         "frame": resized_img,
                         "bg_color": bg_color,

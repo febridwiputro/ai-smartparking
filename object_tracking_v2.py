@@ -256,7 +256,7 @@ class VehicleDetector:
         self.car_bboxes = []
         self.plate_info = []
         self.arduino_idx = 0
-        self.max_num_frame = 15
+        self.max_num_frame = 0
         self.frame_count = 0
         self.prev_object_id = None
         self.frame_count_per_object = {}
@@ -804,21 +804,15 @@ class VehicleDetector:
         Tampilkan area poligon berbentuk persegi dengan warna sesuai status (hijau/abu-abu).
         """
         overlay = frame.copy()
+        color = (0, 255, 0) if is_centroid_inside else (128, 128, 128)
+        alpha = 0.5
 
-        # Pilih warna sesuai status
-        color = (0, 255, 0) if is_centroid_inside else (128, 128, 128)  # Hijau atau Abu-abu
-        alpha = 0.5  # Transparansi
-
-        # Konversi titik polygon ke koordinat piksel
         polygon_points_pixel = [
             self.convert_normalized_to_pixel_lines(point, self.frame_size)
             for point in polygon_points
         ]
         
-        # Gambar bidang poligon berdasarkan polygon_points
         cv2.fillPoly(overlay, [np.array(polygon_points_pixel)], color)
-
-        # Gabungkan overlay dengan frame asli menggunakan transparansi
         cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
 
         return frame
@@ -858,13 +852,12 @@ class VehicleDetector:
         """Process the detection of plates within the original frame size and return plate info."""
         plate_info = []
         cropped_plates = []
+        height, width = original_frame.shape[:2]
+        num_add_size = 5
 
-        # Extract bounding boxes from results if available
         bounding_boxes = results[0].boxes.xyxy.cpu().numpy().tolist() if results else []
         if not bounding_boxes:
             return plate_info, cropped_plates
-
-        height, width = original_frame.shape[:2]  # Get original frame dimensions
 
         for r in results[0].boxes:
             if r.id is not None and r.cls is not None and r.conf is not None:
@@ -872,12 +865,10 @@ class VehicleDetector:
                 class_name = self.class_names[class_id]
 
                 if class_name == "plate":
-                    # Extract plate bounding box and confidence
                     plate_bbox = r.xyxy[0].cpu().numpy().tolist()
                     confidence = float(r.conf.item())
                     plate_x1, plate_y1, plate_x2, plate_y2 = map(int, plate_bbox)
 
-                    # Check if the plate is inside any detected car bounding box
                     for car_box in car_boxes:
                         car_x1, car_y1, car_x2, car_y2 = map(int, car_box)
 
@@ -886,7 +877,12 @@ class VehicleDetector:
                             car_x1 <= plate_x2 <= car_x2 and car_y1 <= plate_y2 <= car_y2
                         ):
                             plate_info.append((r.id.item(), confidence, plate_bbox, class_name))
-                            
+
+                            plate_y1 = max(plate_y1 - num_add_size, 0)
+                            plate_y2 = min(plate_y2 + num_add_size, original_frame.shape[0])
+                            plate_x1 = max(plate_x1 - num_add_size, 0)
+                            plate_x2 = min(plate_x2 + num_add_size, original_frame.shape[1])
+
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
                             if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
                             # if cropped_plate.size > 0 :
@@ -939,7 +935,11 @@ class VehicleDetector:
             if self.object_id not in self.frame_count_per_object:
                 self.frame_count_per_object[self.object_id] = 0
 
-            if self.frame_count_per_object[self.object_id] < self.max_num_frame:
+            if self.frame_count_per_object[self.object_id] == self.max_num_frame:
+                for plate_frame in plate_frames:
+                    self.save_cropped_plate([plate_frame])                
+
+            elif self.frame_count_per_object[self.object_id] < self.max_num_frame:
                 for plate_frame in plate_frames:
                     self.save_cropped_plate([plate_frame])
 
@@ -1021,10 +1021,10 @@ if __name__ == "__main__":
     # video_path = r'D:\engine\smart_parking\dataset\cctv\z.mp4'
     # video_path = r'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
 
-    FLOOR_ID = 2
+    FLOOR_ID = 3
     CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = True
+    IS_CAMERA = False
 
     if IS_CAMERA:
         CAM_SOURCE_LT = {
@@ -1068,11 +1068,12 @@ if __name__ == "__main__":
             if CAM_ID == "IN":
                 # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.12_01_20241022164946751.mp4'
                 # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4" # F3 IN
             else:
                 # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
                 # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
+                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
+                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
         elif FLOOR_ID == 4:
             if CAM_ID == "IN":
                 video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"

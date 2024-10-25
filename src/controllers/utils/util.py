@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import Levenshtein as lev
 import logging
+import uuid
+from datetime import datetime
 
 from src.config.config import config
 from src.config.logger import logger
@@ -11,6 +13,8 @@ from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIC
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from src.view.show_cam import show_cam, show_text, show_line
 from src.controllers.matrix_controller import MatrixController
+from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
+
 
 db_plate = PlatController()
 db_floor = FloorController()
@@ -464,6 +468,25 @@ def check_db(text):
         # print("plat ada di DB : ", self.text)
         return True
 
+def send_plate_data(floor_id, plate_no, cam_position):
+    generate_uuid = uuid.uuid4() 
+    created_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    params = [
+        {
+            "id": str(generate_uuid),
+            "floor": str(floor_id),  # "1"
+            "license": plate_no, # "bp1234bp"
+            "zone": "1",  # "1" = kanan / "2" = kiri
+            "cam": cam_position.lower(), # "in" / "out"
+            "vehicle_type": "car", # "car" / "motorcycle"
+            "created_date": created_date
+        }
+    ]
+    send_date = created_date
+
+    return db_mysn.send_data_to_mysn(params, send_date)
+
 def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, plate_no, container_plate_no, plate_no_is_registered):
     current_floor_position, current_cam_position = floor_id, cam_id
     current_data = db_floor.get_slot_by_id(current_floor_position)
@@ -727,6 +750,8 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
         floor_id=floor_id,
         camera=cam_id
     )
+
+    send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
     char = "H" if plate_no_is_registered else "M"
     matrix_text = f"{plate_no},{char};"

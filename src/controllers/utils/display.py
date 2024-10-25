@@ -47,6 +47,7 @@ def create_grid(frames, rows, cols, frame_size=None, padding=5, bg_color=(0, 0, 
         frames = [resize_image(frame, frame_size, frame_size) for frame in frames]
 
     # Get frame dimensions
+    # height, width = 405, 720
     height, width, _ = frames[0].shape
 
     # Create an empty grid with padding
