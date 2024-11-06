@@ -38,9 +38,9 @@ if __name__ == "__main__":
     # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-04\192.168.1.14_01_20241104115332370.mp4"
     # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-01\192.168.1.17_01_20241101174235972.mp4"
     # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-01\192.168.1.17_01_20241101174705385.mp4"
-    video_path = r"D:\engine\smart_parking\repository\github\dataset\2024-10-22\day\F3_IN_192.168.1.12_01_20241022164946751.mp4"
-    start_time = "06:30" # format mm:ss
-    end_time = "08:01"   # format mm:ss
+    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-06\192.168.1.13_01_20241106163408868.mp4"
+    start_time = "07:35" # format mm:ss
+    end_time = "08:00"   # format mm:ss
 
     output_dir = "split_video"
 

@@ -1030,7 +1030,10 @@ if __name__ == "__main__":
     CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
     IS_CAMERA = False
-    IS_PC = False
+    IS_PC = True
+
+    model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
+    # model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
 
     if IS_CAMERA:
         CAM_SOURCE_LT = {
@@ -1068,8 +1071,6 @@ if __name__ == "__main__":
     
     else:
         if IS_PC:
-            model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
-
             if FLOOR_ID == 2:
                 if CAM_ID == "IN":
                     # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
@@ -1088,12 +1089,8 @@ if __name__ == "__main__":
                     # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
                     video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4" # F3 IN
                 else:
-                    # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
-                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
-                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
-                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
-                    # video_path = r"C:\Users\DOT\Documents\febri\video\F3_OUT_20241025_1.mp4"
-                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-05\split_video\192.168.1.13_01_20241105145822918.mp4_3168.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-06\split_video\192.168.1.13_01_20241106163408868.mp4_8037.mp4"
+
             elif FLOOR_ID == 4:
                 if CAM_ID == "IN":
                     # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
@@ -1114,7 +1111,6 @@ if __name__ == "__main__":
                     video_path = r"C:\Users\DOT\Documents\febri\bitbucket\F5_OUT_192.168.1.17_01_20241031185859282.mp4"
                     # video_path = r"C:\Users\DOT\Documents\febri\bitbucket\F5_OUT_192.168.1.17_01_20241031190044193.mp4"
         else:
-            model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
 
             if FLOOR_ID == 2:
                 if CAM_ID == "IN":

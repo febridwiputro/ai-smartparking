@@ -412,9 +412,28 @@ class Wrapper:
                 print("Error at distribute_work_thread", e)
 
     def main(self):
-        IS_DEBUG = True
+        IS_DEBUG = False
         IS_PC = False
-        ROWS_CONF, COLS_CONF = 1, 1 # 2, 3
+
+        if IS_DEBUG:
+            ROWS_CONF, COLS_CONF = 1, 1
+
+            FLOOR_CAM_CONF = {
+                2: {"IN": False, "OUT": False},
+                3: {"IN": False, "OUT": True},
+                4: {"IN": False, "OUT": False},
+                5: {"IN": False, "OUT": False},
+            }
+
+        else:
+            ROWS_CONF, COLS_CONF = 2, 3
+
+            FLOOR_CAM_CONF = {
+                2: {"IN": True, "OUT": True},
+                3: {"IN": True, "OUT": True},
+                4: {"IN": True, "OUT": True},
+                5: {"IN": False, "OUT": False},
+            }
 
         frame_size_options = {
             (1, 1): 1280,
@@ -426,20 +445,6 @@ class Wrapper:
         }
         FRAME_SIZE_CONF = frame_size_options.get((ROWS_CONF, COLS_CONF), 640)
         IS_VIDEO = IS_DEBUG
-
-        # FLOOR_CAM_CONF = {
-        #     2: {"IN": True, "OUT": True},
-        #     3: {"IN": True, "OUT": True},
-        #     4: {"IN": True, "OUT": True},q
-        #     5: {"IN": False, "OUT": False},
-        # }
-
-        FLOOR_CAM_CONF = {
-            2: {"IN": False, "OUT": False},
-            3: {"IN": False, "OUT": True},
-            4: {"IN": False, "OUT": False},
-            5: {"IN": False, "OUT": False},
-        }
 
         VIDEO_PATH = config.VIDEO_SOURCE_FLOOR_PC if IS_DEBUG and IS_PC else (
             config.VIDEO_SOURCE_FLOOR_LAPTOP if IS_DEBUG else config.CAM_SOURCE_FLOOR
