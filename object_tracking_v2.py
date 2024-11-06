@@ -197,9 +197,12 @@ def convert_decimal_to_bbox(img_dims, polygons):
 
 def define_tracking_polygon(height, width, floor_id, cam_id):
     if floor_id == 2:
-        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
-        polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
-        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F2_OUT
+        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F5_OUT # config.TRACKING_POINT2_F1_OUT
+        polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT # config.POLYGON_POINT_LT2_OUT
+        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F5_OUT # config.POLY_BBOX_F2_OUT
+        # tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
+        # polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
+        # POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F2_OUT
     elif floor_id == 3:
         tracking_point = config.TRACKING_POINT2_F3_IN if cam_id == "IN" else config.TRACKING_POINT2_F3_OUT
         polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
@@ -233,14 +236,13 @@ def point_position(line1, line2, point, inverse=False):
         return True if not inverse else False
 
 class VehicleDetector:
-    def __init__(self, model_path, video_path, floor_id, cam_id, is_vehicle_model, output_folder="output"):
+    def __init__(self, model_path, video_path, floor_id, cam_id, is_vehicle_model):
         self.floor_id = floor_id
         self.cam_id = cam_id
         self.is_vehicle_model = is_vehicle_model
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.model = YOLO(model_path)
         self.video_path = video_path
-        self.output_folder = output_folder
 
         self.car_direction = None
         self.prev_centroid = None
@@ -266,13 +268,12 @@ class VehicleDetector:
         self.db_mysn = FetchAPIController()
         self.db_vehicle_history = VehicleHistoryController()
         self.frame_size = None
-        os.makedirs(self.output_folder, exist_ok=True)
 
         # self.class_names = ['car', 'bus', 'truck'] if self.is_vehicle_model else ['car', 'plate', 'truck']
         self.class_index = [2, 7, 5] if self.is_vehicle_model else [0, 1, 2]
         # self.class_indices = self.get_class_indices()
 
-        self.video_path = video_path  # Ensure video path is stored in the class
+        self.video_path = video_path
 
     # def get_class_indices(self):
     #     """Map class names to indices based on the model's available classes."""
@@ -884,7 +885,8 @@ class VehicleDetector:
                             plate_x2 = min(plate_x2 + num_add_size, original_frame.shape[1])
 
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
-                            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
+                            if cropped_plate.size > 0:
+                                # and self.is_valid_cropped_plate(cropped_plate):
                             # if cropped_plate.size > 0 :
                                 cropped_plates.append(cropped_plate)
 
@@ -895,6 +897,10 @@ class VehicleDetector:
 
         return plate_info, cropped_plates
 
+    def check_blur(self, image):
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray_image, cv2.CV_64F).var()
+        return laplacian_var
 
     def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
         height, width = frame.shape[:2]
@@ -937,10 +943,16 @@ class VehicleDetector:
 
             if self.frame_count_per_object[self.object_id] == self.max_num_frame:
                 for plate_frame in plate_frames:
-                    self.save_cropped_plate([plate_frame])                
+                    check_blur_img = self.check_blur(plate_frame)
+                    print("BLUR IMAGE VALUE: ", check_blur_img)
+
+                    self.save_cropped_plate([plate_frame])
 
             elif self.frame_count_per_object[self.object_id] < self.max_num_frame:
                 for plate_frame in plate_frames:
+                    check_blur_img = self.check_blur(plate_frame)
+                    print("BLUR IMAGE VALUE: ", check_blur_img)
+
                     self.save_cropped_plate([plate_frame])
 
                     gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
@@ -1014,21 +1026,16 @@ class VehicleDetector:
 
 
 if __name__ == "__main__":
-    # model_path = r"C:\Users\DOT\Documents\febri\weights\yolo11n.pt"
-    # model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
-    model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
-    # model_path = r"C:\Users\DOT\Documents\febri\weights\yolov8n.pt"
-    # video_path = r'D:\engine\smart_parking\dataset\cctv\z.mp4'
-    # video_path = r'D:\engine\cv\dataset_editor\editor\compose_video.mp4'
-
     FLOOR_ID = 3
     CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
     IS_CAMERA = False
+    IS_PC = False
 
     if IS_CAMERA:
         CAM_SOURCE_LT = {
             2: {
+                # "IN": 'rtsp://admin:Passw0rd@192.168.1.18',
                 "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
                 "OUT": 'rtsp://admin:Passw0rd@192.168.1.11'
             },
@@ -1042,49 +1049,99 @@ if __name__ == "__main__":
             },
             5: {
                 "IN": 'rtsp://admin:Passw0rd@192.168.1.16',
-                "OUT": 'rtsp://admin:Passw0rd@192.168.1.27'
+                # "OUT": 'rtsp://admin:Passw0rd@192.168.1.18'
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.17'
             }
         }
 
         try:
+            cam_id = None
             video_path = CAM_SOURCE_LT[FLOOR_ID][CAM_ID]
+
+            # Check if video_path is empty
+            if not video_path:
+                raise ValueError("Camera ID not found: the video path is empty")
+
         except KeyError:
             raise ValueError(f"Invalid FLOOR_ID {FLOOR_ID} or CAM_ID {CAM_ID}")
+
     
     else:
-        if FLOOR_ID == 2:
-            if CAM_ID == "IN":
-                # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_IN_192.168.1.10_01_20241024142756346.mp4"
+        if IS_PC:
+            model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
 
-            else:
-                # video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_2024102217293382.mp4"
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.11_01_20241022165758745.mp4"
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_OUT_192.168.1.11_01_20241024142707319.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\192.168.1.11_01_20241024170751959.mp4"
-        elif FLOOR_ID == 3:
-            if CAM_ID == "IN":
-                # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.12_01_20241022164946751.mp4'
-                # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
-                video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4" # F3 IN
-            else:
-                # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
-                # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
-                # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
-                video_path = r"C:\Users\DOT\Documents\febri\video\F3_OUT_20241025_1.mp4"
-        elif FLOOR_ID == 4:
-            if CAM_ID == "IN":
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
-            else:
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
-        elif FLOOR_ID == 5:
-            if CAM_ID == "IN":
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
-            else:
-                video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+            if FLOOR_ID == 2:
+                if CAM_ID == "IN":
+                    # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.10_01_20241022164924927.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_IN_192.168.1.10_01_20241024142756346.mp4"
+
+                else:
+                    # video_path = r'C:\Users\DOT\Documents\febri\github\combined_video_out.mp4'
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_2024102217293382.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\192.168.1.11_01_20241022165758745.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F2_OUT_192.168.1.11_01_20241024142707319.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\192.168.1.11_01_20241024170751959.mp4"
+            elif FLOOR_ID == 3:
+                if CAM_ID == "IN":
+                    # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.12_01_20241022164946751.mp4'
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_IN.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_IN_192.168.1.12_01_20241024142828799.mp4" # F3 IN
+                else:
+                    # video_path = r'C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.11_01_20241022171905925.mp4'
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_3_OUT.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-24\CAR\F3_OUT_192.168.1.13_01_20241024142951212.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-25\192.168.1.13_01_20241025152631450.mp4"
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\F3_OUT_20241025_1.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-05\split_video\192.168.1.13_01_20241105145822918.mp4_3168.mp4"
+            elif FLOOR_ID == 4:
+                if CAM_ID == "IN":
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_IN.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\split_video\192_clip.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-04\split_video\192.168.1.14_01_20241104115332370.mp4_1677.mp4"
+                else:
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_4_OUT.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-04\split_video\192.168.1.15_01_20241104115334212.mp4_5638.mp4"
+            elif FLOOR_ID == 5:
+                if CAM_ID == "IN":
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
+                    # video_path = r"D:\hikvision_record\2024-10-30\192.168.1.16_01_20241030154403344.mp4"
+                    video_path = r"D:\engine\smart_parking\repository\github\dataset\2024-10-30-video\192.168.1.16_01_20241030181737752.mp4"
+                    # video_path = r"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\split_video\192_clip.mp4"
+                    # video_path = r"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\192.168.1.17_01_20241025121925138.mp4"
+                else:
+                    # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_OUT.mp4"
+                    video_path = r"C:\Users\DOT\Documents\febri\bitbucket\F5_OUT_192.168.1.17_01_20241031185859282.mp4"
+                    # video_path = r"C:\Users\DOT\Documents\febri\bitbucket\F5_OUT_192.168.1.17_01_20241031190044193.mp4"
+        else:
+            model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
+
+            if FLOOR_ID == 2:
+                if CAM_ID == "IN":
+                    pass
+
+                else:
+                    video_path = r"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031190044193.mp4_2772.mp4"
+
+            elif FLOOR_ID == 3:
+                if CAM_ID == "IN":
+                    pass
+                else:
+                    # video_path = r"D:\engine\smart_parking\repository\github\dataset\split_video-20241106T024733Z-001\192.168.1.13_01_20241105145822918.mp4_3168.mp4"
+                    video_path = r"D:\engine\smart_parking\repository\github\dataset\split_video-20241106T024733Z-001\192.168.1.13_01_20241105154736470.mp4_7575.mp4"
+
+            elif FLOOR_ID == 4:
+                if CAM_ID == "IN":
+                    pass
+
+                else:
+                    pass
+
+            elif FLOOR_ID == 5:
+                if CAM_ID == "IN":
+                    pass
+                else:
+                    pass
 
 
     detector = VehicleDetector(model_path, video_path, floor_id=FLOOR_ID, cam_id=CAM_ID, is_vehicle_model=IS_VEHICLE_MODEL)

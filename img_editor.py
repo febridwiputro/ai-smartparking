@@ -94,18 +94,25 @@ class ImageEditor:
         height, width = img.shape[:2]
         target_width, target_height = target_size
 
-        # Create a new image with a black background
-        new_img = cv2.cvtColor(cv2.resize(img, (target_width, target_height)), cv2.COLOR_BGR2RGB)
+        if width > target_width or height > target_height:
+            scaling_factor = min(target_width / width, target_height / height)
+            img = cv2.resize(img, (int(width * scaling_factor), int(height * scaling_factor)))
+            height, width = img.shape[:2]
 
-        # Calculate position to paste the original image
         left = (target_width - width) // 2
         top = (target_height - height) // 2
-        
-        # Create a black image and place the original image in the center
-        adjusted_img = cv2.copyMakeBorder(img, top, target_height - height - top, left, target_width - width - left, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+
+        # Ensure padding values are non-negative
+        if left < 0 or top < 0:
+            raise ValueError("Padding values must be non-negative. Please check target size and input image dimensions.")
+
+        adjusted_img = cv2.copyMakeBorder(
+            img, top, target_height - height - top, left, target_width - width - left, cv2.BORDER_CONSTANT, value=(0, 0, 0)
+        )
 
         cv2.imwrite(output_path, adjusted_img)
         print(f"Adjusted {os.path.basename(input_path)} to {target_size}.")
+
 
     def adjust_images_in_folder(self, folder_path, output_folder=None, target_size=(640, 640)):
         """Adjust all images in a folder to the specified size by adding a black background."""
@@ -125,17 +132,17 @@ class ImageEditor:
 # Example usage
 # folder_path = r"D:\plate_upload\G"
 # folder_path = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\compressed_images"
-folder_path = r"D:\plat_unregister"
-editor = ImageEditor(target_size_kb=120)  # Set target size to 100 KB
+# folder_path = r"D:\plat_unregister"
+folder_path = r"D:\engine\cv\car-plate-detection\dataset\dataset-plate\recording\2024-10-22\video2img\out\baru"
+editor = ImageEditor(target_size_kb=120)
 
-# # Adjust images in a folder to 640x640, saving them in a new folder
-# editor.adjust_images_in_folder(folder_path, output_folder=os.path.join(folder_path, 'adjusted_images'), target_size=(640, 640))
+editor.adjust_images_in_folder(folder_path, output_folder=os.path.join(folder_path, 'adjusted_images'), target_size=(640, 640))
 
 # # Crop images in a folder to 640x640, saving them in a new folder
 # editor.crop_images_in_folder(folder_path, output_folder=os.path.join(folder_path, 'cropped_images'), size=(640, 640))
 
 # Compress images in a folder
-editor.compress_images_in_folder(folder_path)
+# editor.compress_images_in_folder(folder_path)
 
 
 

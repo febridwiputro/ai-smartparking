@@ -67,8 +67,6 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
     cr = CharacterRecognize(models=char_model, labels=char_label)
     model_built_event.set()
 
-    # cr = character_recognize
-
     while not stopped.is_set():
         try:
             text_result = text_detection_result_queue.get()
@@ -86,15 +84,12 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
             start_line = text_result.get("start_line")
             end_line = text_result.get("end_line")
             is_centroid_inside = text_result.get("is_centroid_inside")
-            # print(f'start_line: {start_line} & end_line: {end_line}')
-
-            empty_frame = np.empty((0, 0, 3), dtype=np.uint8)
 
             if not start_line and not end_line:
                 char_recognize_result = {
                     "object_id": object_id,
                     "bg_color": bg_color,
-                    "plate_no": "",  # or None, based on your requirement
+                    "plate_no": "",
                     "floor_id": floor_id,
                     "cam_id": cam_id,
                     "arduino_idx": arduino_idx,
@@ -106,7 +101,7 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                 char_recognize_result_queue.put(char_recognize_result)
                 continue
 
-            plate_no = cr.process_image(cropped_images, bg_color) if cropped_images is not None else ""
+            plate_no = cr.process_image(cropped_images) if cropped_images is not None else ""
             # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
             char_recognize_result = {
                 "object_id": object_id,
@@ -124,9 +119,6 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
             char_recognize_result_queue.put(char_recognize_result)
 
             del text_result
-            gc.enable()
-            gc.collect()
-            gc.disable()   
 
         except Exception as e:
             print(f"Error in character recognition: {e}")
@@ -138,9 +130,6 @@ class CharacterRecognize:
     def __init__(self, threshold=0.30, models=None, labels=None):
         self.model = models
         self.labels = labels
-        # model_path, weight_path, labels_path = config.MODEL_CHAR_RECOGNITION_PATH, config.WEIGHT_CHAR_RECOGNITION_PATH, config.LABEL_CHAR_RECOGNITION_PATH
-        # self.model = self.load_model(model_path, weight_path)
-        # self.labels = self.load_labels(labels_path)
         self.threshold = threshold
 
     def load_model(self, model_path, weight_path):
@@ -149,7 +138,6 @@ class CharacterRecognize:
                 model_json = json_file.read()
             model = model_from_json(model_json)
             model.load_weights(weight_path)
-            # logging.write(f'{os.path.basename(model_path)} & {os.path.basename(weight_path)} loaded successfully...', level=logging.INFO)
 
             return model
 
@@ -162,7 +150,6 @@ class CharacterRecognize:
         try:
             labels = LabelEncoder()
             labels.classes_ = np.load(labels_path)
-            # logging.write(f'{os.path.basename(labels_path)} loaded successfully...', level=logging.INFO)
 
             return labels
 
@@ -323,15 +310,13 @@ class CharacterRecognize:
         result = re.sub(pattern, replace, plate)
         return result
 
-    def process_image(self, cropped_images, bg_status):
+    def process_image(self, cropped_images):
         bg_color = ""
         final_plate = ""
         resized_images = []
 
-        # Menentukan tinggi minimum dari gambar-gambar yang valid
         min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
 
-        # Resize setiap gambar dan simpan informasi frame dan bg_color
         for img in cropped_images:
             original_height, original_width = img.shape[:2]
 
@@ -340,13 +325,13 @@ class CharacterRecognize:
                 if new_width > 0:
                     resized_img = cv2.resize(img, (new_width, min_height))
 
-                    # Pastikan gambar memiliki 3 channel sebelum konversi ke grayscale
                     if len(resized_img.shape) == 3 and resized_img.shape[2] == 3:
                         gray_plate = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
                     else:
-                        gray_plate = resized_img  # Jika sudah grayscale, gunakan langsung
+                        gray_plate = resized_img
 
                     bg_color = check_background(gray_plate, False)
+                    print("bg_color: ", bg_color)
 
                     text_info = {
                         "frame": resized_img,
@@ -361,22 +346,19 @@ class CharacterRecognize:
                 logging.warning('Skipped resizing due to invalid image height', logging.DEBUG)
 
         if resized_images:
-            # Mencari frame dengan lebar terbesar dan mengambil bg_color-nya
             largest_image = max(resized_images, key=lambda x: x["width"])
             selected_bg_color = largest_image["bg_color"]
             channels = largest_image["frame"].shape[2] if len(largest_image["frame"].shape) == 3 else 1
 
-            # Membuat color_separator berdasarkan bg_color dari gambar dengan width terbesar
             if selected_bg_color == "bg_black":
                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
             elif selected_bg_color == "bg_white":
                 color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
-            else:  # bg_red
+            else:
                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
                 if channels == 3:
                     color_separator[:, :, 2] = 255
 
-            # Menggabungkan semua frame dengan separator
             concatenated_image = resized_images[0]["frame"]
             for img_info in resized_images[1:]:
                 img = img_info["frame"]
@@ -386,79 +368,15 @@ class CharacterRecognize:
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
 
-            # Memproses karakter dan mengembalikan hasil akhir
             final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:
             logging.write("No valid images to merge", logging.DEBUG)
 
         return final_plate
 
-
-
-    # def process_image(self, cropped_images, bg_status):
-    #     bg_color = ""
-    #     final_plate = ""
-    #     resized_images = []
-
-    #     min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
-
-    #     for img in cropped_images:
-    #         original_height = img.shape[0]
-    #         original_width = img.shape[1]
-
-    #         if original_height > 0:
-    #             new_width = int(original_width * (min_height / original_height))
-    #             if new_width > 0:
-    #                 resized_img = cv2.resize(img, (new_width, min_height))
-
-    #                 resized_images.append(resized_img)
-    #             else:
-    #                 logging.warning(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
-    #         else:
-    #             logging.warning('Skipped resizing due to invalid image height', logging.DEBUG)
-
-    #     if resized_images:
-    #         channels = resized_images[0].shape[2] if len(resized_images[0].shape) == 3 else 1
-    #         concatenated_image = resized_images[0]
-
-    #         if bg_status == "bg_black":
-    #             bg_color = "bg_black"
-    #             color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
-
-    #         elif bg_status == "bg_white":
-    #             bg_color = "bg_white"
-    #             if channels == 3:
-    #                 color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
-    #             else:
-    #                 color_separator = np.ones((min_height, 10), dtype=np.uint8) * 255
-
-    #         else:
-    #             bg_color = "bg_red"
-    #             if channels == 3:
-    #                 color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
-    #                 color_separator[:, :, 2] = 255
-    #             else:
-    #                 color_separator = np.zeros((min_height, 10), dtype=np.uint8)
-
-    #         for img in resized_images[1:]:
-    #             if img.shape[0] != min_height:
-    #                 logging.warning(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
-    #                 img = cv2.resize(img, (img.shape[1], min_height))
-
-    #             concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
-
-    #         final_plate = self.process_character(concatenated_image, bg_color)
-
-    #     else:
-    #         logging.write("No valid images to merge", logging.DEBUG)
-
-    #     return final_plate
-
     def process_character(self, img_bgr, bg_color, verbose=False):
         final_string = ''
         result_string = ''
-
-        # print("bg_color ======================= ", bg_color)
 
         if bg_color == "bg_black":
             crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=False, output_dir="output_chars_3", verbose=False)

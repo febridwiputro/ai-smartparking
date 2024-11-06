@@ -25,7 +25,7 @@ def load_model(model_path, num_classes, device):
     model.classifier[1] = nn.Linear(model.last_channel, num_classes)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model = model.to(device)
-    model.eval()  # Set model to evaluation mode
+    model.eval()
     return model
 
 # Predict on a single image
@@ -68,7 +68,10 @@ def predict_from_array(image_array, model, device, img_size, class_names):
         raise ValueError("Input must be a valid NumPy array.")
 
 if __name__ == "__main__":
-    input_path = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240930\Z"
+    # input_path = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240930\Z"
+    input_path = r"C:\Users\DOT\Documents\febri\bitbucket\bugfixAdd-new-Camera-Pos\ai-smartparking\train\dataset\dataset\bg-black-reduksi-20240930\0"
+    base_model_path = r"C:\Users\DOT\Documents\febri\bitbucket\bugfixAdd-new-Camera-Pos\ai-smartparking\train\pytorch\mobilenet\v2\models\new-model\20240922-19-05-37"
+    class_file_path = os.path.join()
     parser = argparse.ArgumentParser(description="Make predictions using a trained MobileNetV2 model")
     parser.add_argument('--model', type=str, default=r"D:\engine\smart_parking\train_model\model-training\pytorch\mobilenet\v2\models\new-model\20241013-14-53-06\checkpoint.pth", help="Path to the trained model (e.g., 'model.pth')")
     parser.add_argument('--class_file', type=str, default=r"D:\engine\smart_parking\train_model\model-training\pytorch\mobilenet\v2\models\new-model\20241013-14-53-06\character_classes.npy", help="Path to the class names file (e.g., 'character_classes.npy')")

@@ -165,6 +165,24 @@ class Train:
         self.model = self.model.to(self.device)
         print(f"Using MobileNet V3 Large with {len(self.lb.classes_)} output classes")
 
+    def plot_training_results(self):
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        epochs_range = range(1, len(self.history['train_loss']) + 1)
+
+        # Plot training and validation loss
+        ax[0].plot(epochs_range, self.history['train_loss'], label='Train Loss')
+        ax[0].plot(epochs_range, self.history['val_loss'], label='Validation Loss')
+        ax[0].set_title('Loss')
+        ax[0].legend()
+
+        # Plot training and validation accuracy
+        ax[1].plot(epochs_range, self.history['train_acc'], label='Train Accuracy')
+        ax[1].plot(epochs_range, self.history['val_acc'], label='Validation Accuracy')
+        ax[1].set_title('Accuracy')
+        ax[1].legend()
+
+        plt.savefig(os.path.join(self.output_dir, 'training_results.png'))
+        # plt.show()
 
     def train_model(self):
         logging.info("Starting training process...")
@@ -299,12 +317,15 @@ class Train:
 
 
 if __name__ == "__main__":
+    default_dataset = r"C:\Users\DOT\Documents\febri\bitbucket\bugfixAdd-new-Camera-Pos\ai-smartparking\train\dataset\dataset\bg-black-reduksi-20240930"
+    default_output = r"C:\Users\DOT\Documents\febri\bitbucket\bugfixAdd-new-Camera-Pos\ai-smartparking\train\pytorch\mobilenet\v2\models\new-model"
+
     parser = argparse.ArgumentParser(description='Train MobileNet for character recognition')
-    parser.add_argument('--dataset', type=str, default=r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240921", help='Path to the dataset')
+    parser.add_argument('--dataset', type=str, default=default_dataset, help='Path to the dataset')
     parser.add_argument('--batch_size', '-b', type=int, default=128, help='Batch size for training')
     parser.add_argument('--epochs', '-e', type=int, default=100, help='Number of epochs to train')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-    parser.add_argument('--output_dir', '-o', type=str, default=r"D:\engine\smart_parking\train_model\model-training\pytorch\mobilenet\models\new-model", help='Directory to save models and results')
+    parser.add_argument('--output_dir', '-o', type=str, default=default_output, help='Directory to save models and results')
     parser.add_argument('--test_dataset', type=str, help='Path to the test dataset for evaluation')
     parser.add_argument('--mode', '-m', type=str, default='train', choices=['train', 'eval', 'test'], help="Mode: 'train', 'eval' (evaluate on validation set), or 'test' (evaluate on test set)")
     parser.add_argument('--version', '-v', type=str, default='mobilenet_v2', choices=['mobilenet_v2', 'mobilenet_v3_small', 'mobilenet_v3_large'], help="MobileNet version to use: 'mobilenet_v2', 'mobilenet_v3_small', or 'mobilenet_v3_large'")

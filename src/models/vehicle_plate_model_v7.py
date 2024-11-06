@@ -14,6 +14,7 @@ from utils.centroid_tracking import CentroidTracker
 from src.controllers.utils.util import (
     check_background, 
     point_position,
+    convert_normalized_to_pixel,
     convert_normalized_to_pixel_lines,
     convert_bbox_to_decimal,
     is_point_in_polygon,
@@ -44,11 +45,17 @@ class VehicleDetector:
         self.car_bboxes = []
         self.plate_info = []
         self.arduino_idx = 0
-        self.max_num_frame = 3
+        self.max_num_frame = 1
+        self.num_add_plate_size = 5
         self.frame_count = 0
         self.prev_object_id = None
+        self.prev_floor_id = None
+        self.prev_cam_id = None
         self.frame_count_per_object = {}
         self.class_index = [2, 7, 5] if self.is_vehicle_model else [0, 1, 2]
+        self.prev_centroids = {}
+        self.movement_count = {}
+
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         if image is None or image.size == 0:
@@ -182,42 +189,6 @@ class VehicleDetector:
                 writer.writerow(['Height', 'Width'])
             writer.writerow([height, width])
 
-    # def is_valid_cropped_plate(self, cropped_plate):
-    #     """Check if the cropped plate meets the size requirements."""
-    #     height, width = cropped_plate.shape[:2]
-    #     print(f'height: {height} & width: {width}')
-    #     if height < 55 or width < 100:
-    #         return False
-    #     if height >= width:
-    #         return False
-    #     compare = abs(height - width)
-    #     if compare <= 110 or compare >= 400:
-    #         return False
-    #     return Truesssssss
-
-    # def get_cropped_plates(self, frame, boxes):
-    #     """
-    #     Extract cropped plate images based on bounding boxes.
-    #     Args:
-    #         frame: The original image/frame.
-    #         boxes: List of bounding boxes (each box is [x1, y1, x2, y2]).
-
-    #     Returns:
-    #         cropped_plates: List of cropped plate images.
-    #     """
-    #     height, width, _ = frame.shape
-    #     cropped_plates = []
-
-    #     for box in boxes:
-    #         x1, y1, x2, y2 = [max(0, min(int(coord), width if i % 2 == 0 else height)) for i, coord in enumerate(box)]
-    #         cropped_plate = frame[y1:y2, x1:x2]
-
-    #         if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate):
-    #             cropped_plates.append(cropped_plate)
-
-    #     return cropped_plates
-
-
     def save_cropped_plate(self, cropped_plates):
         """
         Save the cropped plate regions as image files.
@@ -297,23 +268,6 @@ class VehicleDetector:
         else:
             return start, end
 
-    def convert_normalized_to_pixel(self, points, img_dims):
-        """Convert a list of normalized points to pixel coordinates."""
-        height, width = img_dims
-        pixel_points = [(int(x * width), int(y * height)) for (x, y) in points]
-        return pixel_points
-    
-    def convert_normalized_to_pixel_line(self, points, img_dims):
-        """Convert a list of normalized points to pixel coordinates."""
-        if not isinstance(points, list):
-            points = [points]
-
-        height, width = img_dims
-        pixel_points = [
-            (int(x * width), int(y * height)) for (x, y) in points
-        ]
-        return pixel_points
-
     def crop_frame_with_polygon(self, frame, poly_points):
         """Crop the frame to the area inside the polygon."""
 
@@ -331,10 +285,25 @@ class VehicleDetector:
         polygon_points = np.array(polygon_points, dtype=np.int32)
         cv2.polylines(frame, [polygon_points], isClosed=True, color=color, thickness=2)
 
-    def check_car_touch_line(self, frame_size, car_info, polygon_area):
-        """
-        Cek apakah ada centroid objek yang masuk ke dalam area poligon.
-        """
+    # def check_car_touch_line(self, frame_size, car_info, polygon_area):
+    #     """
+    #     Cek apakah ada centroid objek yang masuk ke dalam area poligon.
+    #     """
+    #     polygon_points = [
+    #         convert_normalized_to_pixel_lines(point, frame_size)
+    #         for point in polygon_area
+    #     ]
+
+    #     for (object_id, confidence, bbox, class_name) in car_info:
+    #         car_id = object_id
+    #         centroid = self.get_centroid_object(bbox)
+
+    #         if is_point_in_polygon(centroid, polygon_points):
+    #             return True
+
+    #     return False
+
+    def check_car_touch_line(self, frame_size, car_info, polygon_area, cam_id):
         polygon_points = [
             convert_normalized_to_pixel_lines(point, frame_size)
             for point in polygon_area
@@ -345,9 +314,46 @@ class VehicleDetector:
             centroid = self.get_centroid_object(bbox)
 
             if is_point_in_polygon(centroid, polygon_points):
-                return True
+                if car_id in self.prev_centroids:
+                    prev_centroid = self.prev_centroids[car_id]
 
-        return False
+                    if centroid[1] > prev_centroid[1]:  # Moving downwards (top to bottom)
+                        if cam_id == "IN":
+                            # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: IN")
+                            if car_id not in self.movement_count:
+                                self.movement_count[car_id] = 0
+                            self.movement_count[car_id] += 1
+                            if self.movement_count[car_id] >= 5:
+                                self.prev_centroids[car_id] = centroid
+                                return True, False
+                        elif cam_id == "OUT":
+                            # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: OUT")
+                            self.prev_centroids[car_id] = centroid
+                            return True, True
+
+                    elif centroid[1] < prev_centroid[1]:  # Moving upwards (bottom to top)
+                        if cam_id == "IN":
+                            # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: IN")
+                            self.movement_count[car_id] = 0
+                            self.prev_centroids[car_id] = centroid
+                            return True, True
+                        elif cam_id == "OUT":
+                            # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: OUT")
+                            if car_id not in self.movement_count:
+                                self.movement_count[car_id] = 0
+                            self.movement_count[car_id] += 1
+                            if self.movement_count[car_id] >= 5:
+                                self.prev_centroids[car_id] = centroid
+                                return True, False
+
+                else:
+                    self.prev_centroids[car_id] = centroid
+                    # print(f"Object ID {car_id} just entered the polygon area.")
+            
+            else:
+                return False, False
+
+        return False, None
 
     def process_car(self, results):
         """Process the detection of cars and return car information."""
@@ -375,6 +381,7 @@ class VehicleDetector:
                         car_info.append((object_id, confidence, bbox, str(class_id)))
                 else:
                     if class_name == "car":
+                        # print("CAR_FRAME DETECTED")
                         car_boxes.append(bbox)
                         car_info.append((object_id, confidence, bbox, str(class_id)))
 
@@ -384,7 +391,6 @@ class VehicleDetector:
         """Process the detection of plates within the original frame size and return plate info."""
         plate_info = []
         cropped_plates = []
-        num_add_size = 5
 
         bounding_boxes = results[0].boxes.xyxy.cpu().numpy().tolist() if results else []
         if not bounding_boxes:
@@ -409,18 +415,19 @@ class VehicleDetector:
                         ):
                             plate_info.append((r.id.item(), confidence, plate_bbox, class_name))
                             
-                            plate_y1 = max(plate_y1 - num_add_size, 0)
-                            plate_y2 = min(plate_y2 + num_add_size, original_frame.shape[0])
-                            plate_x1 = max(plate_x1 - num_add_size, 0)
-                            plate_x2 = min(plate_x2 + num_add_size, original_frame.shape[1])
+                            plate_y1 = max(plate_y1 - self.num_add_plate_size, 0)
+                            plate_y2 = min(plate_y2 + self.num_add_plate_size, original_frame.shape[0])
+                            plate_x1 = max(plate_x1 - self.num_add_plate_size, 0)
+                            plate_x2 = min(plate_x2 + self.num_add_plate_size, original_frame.shape[1])
 
                             cropped_plate = original_frame[plate_y1:plate_y2, plate_x1:plate_x2]
-                            if cropped_plate.size > 0 and self.is_valid_cropped_plate(cropped_plate, floor_id, cam_id): 
+                            if cropped_plate.size > 0: 
+                            # and self.is_valid_cropped_plate(cropped_plate, floor_id, cam_id): 
                                 # Save height and width to CSV
                                 # self.save_dimensions_to_csv(height, width)
 
                                 height, width = cropped_plate.shape[:2]
-                                print(f'height: {height} & width: {width}')
+                                # print(f'height: {height} & width: {width}')
                                 self.save_dimensions_to_excel(height, width, floor_id, cam_id)                                
                                 cropped_plates.append(cropped_plate)
                                 # self.save_cropped_plate([cropped_plate])
@@ -429,12 +436,16 @@ class VehicleDetector:
 
         return plate_info, cropped_plates
 
+    def check_blur(self, image):
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        laplacian_var = cv2.Laplacian(gray_image, cv2.CV_64F).var()
+        return laplacian_var
 
     def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
         height, width = frame.shape[:2]
         frame_size = (width, height)
 
-        area_selection = self.convert_normalized_to_pixel(tracking_points, (height, width))
+        area_selection = convert_normalized_to_pixel(tracking_points, (height, width))
         cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
         cropped_frame_copy = cropped_frame.copy()
 
@@ -447,36 +458,47 @@ class VehicleDetector:
         for car_bbox in self.car_bboxes:
             self.centroids = self.get_centroid_object(car_bbox)
 
-        direction = self.is_car_out(self.car_bboxes)
+        # direction = self.is_car_out(self.car_bboxes)
+        # if direction is not None or self.car_direction is None:
+        #     self.car_direction = direction
+
+        self.object_id = car_info[0][0] if car_info else None
+
+        is_centroid_inside, direction = self.check_car_touch_line(frame_size, car_info, poly_bbox, cam_id)
+
         if direction is not None or self.car_direction is None:
             self.car_direction = direction
 
-        # for (object_id, confidence, bbox, class_name) in car_info:
-        #     self.object_id = object_id
-        
-        self.object_id = car_info[0][0] if car_info else None
-
-        is_centroid_inside = self.check_car_touch_line(frame_size, car_info, poly_bbox)
+        # if direction is True:
+        #     print("Car is entering the area from Top to Bottom (Downwards)")
+        # elif direction is False:
+        #     print("Car is entering the area from Bottom to Top (Upwards)")
 
         if is_centroid_inside and not self.is_vehicle_model:
             self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes, floor_id, cam_id)
-
-            # for (object_id, confidence, bbox, class_name) in self.plate_info:
-            #     self.plate_bbox = bbox
 
             if self.plate_info:
                 self.plate_bbox = self.plate_info[0][2]
             else:
                 self.plate_bbox = None
 
-            if self.object_id != self.prev_object_id:
+            # Initialize `frame_count_per_object` and previous object check
+            if self.object_id not in self.frame_count_per_object:
                 self.frame_count_per_object[self.object_id] = 0
 
-            if self.object_id not in self.frame_count_per_object:
+            # Check if the current floor and cam match the previous object
+            if (self.object_id != self.prev_object_id or
+                (self.prev_floor_id != floor_id or self.prev_cam_id != cam_id)):
                 self.frame_count_per_object[self.object_id] = 0
 
             if self.frame_count_per_object[self.object_id] < self.max_num_frame:
                 for plate_frame in plate_frames:
+                    check_blur_img = self.check_blur(plate_frame)
+                    print("BLUR IMAGE VALUE: ", check_blur_img)
+                    if check_blur_img == 1000:
+                        continue
+
+                    print("PLATE_FRAME DETECTED")
                     self.save_cropped_plate([plate_frame])
 
                     gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
@@ -498,6 +520,8 @@ class VehicleDetector:
 
                     self.frame_count_per_object[self.object_id] += 1
                     self.prev_object_id = self.object_id
+                    self.prev_floor_id = floor_id
+                    self.prev_cam_id = cam_id  # Store the current floor and cam as the previous
 
                     return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
 
@@ -505,3 +529,83 @@ class VehicleDetector:
                 print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
 
         return {}, cropped_frame_copy, is_centroid_inside, car_info
+
+
+    # def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
+    #     height, width = frame.shape[:2]
+    #     frame_size = (width, height)
+
+    #     area_selection = convert_normalized_to_pixel(tracking_points, (height, width))
+    #     cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
+    #     cropped_frame_copy = cropped_frame.copy()
+
+    #     preprocessed_image = self.preprocess(cropped_frame)
+
+    #     results = self.model.track(preprocessed_image, conf=0.25, persist=True, verbose=False)
+
+    #     self.car_bboxes, car_info = self.process_car(results)
+
+    #     for car_bbox in self.car_bboxes:
+    #         self.centroids = self.get_centroid_object(car_bbox)
+
+    #     direction = self.is_car_out(self.car_bboxes)
+    #     if direction is not None or self.car_direction is None:
+    #         self.car_direction = direction
+
+    #     # for (object_id, confidence, bbox, class_name) in car_info:
+    #     #     self.object_id = object_id
+        
+    #     self.object_id = car_info[0][0] if car_info else None
+
+    #     is_centroid_inside = self.check_car_touch_line(frame_size, car_info, poly_bbox)
+
+    #     if is_centroid_inside and not self.is_vehicle_model:
+    #         self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes, floor_id, cam_id)
+
+    #         # for (object_id, confidence, bbox, class_name) in self.plate_info:
+    #         #     self.plate_bbox = bbox
+
+    #         if self.plate_info:
+    #             self.plate_bbox = self.plate_info[0][2]
+    #         else:
+    #             self.plate_bbox = None
+
+    #         if self.object_id != self.prev_object_id:
+    #             self.frame_count_per_object[self.object_id] = 0
+
+    #         if self.object_id not in self.frame_count_per_object:
+    #             self.frame_count_per_object[self.object_id] = 0
+
+    #         if self.frame_count_per_object[self.object_id] < self.max_num_frame:
+    #             for plate_frame in plate_frames:
+    #                 print("PLATE_FRAME DETECTED")
+    #                 self.save_cropped_plate([plate_frame])
+
+    #                 gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
+    #                 bg_color = check_background(gray_plate, False)
+
+    #                 # print("bg_color: ", bg_color)
+
+    #                 vehicle_plate_data = {
+    #                     "object_id": self.object_id,
+    #                     "bbox": self.plate_bbox,
+    #                     "is_centroid_inside": is_centroid_inside,
+    #                     "bg_color": bg_color,
+    #                     "frame": plate_frame,
+    #                     "floor_id": floor_id,
+    #                     "cam_id": cam_id,
+    #                     "arduino_idx": arduino_idx,
+    #                     "car_direction": self.car_direction,
+    #                     "start_line": True,
+    #                     "end_line": True
+    #                 }
+
+    #                 self.frame_count_per_object[self.object_id] += 1
+    #                 self.prev_object_id = self.object_id
+
+    #                 return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
+
+    #         else:
+    #             print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
+
+    #     return {}, cropped_frame_copy, is_centroid_inside, car_info

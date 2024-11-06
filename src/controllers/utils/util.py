@@ -4,6 +4,8 @@ import Levenshtein as lev
 import logging
 import uuid
 from datetime import datetime
+import random
+import os, sys
 
 from src.config.config import config
 from src.config.logger import logger
@@ -96,9 +98,9 @@ def convert_decimal_to_bbox(img_dims, polygons):
 
 def define_tracking_polygon(height, width, floor_id, cam_id):
     if floor_id == 2:
-        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F1_OUT
-        polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT2_OUT
-        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F2_OUT
+        tracking_point = config.TRACKING_POINT2_F1_IN if cam_id == "IN" else config.TRACKING_POINT2_F5_OUT # config.TRACKING_POINT2_F1_OUT
+        polygon_point = config.POLYGON_POINT_LT2_IN if cam_id == "IN" else config.POLYGON_POINT_LT5_OUT # config.POLYGON_POINT_LT2_OUT
+        POLY_BOX = config.POLY_BBOX_F2_IN if cam_id == "IN" else config.POLY_BBOX_F5_OUT # config.POLY_BBOX_F2_OUT
     elif floor_id == 3:
         tracking_point = config.TRACKING_POINT2_F3_IN if cam_id == "IN" else config.TRACKING_POINT2_F3_OUT
         polygon_point = config.POLYGON_POINT_LT3_IN if cam_id == "IN" else config.POLYGON_POINT_LT3_OUT
@@ -131,6 +133,12 @@ def point_position(line1, line2, point, inverse=False):
     elif d < 0:
         return True if not inverse else False
 
+def convert_normalized_to_pixel(points, img_dims):
+    """Convert a list of normalized points to pixel coordinates."""
+    height, width = img_dims
+    pixel_points = [(int(x * width), int(y * height)) for (x, y) in points]
+    return pixel_points
+
 def convert_normalized_to_pixel_lines(point, frame_size):
     """
     Konversi titik normalisasi (0-1) ke koordinat piksel.
@@ -139,148 +147,28 @@ def convert_normalized_to_pixel_lines(point, frame_size):
     width, height = frame_size
     return int(x_norm * width), int(y_norm * height)
 
-
 def check_background(gray_image, verbose=False):
-    _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
-    white_pixels = np.sum(binary_image == 255)
-    black_pixels = np.sum(binary_image == 0)
+    white_threshold = 50
+    _, white_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY)
+    _, black_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY_INV)
 
-    bgr_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
-    hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
+    white_count = np.sum(white_mask == 255)
+    black_count = np.sum(black_mask == 255)
 
-    lower_green = np.array([35, 50, 50])
-    upper_green = np.array([85, 255, 255])
+    dominant_color = "bg_white" if white_count > black_count else "bg_black"
+    # print("white_count:", white_count, "black_count:", black_count)
 
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([30, 255, 255])
+    folder_path = "gray_images/white" if dominant_color == "bg_white" else "gray_images/black"
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([180, 255, 255])
+    filename = f"{folder_path}/{random.randint(1000, 9999)}.png"
+    cv2.imwrite(filename, gray_image)
 
-    lower_blue = np.array([100, 150, 0])
-    upper_blue = np.array([140, 255, 255])
+    if verbose:
+        logging.info(f"Dominant background color detected: {dominant_color.upper()}")
 
-    mask_green = cv2.inRange(hsv_image, lower_green, upper_green)
-    mask_yellow = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
-    mask_red1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
-    mask_red2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
-    mask_red = mask_red1 + mask_red2
-    mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
-
-    green_pixels = np.sum(mask_green == 255)
-    yellow_pixels = np.sum(mask_yellow == 255)
-    red_pixels = np.sum(mask_red == 255)
-    blue_pixels = np.sum(mask_blue == 255)
-
-    if abs(black_pixels - blue_pixels) / max(black_pixels, blue_pixels) < 0.1:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " BLACK-BLUE PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_black_blue"
-
-    if white_pixels > black_pixels and white_pixels > green_pixels and white_pixels > yellow_pixels and white_pixels > red_pixels and white_pixels > blue_pixels:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " WHITE PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_white"
-
-    elif black_pixels > white_pixels and black_pixels > green_pixels and black_pixels > yellow_pixels and black_pixels > red_pixels and black_pixels > blue_pixels:
-        if verbose:
-            logging.info('=' * 80)
-            logging.info('=' * 30 + " BLACK PLATE " + '=' * 30)
-            logging.info('=' * 80)
-        return "bg_black"
-
-    elif green_pixels > white_pixels and green_pixels > yellow_pixels and green_pixels > red_pixels and green_pixels > blue_pixels:
-        return "bg_green"
-
-    elif yellow_pixels > white_pixels and yellow_pixels > green_pixels and yellow_pixels > red_pixels and yellow_pixels > blue_pixels:
-        return "bg_yellow"
-
-    elif red_pixels > white_pixels and red_pixels > green_pixels and red_pixels > yellow_pixels and red_pixels > blue_pixels:
-        return "bg_red"
-
-    elif blue_pixels > white_pixels and blue_pixels > green_pixels and blue_pixels > yellow_pixels and blue_pixels > red_pixels:
-        return "bg_blue"
-
-    else:
-        return "bg_unknown"
-
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# def check_background(gray_image, verbose=False):
-#     _, binary_image = cv2.threshold(gray_image, 127, 255, cv2.THRESH_BINARY)
-#     white_pixels = np.sum(binary_image == 255)
-#     black_pixels = np.sum(binary_image == 0)
-
-#     bgr_image = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
-#     hsv_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2HSV)
-
-#     lower_green = np.array([35, 50, 50])
-#     upper_green = np.array([85, 255, 255])
-
-#     lower_yellow = np.array([20, 100, 100])
-#     upper_yellow = np.array([30, 255, 255])
-
-#     lower_red1 = np.array([0, 100, 100])
-#     upper_red1 = np.array([10, 255, 255])
-#     lower_red2 = np.array([160, 100, 100])
-#     upper_red2 = np.array([180, 255, 255])
-
-#     lower_blue = np.array([100, 150, 0])
-#     upper_blue = np.array([140, 255, 255])
-
-#     mask_green = cv2.inRange(hsv_image, lower_green, upper_green)
-#     mask_yellow = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
-#     mask_red1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
-#     mask_red2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
-#     mask_red = mask_red1 + mask_red2
-#     mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
-
-#     green_pixels = np.sum(mask_green == 255)
-#     yellow_pixels = np.sum(mask_yellow == 255)
-#     red_pixels = np.sum(mask_red == 255)
-#     blue_pixels = np.sum(mask_blue == 255)
-
-#     if abs(black_pixels - blue_pixels) / max(black_pixels, blue_pixels) < 0.1:
-#         if verbose:
-#             logging.info('=' * 80)
-#             logging.info('=' * 30 + " BLACK-BLUE PLATE " + '=' * 30)
-#             logging.info('=' * 80)
-#         return "bg_black_blue"
-
-#     if white_pixels > black_pixels and white_pixels > green_pixels and white_pixels > yellow_pixels and white_pixels > red_pixels and white_pixels > blue_pixels:
-#         if verbose:
-#             logging.info('=' * 80)
-#             logging.info('=' * 30 + " WHITE PLATE " + '=' * 30)
-#             logging.info('=' * 80)
-#         return "bg_white"
-
-#     elif black_pixels > white_pixels and black_pixels > green_pixels and black_pixels > yellow_pixels and black_pixels > red_pixels and black_pixels > blue_pixels:
-#         if verbose:
-#             logging.info('=' * 80)
-#             logging.info('=' * 30 + " BLACK PLATE " + '=' * 30)
-#             logging.info('=' * 80)
-#         return "bg_black"
-
-#     elif green_pixels > white_pixels and green_pixels > yellow_pixels and green_pixels > red_pixels and green_pixels > blue_pixels:
-#         return "bg_green"
-
-#     elif yellow_pixels > white_pixels and yellow_pixels > green_pixels and yellow_pixels > red_pixels and yellow_pixels > blue_pixels:
-#         return "bg_yellow"
-
-#     elif red_pixels > white_pixels and red_pixels > green_pixels and red_pixels > yellow_pixels and red_pixels > blue_pixels:
-#         return "bg_red"
-
-#     elif blue_pixels > white_pixels and blue_pixels > green_pixels and blue_pixels > yellow_pixels and blue_pixels > red_pixels:
-#         return "bg_blue"
-
-#     else:
-#         return "bg_unknown"
+    return dominant_color
 
 def check_floor(cam_idx):
     cam_map = {

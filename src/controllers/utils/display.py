@@ -102,6 +102,10 @@ def show_cam(text, image, max_width=1080, max_height=720):
     cv2.imshow(text, res_img)
     # cv2.imshow(text, image)
 
+# def show_text(text, image, x_shape, y_shape, color=(255, 255, 255)):
+#     image = cv2.rectangle(image, (x_shape - 10, y_shape + 40), (x_shape + 650, y_shape - 40), (0, 0, 0), -1)
+#     return cv2.putText(image, text, (x_shape, y_shape), cv2.FONT_HERSHEY_SIMPLEX, 1.6, color, 8)
+
 def show_text(text, image, x_shape, y_shape, color=(255, 255, 255)):
     image = cv2.rectangle(image, (x_shape - 10, y_shape + 20), (x_shape + 400, y_shape - 40), (0, 0, 0), -1)
     return cv2.putText(image, text, (x_shape, y_shape), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 3)
@@ -141,12 +145,26 @@ def add_overlay_v6(frame, floor_id, cam_id, poly_points, plate_no, total_slot, v
 def add_overlay(frame, floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total, poly_bbox):
     """Add text and lines to the frame."""
     show_text(f"Floor : {floor_id} {cam_id}", frame, 5, 50)
+    # show_text(f"", frame, 10, 80)
     show_text(f"Plate No. : {plate_no}", frame, 5, 100)
     color = (0, 255, 0) if total_slot > 0 else (0, 0, 255)
+    # show_text(f"", frame, 10, 160)
     show_text(f"P. Spaces Available : {total_slot}", frame, 5, 150, color)
     show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
     # show_line(frame, poly_points[0], poly_points[1])
     # show_line(frame, poly_points[2], poly_points[3])
+
+# def add_overlay(frame, floor_id, cam_id, poly_points, plate_no, total_slot, vehicle_total, poly_bbox):
+#     """Add text and lines to the frame."""
+#     show_text(f"Floor : {floor_id} {cam_id}", frame, 10, 50)
+#     # show_text(f"", frame, 10, 80)
+#     show_text(f"Plate No. : {plate_no}", frame, 10, 130)
+#     color = (0, 255, 0) if total_slot > 0 else (0, 0, 255)
+#     # show_text(f"", frame, 10, 160)
+#     show_text(f"P. Spaces Available : {total_slot}", frame, 10, 210, color)
+#     # show_text(f"Car Total : {vehicle_total}", frame, 5, 200)
+#     # show_line(frame, poly_points[0], poly_points[1])
+#     # show_line(frame, poly_points[2], poly_points[3])
 
     show_polygon_area(frame=frame, poly_bbox=poly_bbox, is_centroid_inside=False)
 

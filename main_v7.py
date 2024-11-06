@@ -437,50 +437,196 @@ class Wrapper:
             for i in range(len(self.clicked_points)):
                 start_point = self.clicked_points[i]
                 end_point = self.clicked_points[(i + 1) % len(self.clicked_points)]
-                cv2.line(frame, start_point, end_point, (255, 0, 0), 1)  # Draw blue lines
+                cv2.line(frame, start_point, end_point, (255, 0, 0), 1)
 
     def main(self):
-        IS_DEBUG = False
-        video_source = config.VIDEO_SOURCE_PC if IS_DEBUG else config.CAM_SOURCE_LT
+        IS_DEBUG = True
+        IS_CAMERA = False
+        IS_PC = False
+        ROWS_CONF = 1
+        COLS_CONF = 1
+        if ROWS_CONF == 1:
+            if COLS_CONF == 1:
+                FRAME_SIZE_CONF = 1080
+            elif COLS_CONF == 2:
+                FRAME_SIZE_CONF = 720
+            elif COLS_CONF == 3:
+                FRAME_SIZE_CONF = 640
+        elif ROWS_CONF == 2:
+            if COLS_CONF in [1, 2, 3]:
+                FRAME_SIZE_CONF = 640
 
-        # Start processes
-        self.start()
+        IS_VIDEO = True if IS_DEBUG else False
 
-        while not self.is_model_built():
-            time.sleep(0.1)
-            print("Loading recognition models...")
+        if IS_DEBUG:
+            if IS_CAMERA:
+                FLOOR_ID = 2
+                CAM_ID = "OUT"
+                SERIAL_NUMBER = "SERIAL_NUMBER"
+                VIDEO_SOURCES = config.CAM_SOURCE_FLOOR
+                SERIALS_FLOOR = config.SERIALS_FLOOR
 
-        plat_detects = [None] * len(video_source)
-        arduino_devices = [Arduino(baudrate=115200, serial_number=serial) for serial in config.SERIALS]
-        frames = [None] * len(video_source)
-        total_slots = {}
+                try:
+                    cam_id = None
+                    VIDEO_SOURCE = VIDEO_SOURCES[FLOOR_ID][CAM_ID]
+                    SERIAL_NUMBER_CONF = SERIALS_FLOOR[FLOOR_ID][SERIAL_NUMBER]
 
-        for i in range(len(video_source)):
-            idx, cam_position = check_floor(i)
+                    if not VIDEO_SOURCE:
+                        raise ValueError("Camera ID not found: the video path is empty")
 
-            if idx not in total_slots:
-                slot = self.db_floor.get_slot_by_id(idx)
-                total_slots[idx] = slot["slot"]
-                print(f"Slot initialized for idx {idx}: {slot}")
+                    if not SERIAL_NUMBER_CONF:
+                        raise ValueError("SERIAL_NUMBER not found: the serial_number path is empty")
 
-            arduino_text = arduino_devices[idx]
-            arduino_matrix = arduino_devices[idx + 1]
+                    arduino_devices = Arduino(baudrate=115200, serial_number=SERIAL_NUMBER_CONF)
 
-            self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
-            self.matrix_controller.start(self.matrix_controller.get_total())
+                except KeyError:
+                    raise ValueError(f"Invalid FLOOR_ID {FLOOR_ID} or CAM_ID {CAM_ID}")
 
-            plat_detects[i] = DetectionControllerV7(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue)
-            plat_detects[i].start()
+            else:
+                VIDEO_SOURCE_LAPTOP = [
+                    config.VIDEO_SOURCE_LT2_IN,
+                    config.VIDEO_SOURCE_LT2_OUT
+                ]
 
-        while not all([m.is_model_built() for m in plat_detects]):
-            time.sleep(0.1)
-            print("Loading detection models...")
+                VIDEO_SOURCE_FLOOR_LAPTOP = {
+                        2: {
+                            "IN": config.VIDEO_SOURCE_LT2_IN,
+                            "OUT": config.VIDEO_SOURCE_LT2_OUT
+                        },
+                        3: {
+                            "IN": config.VIDEO_SOURCE_LT3_IN,
+                            "OUT": config.VIDEO_SOURCE_LT3_OUT
+                        },
+                        4: {
+                            "IN": config.VIDEO_SOURCE_LT4_IN,
+                            "OUT": config.VIDEO_SOURCE_LT4_OUT
+                        },
+                        5: {
+                            "IN": config.VIDEO_SOURCE_LT5_IN,
+                            "OUT": config.VIDEO_SOURCE_LT5_OUT
+                        }
+                    }
 
-        is_video = True if IS_DEBUG else False
-        caps = [CameraV1(video, is_video=is_video) for video in video_source]
-        for cap in caps:
-            print(f"Starting camera: {cap}")
-            cap.start()
+                SERIAL_NUMBER = "SERIAL_NUMBER"
+                VIDEO_SOURCES = config.CAM_SOURCE_FLOOR
+                SERIALS_FLOOR = config.SERIALS_FLOOR
+
+                FLOOR_CAM_CONF = {
+                    2: {
+                        "IN": True,
+                        "OUT": False
+                    },
+                    3: {
+                        "IN": False,
+                        "OUT": False
+                    },
+                    4: {
+                        "IN": False,
+                        "OUT": False
+                    },
+                    3: {
+                        "IN": False,
+                        "OUT": False
+                    },
+                }
+
+                if IS_PC:
+                    config.VIDEO_SOURCE_PC
+                else:
+                    # VIDEO_SOURCE = VIDEO_SOURCES[FLOOR_ID][CAM_ID]
+
+                    VIDEO_SOURCE = [
+                        video for floor_id, cam_dict in VIDEO_SOURCE_FLOOR_LAPTOP.items()
+                        for cam_id, video in cam_dict.items()
+                        if FLOOR_CAM_CONF.get(floor_id, {}).get(cam_id, False)
+                    ]                    
+
+                # VIDEO_SOURCE = config.VIDEO_SOURCE_PC if IS_PC else VIDEO_SOURCE_LAPTOP 
+
+                self.start()
+
+                while not self.is_model_built():
+                    time.sleep(0.1)
+                    print("Loading recognition models...")
+
+                plat_detects = [None] * len(VIDEO_SOURCE)
+
+                SERIALS = [
+                    config.SERIAL_NUMBER_MATRIX_TEXT_LT2, config.SERIAL_NUMBER_MATRIX_NUM_LT2,
+                    config.SERIAL_NUMBER_MATRIX_TEXT_LT3, config.SERIAL_NUMBER_MATRIX_NUM_LT3,
+                    config.SERIAL_NUMBER_MATRIX_TEXT_LT4, config.SERIAL_NUMBER_MATRIX_NUM_LT4,
+                    config.SERIAL_NUMBER_MATRIX_TEXT_LT5, config.SERIAL_NUMBER_MATRIX_NUM_LT5
+                ]
+
+                arduino_devices = [Arduino(baudrate=115200, serial_number=serial) for serial in SERIALS]
+                frames = [None] * len(VIDEO_SOURCE)
+                total_slots = {}
+
+                for i in range(len(VIDEO_SOURCE)):
+                    idx, cam_position = check_floor(i)
+
+                    if idx not in total_slots:
+                        slot = self.db_floor.get_slot_by_id(idx)
+                        total_slots[idx] = slot["slot"]
+                        print(f"Slot initialized for idx {idx}: {slot}")
+
+                    arduino_text = arduino_devices[idx]
+                    arduino_matrix = arduino_devices[idx + 1]
+
+                    self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
+                    self.matrix_controller.start(self.matrix_controller.get_total())
+
+                    plat_detects[i] = DetectionControllerV7(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue)
+                    plat_detects[i].start()
+
+                while not all([m.is_model_built() for m in plat_detects]):
+                    time.sleep(0.1)
+                    print("Loading detection models...")
+
+                caps = [CameraV1(video, is_video=IS_VIDEO) for video in VIDEO_SOURCE]
+                for cap in caps:
+                    print(f"Starting camera: {cap}")
+                    cap.start()
+
+        else:
+            VIDEO_SOURCE = config.CAM_SOURCE_LT
+
+            self.start()
+
+            while not self.is_model_built():
+                time.sleep(0.1)
+                print("Loading recognition models...")
+
+            plat_detects = [None] * len(VIDEO_SOURCE)
+            arduino_devices = [Arduino(baudrate=115200, serial_number=serial) for serial in config.SERIALS]
+            frames = [None] * len(VIDEO_SOURCE)
+            total_slots = {}
+
+            for i in range(len(VIDEO_SOURCE)):
+                idx, cam_position = check_floor(i)
+
+                if idx not in total_slots:
+                    slot = self.db_floor.get_slot_by_id(idx)
+                    total_slots[idx] = slot["slot"]
+                    print(f"Slot initialized for idx {idx}: {slot}")
+
+                arduino_text = arduino_devices[idx]
+                arduino_matrix = arduino_devices[idx + 1]
+
+                self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
+                self.matrix_controller.start(self.matrix_controller.get_total())
+
+                plat_detects[i] = DetectionControllerV7(arduino_text, vehicle_plate_result_queue=self.vehicle_plate_result_queue)
+                plat_detects[i].start()
+
+            while not all([m.is_model_built() for m in plat_detects]):
+                time.sleep(0.1)
+                print("Loading detection models...")
+
+            caps = [CameraV1(video, is_video=IS_VIDEO) for video in VIDEO_SOURCE]
+            for cap in caps:
+                print(f"Starting camera: {cap}")
+                cap.start()
 
         try:
             print("Opening cameras...")
@@ -540,7 +686,7 @@ class Wrapper:
 
                     # if frames is not None:
                     # print("masuk frame_show")
-                    frame_show = create_grid(frames, rows=2, cols=2, frame_size=720, padding=5)
+                    frame_show = create_grid(frames, rows=ROWS_CONF, cols=COLS_CONF, frame_size=FRAME_SIZE_CONF, padding=5)
                     cv2.imshow(f"Camera", frame_show)
                     # cv2.imshow(f"Camera", frames[0])
                     # print("keluar frame_show")

@@ -1,16 +1,18 @@
-import os
+import os, sys
 import cv2
 import numpy as np
 import logging
 from datetime import datetime
 import gc
 
-from src.config.config import config
-from src.config.logger import logger
+this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(this_path)
+
+# print("this_path: ", this_path)
+
+# from src.config.config import config
+# from src.config.logger import logger
 from src.models.gan_model import GanModel
-
-
-
 
 
 
@@ -93,11 +95,16 @@ class ImageRestoration:
         self.gan_model = GanModel()
         self.saved_dir = 'image_restoration_saved'
 
-    def process_image(self, image, is_save=False):
+    def process_image(self, image, is_save=True):
+        # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         resized_image = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
 
-        restored_image = self.gan_model.super_resolution(resized_image)
+        # Convert back to a 3-channel image to save in color
+        color_image = cv2.cvtColor(resized_image, cv2.COLOR_GRAY2BGR)
+
+        # Process with the GAN model
+        restored_image = self.gan_model.super_resolution(color_image)
 
         if is_save:
             self.save_restored_image(restored_image)
@@ -112,76 +119,29 @@ class ImageRestoration:
             timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
             filename = os.path.join(self.saved_dir, f'{timestamp}.jpg')
 
-            if len(restored_image.shape) == 2:  # Grayscale
-                cv2.imwrite(filename, restored_image)
-            elif len(restored_image.shape) == 3:  # Color
+            # Check the shape to ensure it's in color
+            if len(restored_image.shape) == 3:
                 cv2.imwrite(filename, cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR))
-
-            # logging.info(f"[ImageRestoration] Image saved as {filename}")
         else:
             logging.warning("[ImageRestoration] Restored image is empty or invalid, not saving.")
+            
+if __name__ == '__main__':
+    # image = cv2.imread(r"D:\engine\cv\image_restoration\backup\18-48\plate_saved\2024-10-24-18-32-55-343434.jpg")
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+    # restored_image = img_restore.process_image(image)
+    # cv2.imshow(restored_image)
 
+    img_restore = ImageRestoration()
+    folder_input = r"D:\engine\cv\image_restoration\backup\18-48\plate_saved"
 
+    for f in os.listdir(folder_input):
+        if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+            image_path = os.path.join(folder_input, f)
+            image = cv2.imread(image_path)
 
+            if image is None:
+                print(f"Failed to load image: {image_path}")
+                continue
 
-# def image_restoration(stopped, vehicle_plate_result_queue, img_restoration_result_queue):
-#     img_restore = ImageRestoration()
-#     frame_count = 0
-#     prev_object_id = None
-
-#     while not stopped.is_set():
-#         try:
-#             vehicle_plate_data = vehicle_plate_result_queue.get()
-
-#             if vehicle_plate_data is None:
-#                 continue
-
-#             object_id = vehicle_plate_data.get('object_id')
-#             bg_color = vehicle_plate_data.get('bg_color')
-#             vehicle_plate_frame = vehicle_plate_data.get('frame')
-#             floor_id = vehicle_plate_data.get('floor_id', 0)
-#             cam_id = vehicle_plate_data.get('cam_id', "")
-#             arduino_idx = vehicle_plate_data.get('arduino_idx')
-#             car_direction = vehicle_plate_data.get('car_direction')
-#             start_line = vehicle_plate_data.get('start_line', False)
-#             end_line = vehicle_plate_data.get('end_line', False)
-
-#             print(f"cur object_id: {object_id}, prev object_id: {prev_object_id}")
-
-#             if object_id != prev_object_id:
-#                 frame_count = 0
-#                 prev_object_id = object_id
-
-#             if vehicle_plate_frame is not None:
-#                 try:
-#                     restored_image = img_restore.process_image(vehicle_plate_frame)
-
-#                     if restored_image is not None and restored_image.size > 0:
-#                         if frame_count < 10:
-#                             result = {
-#                                 "object_id": object_id,
-#                                 "bg_color": bg_color,
-#                                 "frame": restored_image,
-#                                 "floor_id": floor_id,
-#                                 "cam_id": cam_id,
-#                                 "arduino_idx": arduino_idx,
-#                                 "car_direction": car_direction,
-#                                 "start_line": start_line,
-#                                 "end_line": end_line
-#                             }
-
-#                             img_restoration_result_queue.put(result)
-#                             frame_count += 1
-#                             print(f"Saved and put data for object_id: {object_id}, frame_count: {frame_count}")
-#                         else:
-#                             print(f"Skipping saving for object_id: {object_id}, frame_count: {frame_count}")
-#                             break
-#                     else:
-#                         print(f"Restored image is None or empty for object_id: {object_id}")
-#                 except Exception as e:
-#                     print(f"Error restoring image for object_id: {object_id}: {str(e)}")
-#             else:
-#                 print(f"No valid vehicle plate frame for object_id: {object_id}")
-#         except Exception as e:
-#             print(f"Error in plate detection: {e}")
+            restored_image = img_restore.process_image(image)
