@@ -7,7 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 from datetime import datetime
 import glob
 import re
-import gc
+import random
 
 from src.models.display.character_recognition_display import display_character_segments, display_results
 
@@ -267,19 +267,35 @@ class CharacterRecognize:
             _, char_binary = cv2.threshold(char_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img_res.append(char_binary)
 
-            char_resized = cv2.resize(char, (20, 30))
+            original_height, original_width = char_binary.shape
+            aspect_ratio = original_width / original_height
+            new_height = 30
+            new_width = int(new_height * aspect_ratio)
+            char_binary_resized = cv2.resize(char_binary, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            # img_res.append(char_binary_resized)
+
+
+            # new_height = 30
+            # w_char, h_char = char.shape[1], char.shape[0]
+            # new_width  = new_height * w_char / h_char
+
+            # dim = (w_char, new_height)
+
+            # char_resized = cv2.resize(char, dim, interpolation = cv2.INTER_AREA)
+
+            char_resized = cv2.resize(char_binary, (20, 30))
             img_res_resized.append(char_resized)
             cv2.rectangle(img_rgb_copy, (intX, intY), (intX + intWidth, intY + intHeight), (0, 255, 0), 1)
 
             if is_save:
-                timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-                filename = f"black-{timestamp}.png"
+                timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+                filename = f"black-{timestamp}-{random.randint(1, 1000)}.png"
                 output_path = os.path.join(output_dir, filename)
 
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
 
-                cv2.imwrite(output_path, char_resized)
+                cv2.imwrite(output_path, char_binary_resized)
                 logging.write(f'Saved {output_path}', logging.DEBUG)
 
         return img_res, img_rgb_copy, img_rgb_copy
@@ -379,7 +395,7 @@ class CharacterRecognize:
         result_string = ''
 
         if bg_color == "bg_black":
-            crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=False, output_dir="output_chars_3", verbose=False)
+            crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=True, output_dir="output_chars_3", verbose=False)
 
             for i, character in enumerate(crop_characters):
                 predicted_char, confidence = self.predict_from_model(character)
@@ -401,7 +417,7 @@ class CharacterRecognize:
 
         elif bg_color == "bg_white":
             img_inv = cv2.bitwise_not(img_bgr)
-            char_list, img_segment, inv_image = self.segment_characters_black(img_inv, is_save=False, output_dir="output_chars_3", verbose=False)
+            char_list, img_segment, inv_image = self.segment_characters_black(img_inv, is_save=True, output_dir="output_chars_3", verbose=False)
 
             for i, character in enumerate(char_list):
                 predicted_char, confidence = self.predict_from_model(character)

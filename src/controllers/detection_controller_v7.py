@@ -23,8 +23,8 @@ from src.controllers.utils.util import (
 
 
 class DetectionControllerV7:
-    def __init__(self, arduino_idx, vehicle_plate_result_queue=None):
-        self.arduino_idx = arduino_idx
+    def __init__(self, vehicle_plate_result_queue=None, arduino_matrix=None):
+        self.arduino_matrix = arduino_matrix
         self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.stopped = mp.Event()
         self.vehicle_thread = None
@@ -75,7 +75,9 @@ class DetectionControllerV7:
                     floor_id=floor_id, cam_id=cam_id
                 )
 
-                vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = vehicle_detector.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=floor_id, cam_id=cam_id, tracking_points=tracking_points, poly_bbox=poly_bbox)
+                vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = vehicle_detector.vehicle_detect(arduino_idx=str(self.arduino_matrix), frame=frame, floor_id=floor_id, cam_id=cam_id, tracking_points=tracking_points, poly_bbox=poly_bbox)
+
+                # print("vehicle_plate_data 1: ", vehicle_plate_data)
 
                 if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):
                     if self.vehicle_plate_result_queue is not None:
@@ -85,6 +87,8 @@ class DetectionControllerV7:
                             if current_qsize != prev_qsize:
                                 print("q_size: ", current_qsize)
                                 prev_qsize = current_qsize
+
+                        # print("vehicle_plate_data 2: ", vehicle_plate_data)
 
                         self.vehicle_plate_result_queue.put(vehicle_plate_data)
 

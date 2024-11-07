@@ -1,16 +1,13 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import os
+import os, sys
 from datetime import datetime
 from shapely.geometry import Polygon
 import csv
 import pandas as pd
 import time 
 
-from src.config.config import config
-
-from utils.centroid_tracking import CentroidTracker
 from src.controllers.utils.util import (
     check_background, 
     point_position,
@@ -27,7 +24,10 @@ from src.controllers.utils.display import (
     show_cam
 )
 
+this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(this_path)
 
+from utils.centroid_tracking import CentroidTracker
 
 class VehicleDetector:
     def __init__(self, model_path, is_vehicle_model):

@@ -28,15 +28,15 @@ class FetchAPIController:
 
             dump_response = json.dumps(response.json(), indent=4)
             print("SEND DATA IS SUCCESS ")
-            # print("SEND DATA : ", dump_response)
 
-            return {"status": response.status_code, "message": response.json()}
+            response_data = response.json()["data"]["parking_slot"]
+
+            return response_data
+
         except requests.exceptions.RequestException as e:
             print("SEND DATA IS FAIL ")
             print(f"Error occurred: {e}")
-            return {"status": "error", "message": str(e)}
-        
-
+            return str(e)
 
 if __name__ == "__main__":
     controller = FetchAPIController()
@@ -70,15 +70,15 @@ if __name__ == "__main__":
             "id": "134254",
             "created_date": "2024-10-01 10:32:10"
         },
-        {
-            "floor": "2",
-            "license": "BP1234AC",
-            "zone": "right",
-            "cam": "2/in",
-            "vehicle_type": "car",
-            "id": "1342545",
-            "created_date": "2024-10-01 10:32:10"
-        }
+        # {
+        #     "floor": "2",
+        #     "license": "BP1234AC",
+        #     "zone": "right",
+        #     "cam": "2/in",
+        #     "vehicle_type": "car",
+        #     "id": "1342545",
+        #     "created_date": "2024-10-01 10:32:10"
+        # }
     ]
 
     send_date = "2024-10-01 10:33:10"

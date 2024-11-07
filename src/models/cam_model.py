@@ -6,7 +6,8 @@ import cv2
 
 class CameraV1(threading.Thread):
     def __init__(self, address, fps=20, is_video=False):
-        self.capture = cv2.VideoCapture(address)
+        self.address = address
+        self.capture = cv2.VideoCapture(self.address)
         self.capture.set(cv2.CAP_PROP_FPS, fps)
         assert self.capture.isOpened()
         self.isOpened = self.capture.isOpened()
@@ -17,6 +18,10 @@ class CameraV1(threading.Thread):
         self.callback = None
         self.isVideo = is_video
         super().__init__()
+    
+    def open(self):
+        self.capture.open(self.address)
+        self.isOpened = self.capture.isOpened()
     
     def start(self):
         self.running = True

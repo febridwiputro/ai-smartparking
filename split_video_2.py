@@ -33,14 +33,9 @@ def split_video(filename, start_time_str, end_time_str, output_dir):
     print(f'Video berhasil dipotong dari {start_time_str} hingga {end_time_str} dan disimpan sebagai {output_file}')
 
 if __name__ == "__main__":
-    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-10-22\day\192.168.1.14_01_20241022165025380.mp4"
-    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-04\192.168.1.15_01_20241104115334212.mp4"
-    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-04\192.168.1.14_01_20241104115332370.mp4"
-    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-01\192.168.1.17_01_20241101174235972.mp4"
-    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-01\192.168.1.17_01_20241101174705385.mp4"
-    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-06\192.168.1.13_01_20241106163408868.mp4"
-    start_time = "07:35" # format mm:ss
-    end_time = "08:00"   # format mm:ss
+    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-06\192.168.1.10_01_20241106170840406.mp4"
+    start_time = "02:40" # "33:00 " # format mm:ss
+    end_time = "03:10"   # format mm:ss
 
     output_dir = "split_video"
 

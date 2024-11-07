@@ -1,3 +1,4 @@
+
 import os
 import cv2
 import threading
@@ -412,8 +413,8 @@ class Wrapper:
                 print("Error at distribute_work_thread", e)
 
     def main(self):
-        IS_DEBUG = False
-        IS_PC = False
+        IS_DEBUG = True
+        IS_PC = True
 
         if IS_DEBUG:
             ROWS_CONF, COLS_CONF = 1, 1

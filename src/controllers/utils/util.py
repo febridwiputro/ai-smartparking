@@ -372,8 +372,9 @@ def send_plate_data(floor_id, plate_no, cam_position):
         }
     ]
     send_date = created_date
+    response = db_mysn.send_data_to_mysn(params, send_date)
 
-    return db_mysn.send_data_to_mysn(params, send_date)
+    return response
 
 def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, plate_no, container_plate_no, plate_no_is_registered):
     current_floor_position, current_cam_position = floor_id, cam_id
@@ -639,7 +640,7 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
         camera=cam_id
     )
 
-    send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
+    response_api_counter = send_plate_data(floor_id=current_floor_position, plate_no=plate_no, cam_position=current_cam_position)
 
     char = "H" if plate_no_is_registered else "M"
     matrix_text = f"{plate_no},{char};"
@@ -652,4 +653,4 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
             logger.WARNING
         )
 
-    return current_max_slot, current_slot_update, current_vehicle_total_update
+    return response_api_counter
