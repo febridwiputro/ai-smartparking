@@ -1027,9 +1027,9 @@ class VehicleDetector:
 
 if __name__ == "__main__":
     FLOOR_ID = 3
-    CAM_ID = "IN"
+    CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = True
+    IS_CAMERA = False
     IS_PC = True
 
     model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"

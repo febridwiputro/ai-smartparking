@@ -15,6 +15,7 @@ class Arduino:
         self.texts = []
         self.baudrate = baudrate
         self.serial_number = serial_number
+        self.com = com
 
         if is_send == False:
         # print("self.get_data_micro(): ", self.get_data_micro())
@@ -53,8 +54,8 @@ class Arduino:
     def connected(self):
         return self.connection.is_open if self.connection else False
     
-    def write(self, message):
-        self.texts.append(message)
+    # def write(self, message):
+    #     self.texts.append(message)
     
     def write_count(self, message):
         self.texts = message
@@ -97,7 +98,6 @@ class Arduino:
             return
         
         try:        
-            time.sleep(0.25)
             # text = ''.join(count)
             text = count
             self.connection.port = com
@@ -145,6 +145,33 @@ class Arduino:
         
         print("Serial number not found".center(50, "-"))
         return None
+    
+    # def init_write(self, )
+    
+
+    def write(self, count, com):
+
+        if self.com != com:
+            return
+        if not self.connected():
+            # logger.write("Arduino is not connected.", logger.ERROR)
+            return
+        
+        try:        
+            text = str(count)
+            
+            if text:
+                print(f"sending: {text}")
+                try:
+                    self.connection.write(text.encode('utf-8'))
+                except serial.serialutil.SerialException as e:
+                    print(f"An error occurred: {e}")
+                    self.reconnect()
+                
+                self.connection.flush()
+
+        except Exception as e:
+            print(f"write_with_com error: {e}")
 
 
 if __name__ == "__main__":

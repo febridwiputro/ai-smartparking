@@ -39,7 +39,8 @@ from src.controllers.utils.util import (
     most_freq, 
     draw_points_and_lines,
     draw_tracking_points,
-    define_tracking_polygon
+    define_tracking_polygon,
+    send_plate_data
 )
 
 from src.controllers.utils.display import (
@@ -50,6 +51,30 @@ from src.controllers.utils.display import (
     create_grid
 )
 
+def response_post(res_post, arduino_devices):
+    for response in res_post:
+        floor = response["floor_name"]
+        if floor == "Floor 2":
+            floor_res = 2
+        elif floor == "Floor 3":
+            floor_res = 3
+        elif floor == "Floor 4":
+            floor_res = 4
+        elif floor == "Floor 5":
+            floor_res = 5
+
+        unoccupied = response["unoccupied"]
+
+        if floor_res == 2:
+            com = "COM5"
+        elif floor_res == 3:
+            com = "COM6"
+        else:
+            com = "E"
+
+        if com != "E":
+            for ard in arduino_devices:
+                ard.write(unoccupied, com)
 
 
 class Wrapper:
@@ -89,10 +114,13 @@ class Wrapper:
 
         self._model_built_events = []
         self.vehicle_plate_result_queue = mp.Queue()
+
+        res_post = send_plate_data(floor_id="1", plate_no="BP1234BP", cam_position="in")
+
         self.arduino_devices = [Arduino(baudrate=115200, com=com) for com in config.SERIAL_COM]
-        for ard in self.arduino_devices:
-            self.ard = ard
-            self.matrix_text = MatrixController(ard, 0, 100)
+        response_post(res_post, self.arduino_devices)
+        # for ard, com in zip(self.arduino_devices, config.SERIAL_COM):
+        #    ard.write(11, com)
 
     def start(self):
         print("[Thread] Starting result processing thread...")
@@ -227,38 +255,7 @@ class Wrapper:
                             floor_id, cam_id, arduino_idx, car_direction
                         )
 
-                        for response in response_api_counter:
-                            floor = response["floor_name"]
-                            if floor == "Floor 2":
-                                floor_res = 2
-                            elif floor == "Floor 3":
-                                floor_res = 3
-                            elif floor == "Floor 4":
-                                floor_res = 4
-                            elif floor == "Floor 5":
-                                floor_res = 5
-
-                            unoccupied = response["unoccupied"]
-                            print("unoccupied: ", unoccupied)
-
-                            print("arduino_idx: ", arduino_idx)
-
-
-                            if floor_res == 2:
-                                com = "COM5"
-                            elif floor_res == 3:
-                                com = "COM6"
-                            else:
-                                com = "E"
-
-                            if com != "E":
-                                self.ard.write_count(unoccupied)
-                                # self.ard.write_with_com(unoccupied, com)
-                                
-                                # arduino_idx.write_with_com(unoccupied)
-                                # ardd  = Arduino(baudrate=115200, com=com, is_send=True)
-                                
-                                # ardd.write_with_com(unoccupied)
+                        response_post(response_api_counter, self.arduino_devices)
 
                     else:
                         if (object_id == previous_object_id and
@@ -362,7 +359,7 @@ class Wrapper:
                 print("Error at distribute_work_thread", e)
 
     def main(self):
-        IS_DEBUG = True
+        IS_DEBUG = False
         IS_VIDEO = IS_DEBUG
         IS_PC = True
 
@@ -370,8 +367,8 @@ class Wrapper:
             ROWS_CONF, COLS_CONF = 1, 1
 
             FLOOR_CAM_CONF = {
-                2: {"IN": False, "OUT": True},
-                3: {"IN": False, "OUT": False},
+                2: {"IN": False, "OUT": False},
+                3: {"IN": True, "OUT": False},
                 4: {"IN": False, "OUT": False},
                 5: {"IN": False, "OUT": False},
             }
@@ -441,10 +438,10 @@ class Wrapper:
                 
 
             # # arduino_text = arduino_devices[ard]
-            arduino_matrix = self.arduino_devices[ard]
+            # arduino_matrix = self.arduino_devices[ard]
 
-            self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
-            self.matrix_controller.start(self.matrix_controller.get_total())
+            # self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
+            # self.matrix_controller.start(self.matrix_controller.get_total())
             
             plat_detects[i] = DetectionControllerV7(arduino_matrix="", vehicle_plate_result_queue=self.vehicle_plate_result_queue)
             plat_detects[i].start()

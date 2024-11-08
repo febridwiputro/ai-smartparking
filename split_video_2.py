@@ -34,8 +34,8 @@ def split_video(filename, start_time_str, end_time_str, output_dir):
 
 if __name__ == "__main__":
     video_path = r"C:\Users\DOT\Web\RecordFiles\2024-11-06\192.168.1.10_01_20241106170840406.mp4"
-    start_time = "02:40" # "33:00 " # format mm:ss
-    end_time = "03:10"   # format mm:ss
+    start_time = "02:37" # "33:00 " # format mm:ss
+    end_time = "03:07"   # format mm:ss
 
     output_dir = "split_video"
 
