@@ -277,18 +277,7 @@ class Wrapper:
                                     floor_id, cam_id, arduino_idx, car_direction
                                 )
 
-                                for response in response_api_counter:
-                                    floor = response["floor_name"]
-                                    if floor == "Floor 2":
-                                        floor_res = 2
-                                    elif floor == "Floor 3":
-                                        floor_res = 3
-                                    elif floor == "Floor 4":
-                                        floor_res = 4
-                                    elif floor == "Floor 5":
-                                        floor_res = 5
- 
-                                    unoccupied = response["unoccupied"]
+                                response_post(response_api_counter, self.arduino_devices)
 
                                 object_id_count = 0
 
