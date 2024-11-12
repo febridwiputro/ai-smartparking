@@ -7,6 +7,7 @@ from shapely.geometry import Polygon
 import csv
 import pandas as pd
 import time 
+import multiprocessing as mp
 
 from src.config.config import config
 from src.Integration.service_v1.controller.plat_controller import PlatController
@@ -15,6 +16,11 @@ from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIC
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.centroid_tracking import CentroidTracker
 from src.controllers.utils.util import check_background
+
+from src.models.image_restoration_model_v7 import ImageRestoration
+from src.models.text_detection_model_v7 import TextDetector
+from src.models.character_recognition_model_v7 import ModelAndLabelLoader, CharacterRecognize
+
 
 def show_cam(text, image, max_width=1080, max_height=720):
     res_img = resize_image(image, max_width, max_height)
@@ -275,11 +281,27 @@ class VehicleDetector:
 
         self.video_path = video_path
 
-    # def get_class_indices(self):
-    #     """Map class names to indices based on the model's available classes."""
-    #     available_classes = self.model.names  # Get class names from the YOLO model
-    #     class_indices = [i for i, name in available_classes.items() if name in self.class_names]
-    #     return class_indices
+        print("Load model.........")
+
+        self.img_restore = ImageRestoration()
+        self.detector = TextDetector()
+        char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
+        char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
+        label_path = config.LABEL_CHAR_RECOGNITION_PATH
+
+        char_model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
+        char_label = ModelAndLabelLoader.load_labels(label_path)
+
+        self.cr = CharacterRecognize(models=char_model, labels=char_label)
+        self.model_built_event = mp.Event()
+        self.model_built_event.set()
+
+    def is_model_built(self):
+        while not self.model_built_event.is_set():
+            print("Waiting for model to load...")
+            time.sleep(0.5)
+
+        return True
 
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         if image is None or image.size == 0:
@@ -929,6 +951,8 @@ class VehicleDetector:
 
         is_centroid_inside = self.check_car_touch_line(frame_size, car_info, poly_bbox)
 
+        vehicle_plate_data = {}
+
         if is_centroid_inside and not self.is_vehicle_model:
             self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes)
 
@@ -947,6 +971,20 @@ class VehicleDetector:
                     print("BLUR IMAGE VALUE: ", check_blur_img)
 
                     self.save_cropped_plate([plate_frame])
+
+                    vehicle_plate_data = {
+                        "object_id": self.object_id,
+                        "bbox": self.plate_bbox,
+                        "is_centroid_inside": is_centroid_inside,
+                        "bg_color": "",
+                        "frame": plate_frame,
+                        "floor_id": floor_id,
+                        "cam_id": cam_id,
+                        "arduino_idx": arduino_idx,
+                        "car_direction": self.car_direction,
+                        "start_line": True,
+                        "end_line": True
+                    }
 
             elif self.frame_count_per_object[self.object_id] < self.max_num_frame:
                 for plate_frame in plate_frames:
@@ -980,66 +1018,89 @@ class VehicleDetector:
             else:
                 print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
 
-        return {}, cropped_frame_copy, is_centroid_inside, car_info
+                    # vehicle_plate_data = {
+                    #     "object_id": self.object_id,
+                    #     "bbox": self.plate_bbox,
+                    #     "is_centroid_inside": is_centroid_inside,
+                    #     "bg_color": bg_color,
+                    #     "frame": plate_frame,
+                    #     "floor_id": floor_id,
+                    #     "cam_id": cam_id,
+                    #     "arduino_idx": arduino_idx,
+                    #     "car_direction": self.car_direction,
+                    #     "start_line": True,
+                    #     "end_line": True
+                    # }
+
+        return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
 
     def process_video(self):
         """Process the video to detect cars, track directions, and process plates."""
-        cap = cv2.VideoCapture(self.video_path)
-        
-        while cap.isOpened():
-            success, frame = cap.read()
 
-            if not success:
-                break
+        if self.is_model_built():
+            print("Model loaded successfully. Starting video processing...")
 
-            frame = cv2.resize(frame, (1080, 720))
-            height, width = frame.shape[:2]
-            self.frame_size = (width, height)
+            cap = cv2.VideoCapture(self.video_path)
+            
+            while cap.isOpened():
+                success, frame = cap.read()
 
-            self.poly_points, self.tracking_points, self.poly_bbox = define_tracking_polygon(
-                height=height, width=width, 
-                floor_id=self.floor_id, cam_id=self.cam_id
-            )
+                if not success:
+                    break
 
-            vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = self.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, tracking_points=self.tracking_points, poly_bbox=self.poly_bbox)
-            # # print("vehicle_plate_data: ", vehicle_plate_data)
-            # self.show_display(frame, cropped_frame=cropped_frame, floor_id=self.floor_id, cam_id=self.cam_id, tracking_points=self.tracking_points, poly_bbox=self.poly_bbox, is_centroid_inside=is_centroid_inside, car_info=car_info, plate_info=self.plate_info)
+                frame = cv2.resize(frame, (1080, 720))
+                height, width = frame.shape[:2]
+                self.frame_size = (width, height)
 
-            self.draw_points_and_lines(frame)
+                self.poly_points, self.tracking_points, self.poly_bbox = define_tracking_polygon(
+                    height=height, width=width, 
+                    floor_id=self.floor_id, cam_id=self.cam_id
+                )
 
-            # (Optional) Additional processing logic...
-            # Example: Detect vehicles, plates, and display the frame
-            self.show_display(frame, cropped_frame=frame.copy(), 
-                              floor_id=self.floor_id, cam_id=self.cam_id,
-                              tracking_points=self.tracking_points, 
-                              poly_bbox=self.poly_bbox, 
-                              car_info=[], plate_info=[], 
-                              is_centroid_inside=is_centroid_inside, is_debug=True)
+                vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = self.vehicle_detect(arduino_idx=self.arduino_idx, frame=frame, floor_id=self.floor_id, cam_id=self.cam_id, tracking_points=self.tracking_points, poly_bbox=self.poly_bbox)
 
-            cv2.imshow(f"FLOOR {self.floor_id}: {self.cam_id}", frame)
+                if len(vehicle_plate_data) > 0:
+                    restored_image = self.img_restore.process_image(vehicle_plate_data["frame"]) if vehicle_plate_data["frame"] is not None else ""
+                    text_detected_result, _ = self.detector.easyocr_readtext(image=restored_image)
+                    plate_no = self.cr.process_image(text_detected_result) if text_detected_result is not None else ""
 
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+                    print(plate_no)
 
-        cap.release()
-        cv2.destroyAllWindows()
+                self.draw_points_and_lines(frame)
+
+                # (Optional) Additional processing logic...
+                # Example: Detect vehicles, plates, and display the frame
+                self.show_display(frame, cropped_frame=frame.copy(), 
+                                floor_id=self.floor_id, cam_id=self.cam_id,
+                                tracking_points=self.tracking_points, 
+                                poly_bbox=self.poly_bbox, 
+                                car_info=[], plate_info=[], 
+                                is_centroid_inside=is_centroid_inside, is_debug=True)
+
+                cv2.imshow(f"FLOOR {self.floor_id}: {self.cam_id}", frame)
+
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+
+            cap.release()
+            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    FLOOR_ID = 3
-    CAM_ID = "OUT"
+    FLOOR_ID = 2
+    CAM_ID = "IN"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = False
-    IS_PC = True
-
-    model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
-    # model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
+    IS_CAMERA = True
+    IS_PC = False
 
     if IS_CAMERA:
+        model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
+        # model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
         CAM_SOURCE_LT = {
             2: {
                 # "IN": 'rtsp://admin:Passw0rd@192.168.1.18',
-                "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
+                # "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
+                "IN": 'rtsp://admin:Admin123@192.168.18.234',
                 "OUT": 'rtsp://admin:Passw0rd@192.168.1.11'
             },
             3: {
@@ -1070,6 +1131,8 @@ if __name__ == "__main__":
 
     
     else:
+        model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
+
         if IS_PC:
             if FLOOR_ID == 2:
                 if CAM_ID == "IN":
@@ -1114,7 +1177,7 @@ if __name__ == "__main__":
 
             if FLOOR_ID == 2:
                 if CAM_ID == "IN":
-                    pass
+                    video_path = r"D:\engine\cv\dataset-editor\editor\2024_11_11_F2_IN_compose_video.mp4"
 
                 else:
                     video_path = r"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031190044193.mp4_2772.mp4"

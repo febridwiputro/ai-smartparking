@@ -15,7 +15,7 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = False
+    IS_DEBUG = True
 
     if IS_DEBUG:
         BASE_DIR = r"D:\engine\smart_parking\repository\github"

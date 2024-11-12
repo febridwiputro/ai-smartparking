@@ -147,7 +147,7 @@ def convert_normalized_to_pixel_lines(point, frame_size):
     width, height = frame_size
     return int(x_norm * width), int(y_norm * height)
 
-def check_background(gray_image, verbose=False):
+def check_background(gray_image, verbose=False, is_save=False):
     white_threshold = 50
     _, white_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY)
     _, black_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY_INV)
@@ -156,14 +156,14 @@ def check_background(gray_image, verbose=False):
     black_count = np.sum(black_mask == 255)
 
     dominant_color = "bg_white" if white_count > black_count else "bg_black"
-    # print("white_count:", white_count, "black_count:", black_count)
 
-    folder_path = "gray_images/white" if dominant_color == "bg_white" else "gray_images/black"
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
+    if is_save:
+        folder_path = "gray_images/white" if dominant_color == "bg_white" else "gray_images/black"
+        os.makedirs(folder_path, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+        filename = f"{folder_path}/{timestamp}.jpg"
 
-    filename = f"{folder_path}/{random.randint(1000, 9999)}.png"
-    cv2.imwrite(filename, gray_image)
+        cv2.imwrite(filename, gray_image)
 
     if verbose:
         logging.info(f"Dominant background color detected: {dominant_color.upper()}")

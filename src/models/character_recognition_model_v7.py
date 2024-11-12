@@ -132,6 +132,12 @@ class CharacterRecognize:
         self.labels = labels
         self.threshold = threshold
 
+    def check_char_saved(self):
+        folder_path = "char_saved"
+        os.makedirs(folder_path, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y-%m-%d')
+        return f"{folder_path}/{timestamp}"
+
     def load_model(self, model_path, weight_path):
         try:
             with open(model_path, 'r') as json_file:
@@ -326,40 +332,124 @@ class CharacterRecognize:
         result = re.sub(pattern, replace, plate)
         return result
 
+    # def process_image(self, cropped_images):
+    #     bg_color = ""
+    #     final_plate = ""
+    #     resized_images = []
+
+    #     valid_images = [img for img in cropped_images if img.shape[0] > 0]
+
+    #     if valid_images:
+    #         min_height = min(img.shape[0] for img in valid_images)
+    #         resized_images = [cv2.resize(img, (img.shape[1], min_height)) for img in valid_images]
+    #     else:
+    #         print("No valid images found in cropped_images.")
+    #         min_height = 0
+
+    # def process_image(self, cropped_images):
+    #     bg_color = ""
+    #     final_plate = ""
+    #     resized_images = []
+
+    #     min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
+
+    #     for img in cropped_images:
+    #         original_height, original_width = img.shape[:2]
+
+    #         if original_height > 0:
+    #             new_width = int(original_width * (min_height / original_height))
+    #             if new_width > 0:
+    #                 resized_img = cv2.resize(img, (new_width, min_height))
+
+    #                 if len(resized_img.shape) == 3 and resized_img.shape[2] == 3:
+    #                     gray_plate = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
+    #                 else:
+    #                     gray_plate = resized_img
+
+    #                 bg_color = check_background(gray_plate, verbose=False, is_save=True)
+    #                 print("bg_color: ", bg_color)
+
+    #                 text_info = {
+    #                     "frame": resized_img,
+    #                     "bg_color": bg_color,
+    #                     "width": new_width
+    #                 }
+
+    #                 resized_images.append(text_info)
+    #             else:
+    #                 logging.write(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
+    #         else:
+    #             logging.write('Skipped resizing due to invalid image height', logging.DEBUG)
+
+    #     if resized_images:
+    #         largest_image = max(resized_images, key=lambda x: x["width"])
+    #         selected_bg_color = largest_image["bg_color"]
+    #         channels = largest_image["frame"].shape[2] if len(largest_image["frame"].shape) == 3 else 1
+
+    #         if selected_bg_color == "bg_black":
+    #             color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
+    #         elif selected_bg_color == "bg_white":
+    #             color_separator = np.ones((min_height, 10, channels), dtype=np.uint8) * 255
+    #         else:
+    #             color_separator = np.zeros((min_height, 10, channels), dtype=np.uint8)
+    #             if channels == 3:
+    #                 color_separator[:, :, 2] = 255
+
+    #         concatenated_image = resized_images[0]["frame"]
+    #         for img_info in resized_images[1:]:
+    #             img = img_info["frame"]
+    #             if img.shape[0] != min_height:
+    #                 logging.write(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
+    #                 img = cv2.resize(img, (img.shape[1], min_height))
+
+    #             concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
+
+    #         final_plate = self.process_character(concatenated_image, selected_bg_color)
+    #     else:
+    #         logging.write("No valid images to merge", logging.DEBUG)
+
+    #     return final_plate
+
     def process_image(self, cropped_images):
         bg_color = ""
         final_plate = ""
         resized_images = []
 
-        min_height = min(img.shape[0] for img in cropped_images if img.shape[0] > 0)
+        # Filter valid images with height > 0
+        valid_images = [img for img in cropped_images if img.shape[0] > 0]
+        
+        # Check if there are valid images, otherwise log a warning and return
+        if not valid_images:
+            logging.write("No valid images to process.", logging.DEBUG)
+            return final_plate
 
-        for img in cropped_images:
+        # Calculate minimum height from valid images
+        min_height = min(img.shape[0] for img in valid_images)
+
+        for img in valid_images:
             original_height, original_width = img.shape[:2]
 
-            if original_height > 0:
-                new_width = int(original_width * (min_height / original_height))
-                if new_width > 0:
-                    resized_img = cv2.resize(img, (new_width, min_height))
+            new_width = int(original_width * (min_height / original_height))
+            if new_width > 0:
+                resized_img = cv2.resize(img, (new_width, min_height))
 
-                    if len(resized_img.shape) == 3 and resized_img.shape[2] == 3:
-                        gray_plate = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
-                    else:
-                        gray_plate = resized_img
-
-                    bg_color = check_background(gray_plate, False)
-                    print("bg_color: ", bg_color)
-
-                    text_info = {
-                        "frame": resized_img,
-                        "bg_color": bg_color,
-                        "width": new_width
-                    }
-
-                    resized_images.append(text_info)
+                if len(resized_img.shape) == 3 and resized_img.shape[2] == 3:
+                    gray_plate = cv2.cvtColor(resized_img, cv2.COLOR_BGR2GRAY)
                 else:
-                    logging.warning(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
+                    gray_plate = resized_img
+
+                bg_color = check_background(gray_plate, verbose=False, is_save=True)
+                print("bg_color:", bg_color)
+
+                text_info = {
+                    "frame": resized_img,
+                    "bg_color": bg_color,
+                    "width": new_width
+                }
+
+                resized_images.append(text_info)
             else:
-                logging.warning('Skipped resizing due to invalid image height', logging.DEBUG)
+                logging.write(f'Skipped resizing due to invalid width: {new_width}', logging.DEBUG)
 
         if resized_images:
             largest_image = max(resized_images, key=lambda x: x["width"])
@@ -379,14 +469,14 @@ class CharacterRecognize:
             for img_info in resized_images[1:]:
                 img = img_info["frame"]
                 if img.shape[0] != min_height:
-                    logging.warning(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
+                    logging.write(f"Image height mismatch: Resizing image from {img.shape[0]} to {min_height}", logging.DEBUG)
                     img = cv2.resize(img, (img.shape[1], min_height))
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
 
             final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:
-            logging.write("No valid images to merge", logging.DEBUG)
+            logging.write("No valid images to merge.", logging.DEBUG)
 
         return final_plate
 
@@ -395,7 +485,7 @@ class CharacterRecognize:
         result_string = ''
 
         if bg_color == "bg_black":
-            crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=True, output_dir="output_chars_3", verbose=False)
+            crop_characters, segmented_image, inv_image = self.segment_characters_black(img_bgr, is_save=True, output_dir=self.check_char_saved(), verbose=False)
 
             for i, character in enumerate(crop_characters):
                 predicted_char, confidence = self.predict_from_model(character)
@@ -417,7 +507,7 @@ class CharacterRecognize:
 
         elif bg_color == "bg_white":
             img_inv = cv2.bitwise_not(img_bgr)
-            char_list, img_segment, inv_image = self.segment_characters_black(img_inv, is_save=True, output_dir="output_chars_3", verbose=False)
+            char_list, img_segment, inv_image = self.segment_characters_black(img_inv, is_save=True, output_dir=self.check_char_saved(), verbose=False)
 
             for i, character in enumerate(char_list):
                 predicted_char, confidence = self.predict_from_model(character)
@@ -445,7 +535,7 @@ class CharacterRecognize:
             image_paths.extend(glob.glob(os.path.join(folder_path, ext)))
 
         if not image_paths:
-            logging.warning("No images (.jpg, .png, .webp) found in the folder.", logging.DEBUG)
+            logging.write("No images (.jpg, .png, .webp) found in the folder.", logging.DEBUG)
             return
 
         for img_path in image_paths:

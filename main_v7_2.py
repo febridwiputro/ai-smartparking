@@ -424,7 +424,6 @@ class Wrapper:
                 ard = 1
             elif idx == 4:
                 ard = 1
-                
 
             # # arduino_text = arduino_devices[ard]
             # arduino_matrix = self.arduino_devices[ard]

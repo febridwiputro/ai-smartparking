@@ -104,14 +104,14 @@ def unwarp(img, src, dst):
     return un_warped
 
 
-def example_one():
+def example_one(img_path):
     """
     Skew correction using homography and corner detection using Shi-Tomashi corner detector
 
     Returns: None
 
     """
-    image = cv2.imread(r"D:\engine\cv\image_restoration\backup\18-48\plate_saved\2024-10-24-18-32-55-343434.jpg")
+    image = cv2.imread(img_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     plt.imshow(image)
     plt.title('Original Image')
@@ -248,9 +248,8 @@ def example_two(img_path):
 
 
 if __name__ == '__main__':
-    # example_one()
-    img_path = r"D:\engine\cv\image_restoration\backup\18-48\plate_saved\2024-10-24-18-40-07-071078.jpg"
-    # img_path = r"D:\engine\cv\image_restoration\backup\18-48\plate_saved\2024-10-24-18-32-55-343434.jpg"
+    img_path = r"D:\engine\smart_parking\repository\github\ai-smartparking\gray_images\black\2024-11-12-10-00-23-060510.jpg"
+    # example_one(img_path=img_path)
     example_two(img_path=img_path)
 
 # import numpy as np

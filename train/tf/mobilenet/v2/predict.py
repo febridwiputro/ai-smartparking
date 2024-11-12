@@ -85,15 +85,22 @@ class CharacterRecognizeTF:
                 logging.info(f"Image: {os.path.basename(image_path)} saved to 'unknown' folder due to low confidence ({confidence}).")
 
 
-# Example usage
 if __name__ == "__main__":
-    base_model_path = r"C:\Users\DOT\Documents\febri\weights\ocr_model\new_model\20240925-11-01-14"
+    IS_PC = False
+
+    if IS_PC:
+        base_model_path = r"C:\Users\DOT\Documents\febri\weights\ocr_model\new_model\20240925-11-01-14"
+        input_folder = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\output_chars_3"
+        output_folder = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\output_folder_tf"
+
+    else:
+        base_model_path = r"D:\engine\smart_parking\repository\github\weights\ocr_model\new_model\20240925-11-01-14"
+        input_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\char_saved\2024-11-12"
+        output_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\char_saved\2024-11-12-selection"
 
     model_path = os.path.join(base_model_path, "character_recognition.json")
     weight_path = os.path.join(base_model_path, "models_cnn.h5")
     labels_path = os.path.join(base_model_path, "character_classes.npy")
-    input_folder = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\output_chars_3"
-    output_folder = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\output_folder_tf"
 
     recognizer = CharacterRecognizeTF()
     recognizer.model = recognizer.load_model(model_path, weight_path)
