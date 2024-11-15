@@ -15,12 +15,16 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = True
+    IS_DEBUG = False
 
     if IS_DEBUG:
         BASE_DIR = r"D:\engine\smart_parking\repository\github"
+        BASE_OCR_MODEL_DIR = 'weights/ocr_model/new_model/20241114-07-08-24/'
+        # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
     else:
-        BASE_DIR = r"C:\Users\DOT\Documents\febri"
+        BASE_DIR = r"D:\documents\febri"
+        BASE_OCR_MODEL_DIR = "weights/ocr_model/new_model/20241114-07-08-24/"
+        # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
     # BASE_DIR = "D:/engine/smart_parking/repository/github"
     # BASE_DIR = Path(_file_).parent.parent.resolve()
     
@@ -33,9 +37,9 @@ class Config:
     MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
 
     # CHARACTER RECOGNITION MODEL
-    MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_recognition.json')
-    WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/models_cnn.h5')
-    LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, 'weights/ocr_model/new_model/20240925-11-01-14/character_classes.npy')
+    MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_recognition.json')
+    WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'models_cnn.h5')
+    LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_classes.npy')
 
     LINK_CAM_PREFIX = os.getenv("CAMERA_RTSP")
 

@@ -307,6 +307,10 @@ class CharacterRecognize:
         return img_res, img_rgb_copy, img_rgb_copy
 
     def match_char(self, plate):
+        # Check if the first character is '8' and replace it with 'B' if so
+        if plate[0] == '8':
+            plate = 'B' + plate[1:]
+
         pattern = r"^(.{2})(.{0,4})(.*?)(.{2})$"
 
         def replace(match):
@@ -315,22 +319,54 @@ class CharacterRecognize:
             body = match.group(3)
             suffix = match.group(4)
 
+            # Replace specific characters in the 'middle' part
             modified_middle = middle.replace('T', '1').replace('I', '1').replace('D', '0').replace('B', '8').replace('Q', '0').replace('J', '1').replace('Z', '7')
 
-            if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}", logging.DEBUG):
+            # Modify suffix only if certain conditions are met
+            if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}"):
                 modified_suffix = suffix.replace('0', 'Q').replace('8', 'O')
             else:
                 modified_suffix = suffix
 
+            # Construct the modified plate
             modified_plate = f"{prefix}{modified_middle}{body}{modified_suffix}"
+            
+            # Special case check for pattern "xxxx...BP"
             match_special_case = re.match(r"(\d{4})(.*)(BP)$", modified_plate)
             if match_special_case:
                 return f"BP{match_special_case.group(1)}{match_special_case.group(2)}"
 
             return modified_plate
 
+        # Apply the pattern replacement using the replace function
         result = re.sub(pattern, replace, plate)
         return result
+
+    # def match_char(self, plate):
+    #     pattern = r"^(.{2})(.{0,4})(.*?)(.{2})$"
+
+    #     def replace(match):
+    #         prefix = match.group(1)
+    #         middle = match.group(2)
+    #         body = match.group(3)
+    #         suffix = match.group(4)
+
+    #         modified_middle = middle.replace('T', '1').replace('I', '1').replace('D', '0').replace('B', '8').replace('Q', '0').replace('J', '1').replace('Z', '7')
+
+    #         if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}", logging.DEBUG):
+    #             modified_suffix = suffix.replace('0', 'Q').replace('8', 'O')
+    #         else:
+    #             modified_suffix = suffix
+
+    #         modified_plate = f"{prefix}{modified_middle}{body}{modified_suffix}"
+    #         match_special_case = re.match(r"(\d{4})(.*)(BP)$", modified_plate)
+    #         if match_special_case:
+    #             return f"BP{match_special_case.group(1)}{match_special_case.group(2)}"
+
+    #         return modified_plate
+
+    #     result = re.sub(pattern, replace, plate)
+    #     return result
 
     # def process_image(self, cropped_images):
     #     bg_color = ""
