@@ -94,9 +94,13 @@ if __name__ == "__main__":
         output_folder = r"C:\Users\DOT\Documents\febri\github\ai-smartparking\output_folder_tf"
 
     else:
-        base_model_path = r"D:\engine\smart_parking\repository\github\weights\ocr_model\new_model\20240925-11-01-14"
-        input_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\char_saved\2024-11-12"
-        output_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\char_saved\2024-11-12-selection"
+        # base_model_path = r"D:\engine\smart_parking\repository\github\weights\ocr_model\new_model\20240925-11-01-14"
+        base_model_path = r"D:\engine\smart_parking\repository\github\ai-smartparking\src\development\train\tf\mobilenet\v2\models\20241114-06-44-03"
+        # input_folder = r"D:\engine\smart_parking\repository\github\dataset\2024-11-08\output_chars_3"
+        # output_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\char_saved\2024-11-12-selection"
+        input_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\src\development\train\dataset\dataset\bg-black-reduksi-20241113\q"
+        # output_folder = r"D:\engine\smart_parking\repository\github\dataset\2024-11-08\output_chars_3_selection"
+        output_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\src\development\train\dataset\dataset\bg-black-reduksi-20241113_conf"
 
     model_path = os.path.join(base_model_path, "character_recognition.json")
     weight_path = os.path.join(base_model_path, "models_cnn.h5")

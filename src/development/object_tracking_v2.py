@@ -1,13 +1,18 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import os
+import os, sys
 from datetime import datetime
 from shapely.geometry import Polygon
 import csv
 import pandas as pd
 import time 
 import multiprocessing as mp
+
+this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(this_path)
+
+print("this_path: ", this_path)
 
 from src.config.config import config
 from src.Integration.service_v1.controller.plat_controller import PlatController
@@ -1090,7 +1095,7 @@ if __name__ == "__main__":
     FLOOR_ID = 2
     CAM_ID = "IN"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = True
+    IS_CAMERA = False
     IS_PC = False
 
     if IS_CAMERA:

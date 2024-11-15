@@ -166,12 +166,14 @@ class Train:
 # dataset = r"D:\engine\smart_parking\research\AutomaticLicensePlateRecognition\Training_Data\dataset"
 # dataset = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi"
 # dataset = r"D:\engine\smart_parking\train_model\dataset\processed_images"
-dataset = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240925"
+# dataset = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240925"
 # dataset = r"D:\engine\smart_parking\train_model\dataset\bg-black-reduksi-20240930"
+dataset = r"D:\engine\smart_parking\repository\github\ai-smartparking\src\development\train\dataset\dataset\bg-black-reduksi-20241113"
 
 timestamp = datetime.now().strftime('%Y%m%d-%H-%M-%S')
 # base_output_dir = r"D:\engine\smart_parking\train_model\models\new-model"
-base_output_dir = r"D:\engine\smart_parking\train_model\model-training\tf\mobilenet\v2\models\new-model"
+# base_output_dir = r"D:\engine\smart_parking\train_model\model-training\tf\mobilenet\v2\models\new-model"
+base_output_dir = r"D:\engine\smart_parking\repository\github\ai-smartparking\src\development\train\tf\mobilenet\v2\models"
 output_dir = os.path.join(base_output_dir, timestamp)
 train = Train(dataset_path=dataset, batch_size=128, epochs=100, lr=1e-4, output_dir=output_dir)
 train.load_dataset()
