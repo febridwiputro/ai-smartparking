@@ -56,7 +56,7 @@ class Logger:
             raise ValueError(f"Unknown level: {level}")
 
 # Example usage:
-logger = Logger("main", is_save=False)  # Logs only to the console
+logger = Logger("main", is_save=True)  # Logs only to the console
 # logger_console.write("This is a debug message on console only.", Logger.DEBUG)
 
 # logger_file = Logger("main", is_save=True)  # Logs to both file and console

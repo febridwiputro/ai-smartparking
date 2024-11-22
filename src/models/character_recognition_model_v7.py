@@ -9,14 +9,14 @@ import glob
 import re
 import random
 
-from src.models.display.character_recognition_display import display_character_segments, display_results
+from src.view.character_recognition_view import display_character_segments, display_results
 
 this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 sys.path.append(this_path)
 
 from src.config.config import config
 from src.config.logger import Logger
-from src.controllers.utils.util import (
+from src.utils.util import (
     check_background
 )
 from src.models.text_detection_model_v7 import TextDetector
@@ -90,6 +90,7 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                     "object_id": object_id,
                     "bg_color": bg_color,
                     "plate_no": "",
+                    "plate_no_easyocr": "",
                     "floor_id": floor_id,
                     "cam_id": cam_id,
                     "arduino_idx": arduino_idx,
@@ -101,12 +102,13 @@ def character_recognition(stopped, model_built_event, text_detection_result_queu
                 char_recognize_result_queue.put(char_recognize_result)
                 continue
 
-            plate_no = cr.process_image(cropped_images) if cropped_images is not None else ""
+            plate_no, final_plate_easyocr = cr.process_image(cropped_images) if cropped_images is not None else ""
             # logging.write(f'PLATE_NO: {plate_no}', logging.DEBUG)
             char_recognize_result = {
                 "object_id": object_id,
                 "bg_color": bg_color,
                 "plate_no": plate_no,
+                "plate_no_easyocr": final_plate_easyocr,
                 "floor_id": floor_id,
                 "cam_id": cam_id,
                 "arduino_idx": arduino_idx,
@@ -132,12 +134,13 @@ class CharacterRecognize:
         self.labels = labels
         self.threshold = threshold
         self.text_detector = TextDetector()
+        self.BASE_DIR = config.BASE_DIR
+        self.DATASET_DIR = os.path.join(self.BASE_DIR, "dataset")
+        self.DATASET_CHARACTER_DIR = os.path.join(self.DATASET_DIR, "4_character", datetime.now().strftime('%Y-%m-%d-%H'))
 
     def check_char_saved(self):
-        folder_path = "char_saved"
-        os.makedirs(folder_path, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y-%m-%d')
-        return f"{folder_path}/{timestamp}"
+        os.makedirs(self.DATASET_CHARACTER_DIR, exist_ok=True)
+        return f"{self.DATASET_CHARACTER_DIR}"
 
     def load_model(self, model_path, weight_path):
         try:
@@ -450,19 +453,15 @@ class CharacterRecognize:
     def process_image(self, cropped_images):
         bg_color = ""
         final_plate = ""
+        final_plate_easyocr = ""
         resized_images = []
 
-        # Filter valid images with height > 0
         valid_images = [img for img in cropped_images if img.shape[0] > 0]
-        
-        # Check if there are valid images, otherwise log a warning and return
         if not valid_images:
             logging.write("No valid images to process.", logging.DEBUG)
             return final_plate
 
-        # Calculate minimum height from valid images
         min_height = min(img.shape[0] for img in valid_images)
-
         for img in valid_images:
             original_height, original_width = img.shape[:2]
 
@@ -511,15 +510,15 @@ class CharacterRecognize:
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
 
-            text_detected_result, _, text_detected = self.text_detector.easyocr_readtext(image=concatenated_image)
+            text_detected_result, _, final_plate_easyocr = self.text_detector.easyocr_readtext(image=concatenated_image)
 
-            print("text_detected char: ", text_detected)
+            print("final_plate_easyocr: ", final_plate_easyocr)
 
             final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:
             logging.write("No valid images to merge.", logging.DEBUG)
 
-        return final_plate
+        return final_plate, final_plate_easyocr
 
     def process_character(self, img_bgr, bg_color, verbose=False):
         final_string = ''

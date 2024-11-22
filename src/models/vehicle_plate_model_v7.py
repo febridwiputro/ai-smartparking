@@ -8,7 +8,7 @@ import csv
 import pandas as pd
 import time 
 
-from src.controllers.utils.util import (
+from src.utils.util import (
     check_background, 
     point_position,
     convert_normalized_to_pixel,
@@ -18,11 +18,12 @@ from src.controllers.utils.util import (
     get_centroid
 )
 
-from src.controllers.utils.display import (
+from src.view.display import (
     print_normalized_points,
     draw_points_and_lines,
     show_cam
 )
+from src.config.config import config
 
 this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.append(this_path)
@@ -34,6 +35,9 @@ class VehicleDetector:
         self.is_vehicle_model = is_vehicle_model
         self.centroid_tracking = CentroidTracker(maxDisappeared=75)
         self.model = model_path
+        self.BASE_DIR = config.BASE_DIR
+        self.DATASET_DIR = os.path.join(self.BASE_DIR, "dataset")
+        self.DATASET_PLATE_DIR = os.path.join(self.DATASET_DIR, "1_plate", datetime.now().strftime('%Y-%m-%d-%H'))
         self.car_direction = None
         self.prev_centroid = None
         self.num_skip_centroid = 0
@@ -198,13 +202,13 @@ class VehicleDetector:
         import os
         from datetime import datetime
 
-        if not os.path.exists('plate_saved'):
-            os.makedirs('plate_saved')
+        if not os.path.exists(self.DATASET_PLATE_DIR):
+            os.makedirs(self.DATASET_PLATE_DIR)
 
         for i, cropped_plate in enumerate(cropped_plates):
             if cropped_plate.size > 0:
                 timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-                filename = f'plate_saved/{timestamp}.jpg'
+                filename = f'{self.DATASET_PLATE_DIR}/{timestamp}.jpg'
 
                 cv2.imwrite(filename, cropped_plate)
 

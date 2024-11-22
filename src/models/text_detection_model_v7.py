@@ -9,7 +9,7 @@ import re
 
 from src.config.config import config
 from src.config.logger import Logger
-from src.models.utils.text_detection_util import (
+from src.utils.text_detection_util import (
     filter_height_bbox, 
     filter_readtext_frame, 
     save_cropped_images
@@ -144,7 +144,6 @@ class TextDetector:
             '7' : '1'
         }
 
-
     def easyocr_detect(self, image, is_save=False):
         bounding_boxes = self.ocr_net.detect(image)
         filtered_heights = filter_height_bbox(bounding_boxes=bounding_boxes)
@@ -219,7 +218,7 @@ class TextDetector:
                 detected_texts.append(t[1])
                 detect_plate = self.match_char(t[1])
 
-        print("detect_plate: ", detect_plate)
+        # print("detect_plate: ", detect_plate)
 
         return cropped_images, image, detect_plate
 
@@ -245,6 +244,7 @@ class TextDetector:
             '8': 'O'
         }
 
+        plate = re.sub(r"[^A-Za-z0-9]", "", plate)
         plate = plate.replace(" ", "").upper()
 
         if plate.startswith('8'):
@@ -258,26 +258,20 @@ class TextDetector:
             body = match.group(3)
             suffix = match.group(4)
 
-            # Apply middle and suffix mappings
             modified_middle = self.apply_mapping(middle, self.middle_char_mapping)
 
-            # Modify suffix only if certain conditions are met
             if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}"):
                 modified_suffix = self.apply_mapping(suffix, self.suffix_char_mapping)
             else:
                 modified_suffix = suffix
 
-            # Construct the modified plate
             modified_plate = f"{prefix}{modified_middle}{body}{modified_suffix}"
-
-            # Special case check for pattern "xxxx...BP"
             match_special_case = re.match(r"(\d{4})(.*)(BP)$", modified_plate)
             if match_special_case:
                 return f"BP{match_special_case.group(1)}{match_special_case.group(2)}"
 
             return modified_plate
 
-        # Apply the pattern and replacement function
         result = re.sub(pattern, replace, plate)
         return result
 

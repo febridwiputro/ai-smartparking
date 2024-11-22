@@ -1,52 +1,36 @@
-import os
+import os, sys
 import cv2
 import threading
 import multiprocessing as mp
-import json
-from ultralytics import YOLO
 import numpy as np
 import time
 
 from src.Integration.arduino import Arduino
 from src.Integration.newArduino import *
 from src.config.config import config
-from src.controllers.matrix_controller import MatrixController
-from src.controllers.detection_controller_v7 import DetectionControllerV7
+from src.controllers.detection_controller import DetectionController
 from src.models.cam_model import CameraV1
-from src.controllers.utils.util import check_floor
-from src.view.show_cam import show_cam, show_text, show_line
+from src.utils.util import check_floor
 from src.Integration.service_v1.controller.plat_controller import PlatController
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
-from utils.multiprocessing_util import put_queue_none, clear_queue
+from src.utils.multiprocessing_util import put_queue_none, clear_queue
 from src.models.image_restoration_model_v7 import image_restoration
 from src.models.text_detection_model_v7 import text_detection
 from src.models.character_recognition_model_v7 import character_recognition, ModelAndLabelLoader
-from src.models.matrix_model import CarCounterMatrix
 
 from src.config.logger import logger
-from src.view.show_cam import resize_image
-from src.controllers.utils.util import (
-    convert_bbox_to_decimal, 
-    convert_decimal_to_bbox, 
-    crop_frame, 
+from src.utils.util import (
     most_freq, 
-    find_closest_strings_dict, 
     check_db, 
     parking_space_vehicle_counter,
-    print_normalized_points,
     most_freq, 
-    draw_points_and_lines,
     draw_tracking_points,
     define_tracking_polygon,
     send_plate_data
 )
-
-from src.controllers.utils.display import (
-    draw_box,
-    show_display,
-    show_polygon_area,
+from src.view.display import (
     add_overlay,
     create_grid
 )
@@ -79,9 +63,9 @@ def response_post(res_post, arduino_devices):
 
 class Wrapper:
     def __init__(self) -> None:
-        self.IS_DEBUG = True
+        self.IS_DEBUG = False
         self.IS_VIDEO = self.IS_DEBUG
-        self.IS_PC = False
+        self.IS_PC = True
         self.previous_object_id = None
         self.num_processes = 1
         self.object_id_count = {}
@@ -247,15 +231,21 @@ class Wrapper:
                     car_direction = result.get("car_direction")
                     arduino_idx = result.get("arduino_idx")
                     plate_no = result.get("plate_no")
+                    plate_no_easyocr = result.get("plate_no_easyocr") 
 
                     if self.max_num_frame == 1:
                         self.container_plate_no.append({
                             "plate_no": plate_no,
+                            "plate_no_easyocr": plate_no_easyocr,
                             "floor_id": floor_id,
                             "cam_id": cam_id
                         })
 
-                        print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
+                        logger.write(
+                            f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
+                            logger.DEBUG
+                        )
+                        print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
                         if not self.IS_DEBUG:
                             response_api_counter = self.process_plate_data(
@@ -275,11 +265,17 @@ class Wrapper:
 
                             self.container_plate_no.append({
                                 "plate_no": plate_no,
+                                "plate_no_easyocr": plate_no_easyocr,
                                 "floor_id": floor_id,
                                 "cam_id": cam_id
                             })
 
-                            print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
+                            logger.write(
+                                f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
+                                logger.DEBUG
+                            )
+
+                            print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
                             if object_id_count == self.max_num_frame:
                                 if not self.IS_DEBUG:
@@ -304,11 +300,17 @@ class Wrapper:
 
                             self.container_plate_no.append({
                                 "plate_no": plate_no,
+                                "plate_no_easyocr": plate_no_easyocr,
                                 "floor_id": floor_id,
                                 "cam_id": cam_id
                             })
 
-                            print(f"Queue {idx + 1}: NEW PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
+                            logger.write(
+                                f"Queue {idx + 1}: NEW PLATE_NO: {plate_no}, NEW PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
+                                logger.DEBUG
+                            )
+
+                            print(f"Queue {idx + 1}: NEW PLATE_NO: {plate_no}, NEW PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
@@ -317,24 +319,36 @@ class Wrapper:
         """
         Processes plate number data and updates the parking status.
         """
+
+        last_plate_no = ""
+
         plate_no_list = [data["plate_no"] for data in self.container_plate_no]
+        plate_no_easyocr_list = [data["plate_no_easyocr"] for data in self.container_plate_no]
         plate_no_max = most_freq(plate_no_list)
+        plate_no_easyocr_max = most_freq(plate_no_easyocr_list)
         status_plate_no = check_db(plate_no_max)
+        status_plate_no_easyocr = check_db(plate_no_easyocr_max)
 
         plate_no_is_registered = True
-        if not status_plate_no:
+        if not status_plate_no or not status_plate_no_easyocr:
             logger.write(
                 f"Warning, plate is unregistered, reading container text!! : {plate_no_max}",
                 logger.WARN
             )
+            last_plate_no = plate_no_max
             plate_no_is_registered = False
+
+        elif status_plate_no:
+            last_plate_no = plate_no_max
+        elif status_plate_no_easyocr:
+            last_plate_no = plate_no_easyocr_max
 
         response_counter = parking_space_vehicle_counter(
             floor_id=floor_id,
             cam_id=cam_id,
             arduino_idx=arduino_idx,
             car_direction=car_direction,
-            plate_no=plate_no_max,
+            plate_no=last_plate_no,
             container_plate_no=self.container_plate_no,
             plate_no_is_registered=plate_no_is_registered
         )
@@ -439,7 +453,7 @@ class Wrapper:
             # self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
             # self.matrix_controller.start(self.matrix_controller.get_total())
             
-            plat_detects[i] = DetectionControllerV7(arduino_matrix="", vehicle_plate_result_queue=self.vehicle_plate_result_queue)
+            plat_detects[i] = DetectionController(arduino_matrix="", vehicle_plate_result_queue=self.vehicle_plate_result_queue)
             plat_detects[i].start()
         
         while not all([m.is_model_built() for m in plat_detects]):

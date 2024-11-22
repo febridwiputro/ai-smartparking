@@ -10,11 +10,9 @@ sys.path.append(this_path)
 
 # print("this_path: ", this_path)
 
-# from src.config.config import config
+from src.config.config import config
 # from src.config.logger import logger
 from src.models.gan_model import GanModel
-
-
 
 def image_restoration(stopped, model_built_event, plate_result_queue, img_restoration_result_queue):
     img_restore = ImageRestoration()
@@ -93,17 +91,14 @@ def image_restoration(stopped, model_built_event, plate_result_queue, img_restor
 class ImageRestoration:
     def __init__(self):
         self.gan_model = GanModel()
-        self.saved_dir = 'image_restoration_saved'
+        self.BASE_DIR = config.BASE_DIR
+        self.DATASET_DIR = os.path.join(self.BASE_DIR, "dataset")
+        self.DATASET_IMAGE_RESTORATION_DIR = os.path.join(self.DATASET_DIR, "2_image_restoration", datetime.now().strftime('%Y-%m-%d-%H'))
 
     def process_image(self, image, is_save=True):
-        # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         resized_image = cv2.resize(gray, None, fx=1, fy=1, interpolation=cv2.INTER_CUBIC)
-
-        # Convert back to a 3-channel image to save in color
         color_image = cv2.cvtColor(resized_image, cv2.COLOR_GRAY2BGR)
-
-        # Process with the GAN model
         restored_image = self.gan_model.super_resolution(color_image)
 
         if is_save:
@@ -112,14 +107,13 @@ class ImageRestoration:
         return restored_image
 
     def save_restored_image(self, restored_image):
-        if not os.path.exists(self.saved_dir):
-            os.makedirs(self.saved_dir)
+        if not os.path.exists(self.DATASET_IMAGE_RESTORATION_DIR):
+            os.makedirs(self.DATASET_IMAGE_RESTORATION_DIR)
 
         if restored_image is not None and restored_image.size > 0:
             timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-            filename = os.path.join(self.saved_dir, f'{timestamp}.jpg')
+            filename = os.path.join(self.DATASET_IMAGE_RESTORATION_DIR, f'{timestamp}.jpg')
 
-            # Check the shape to ensure it's in color
             if len(restored_image.shape) == 3:
                 cv2.imwrite(filename, cv2.cvtColor(restored_image, cv2.COLOR_RGB2BGR))
         else:

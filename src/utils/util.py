@@ -32,6 +32,10 @@ init(autoreset=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+BASE_DIR = config.BASE_DIR
+DATASET_DIR = os.path.join(BASE_DIR, "dataset")
+DATASET_PLATE_BACKGROUND_DIR = os.path.join(DATASET_DIR, "3_plate_background", datetime.now().strftime('%Y-%m-%d-%H'))
+
 def get_centroid(results, line_pos):
     """Calculate centroids from detection results and determine tracking information."""
     # Extract bounding boxes from the results
@@ -158,7 +162,7 @@ def check_background(gray_image, verbose=False, is_save=False):
     dominant_color = "bg_white" if white_count > black_count else "bg_black"
 
     if is_save:
-        folder_path = "gray_images/white" if dominant_color == "bg_white" else "gray_images/black"
+        folder_path = f"{DATASET_PLATE_BACKGROUND_DIR}/white" if dominant_color == "bg_white" else f"{DATASET_PLATE_BACKGROUND_DIR}/black"
         os.makedirs(folder_path, exist_ok=True)
         timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
         filename = f"{folder_path}/{timestamp}.jpg"

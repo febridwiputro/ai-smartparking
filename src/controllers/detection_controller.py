@@ -17,12 +17,12 @@ from src.config.logger import logger
 from src.models.vehicle_plate_model_v7 import VehicleDetector
 from utils.multiprocessing_util import put_queue_none, clear_queue
 
-from src.controllers.utils.util import (
+from src.utils.util import (
     define_tracking_polygon
 )
 
 
-class DetectionControllerV7:
+class DetectionController:
     def __init__(self, vehicle_plate_result_queue=None, arduino_matrix=None):
         self.arduino_matrix = arduino_matrix
         self.vehicle_plate_result_queue = vehicle_plate_result_queue

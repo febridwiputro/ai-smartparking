@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from src.controllers.utils.util import (
+from src.utils.util import (
     convert_normalized_to_pixel_lines,
     convert_normalized_to_pixel,
     get_centroid
