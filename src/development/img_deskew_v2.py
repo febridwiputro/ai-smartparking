@@ -338,6 +338,7 @@ def example_two(img_path, is_show=False):
 if __name__ == '__main__':
     # img_path = r"D:\engine\smart_parking\repository\github\ai-smartparking\image_restoration_saved\2024-11-12-10-56-02-687488.jpg"
     # img_path = r"C:\Users\febri.dwi\Pictures\Camera Roll\WIN_20241114_16_21_37_Pro.jpg"
-    img_path = r"C:\Users\febri.dwi\Pictures\Camera Roll\WIN_20241114_16_21_37_Pro - Copy.jpg"
+    # img_path = r"C:\Users\febri.dwi\Pictures\Camera Roll\WIN_20241114_16_21_37_Pro - Copy.jpg"
+    img_path = r"D:\engine\cv\craft_pytorch\result\cropped_results\cropped_1.png"
     # example_one(img_path=img_path)
     example_two(img_path=img_path)

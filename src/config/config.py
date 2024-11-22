@@ -15,7 +15,7 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = False
+    IS_DEBUG = True
 
     if IS_DEBUG:
         BASE_DIR = r"D:\engine\smart_parking\repository\github"
@@ -124,7 +124,6 @@ class Config:
         }
     }
 
-
     CAM_SOURCE_LT = [
         # 'rtsp://admin:Passw0rd@192.168.1.10',
         'rtsp://admin:Passw0rd@192.168.1.11', 
@@ -146,7 +145,9 @@ class Config:
     VIDEO_SOURCE_LT5_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
     VIDEO_SOURCE_LT5_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
 
-    VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\dataset\cctv\z.mp4"
+    # VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\dataset\cctv\z.mp4"
+    VIDEO_SOURCE_LAPTOP_F2_IN = fr"C:\Users\febri.dwi\Documents\dataset\2024-11-08\split_video_2024-11-08\F2_IN\192.168.1.10_01_20241108083438670.mp4_1409.mp4"
+    # VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\light\split_video\F2_IN_192.168.1.10_01_20241022185355918.mp4_7145.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\2024-10-22\day\F2_OUT_192.168.1.11_01_2024102217293382.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\192.168.1.11_01_20241031145445633.mp4"
     VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031185859282.mp4_3533.mp4"

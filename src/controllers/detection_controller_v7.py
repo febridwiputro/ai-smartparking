@@ -77,8 +77,6 @@ class DetectionControllerV7:
 
                 vehicle_plate_data, cropped_frame, is_centroid_inside, car_info = vehicle_detector.vehicle_detect(arduino_idx=str(self.arduino_matrix), frame=frame, floor_id=floor_id, cam_id=cam_id, tracking_points=tracking_points, poly_bbox=poly_bbox)
 
-                # print("vehicle_plate_data 1: ", vehicle_plate_data)
-
                 if vehicle_plate_data is not None and isinstance(vehicle_plate_data, dict):
                     if self.vehicle_plate_result_queue is not None:
                         current_qsize = self.vehicle_plate_result_queue.qsize()

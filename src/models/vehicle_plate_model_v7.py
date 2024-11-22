@@ -303,55 +303,59 @@ class VehicleDetector:
 
     #     return False
 
-    def check_car_touch_line(self, frame_size, car_info, polygon_area, cam_id):
+    def check_car_touch_line(self, frame_size, car_info, polygon_area, floor_id, cam_id):
         polygon_points = [
             convert_normalized_to_pixel_lines(point, frame_size)
             for point in polygon_area
         ]
 
-        for (object_id, confidence, bbox, class_name) in car_info:
-            car_id = object_id
-            centroid = self.get_centroid_object(bbox)
+        try:
+            for (object_id, confidence, bbox, class_name) in car_info:
+                car_id = object_id
+                centroid = self.get_centroid_object(bbox)
 
-            if is_point_in_polygon(centroid, polygon_points):
-                if car_id in self.prev_centroids:
-                    prev_centroid = self.prev_centroids[car_id]
+                if is_point_in_polygon(centroid, polygon_points):
+                    if car_id in self.prev_centroids:
+                        prev_centroid = self.prev_centroids[car_id]
 
-                    if centroid[1] > prev_centroid[1]:  # Moving downwards (top to bottom)
-                        if cam_id == "IN":
-                            # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: IN")
-                            if car_id not in self.movement_count:
-                                self.movement_count[car_id] = 0
-                            self.movement_count[car_id] += 1
-                            if self.movement_count[car_id] >= 5:
+                        if centroid[1] > prev_centroid[1]:  # Moving downwards (top to bottom)
+                            if cam_id == "IN":
+                                # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: IN")
+                                if car_id not in self.movement_count:
+                                    self.movement_count[car_id] = 0
+                                self.movement_count[car_id] += 1
+                                if self.movement_count[car_id] >= 7:
+                                    self.prev_centroids[car_id] = centroid
+                                    return True, False
+                            elif cam_id == "OUT":
+                                # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: OUT")
                                 self.prev_centroids[car_id] = centroid
-                                return True, False
-                        elif cam_id == "OUT":
-                            # print(f"Object ID {car_id} is moving Downwards (Top to Bottom), cam_id: OUT")
-                            self.prev_centroids[car_id] = centroid
-                            return True, True
+                                return True, True
 
-                    elif centroid[1] < prev_centroid[1]:  # Moving upwards (bottom to top)
-                        if cam_id == "IN":
-                            # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: IN")
-                            self.movement_count[car_id] = 0
-                            self.prev_centroids[car_id] = centroid
-                            return True, True
-                        elif cam_id == "OUT":
-                            # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: OUT")
-                            if car_id not in self.movement_count:
+                        elif centroid[1] < prev_centroid[1]:  # Moving upwards (bottom to top)
+                            if cam_id == "OUT":
+                                # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: OUT")
+                                if car_id not in self.movement_count:
+                                    self.movement_count[car_id] = 0
+                                self.movement_count[car_id] += 1
+                                if self.movement_count[car_id] >= 7:
+                                    self.prev_centroids[car_id] = centroid
+                                    return True, False
+                            elif cam_id == "IN":
+                                # print(f"Object ID {car_id} is moving Upwards (Bottom to Top), cam_id: IN")
                                 self.movement_count[car_id] = 0
-                            self.movement_count[car_id] += 1
-                            if self.movement_count[car_id] >= 5:
                                 self.prev_centroids[car_id] = centroid
-                                return True, False
+                                return True, True
+
+                    else:
+                        self.prev_centroids[car_id] = centroid
+                        # print(f"Object ID {car_id} just entered the polygon area.")
 
                 else:
-                    self.prev_centroids[car_id] = centroid
-                    # print(f"Object ID {car_id} just entered the polygon area.")
-            
-            else:
-                return False, False
+                    return False, False
+
+        except Exception as e:
+            print(f"Error in check_car_touch_line: {e}")
 
         return False, None
 
@@ -369,12 +373,12 @@ class VehicleDetector:
                 bbox = r.xyxy[0].cpu().numpy().tolist()
                 confidence = float(r.conf.item())
 
-                # print("class_id: ", class_id)
                 # if class_id == 0:
                 #     print(f'object_id: {object_id}')
 
                 class_name = self.class_names[class_id]
-                
+                # print(f"id: {object_id}, class_name: {class_name}")
+
                 if self.is_vehicle_model:
                     if class_name in ["car", "bus", "truck"]:
                         car_boxes.append(bbox)
@@ -441,6 +445,152 @@ class VehicleDetector:
         laplacian_var = cv2.Laplacian(gray_image, cv2.CV_64F).var()
         return laplacian_var
 
+    def process_vehicle_plate(self, frame, floor_id, cam_id, is_save=True):
+        """
+        Process the detection of vehicles and plates, returning combined vehicle and plate information.
+        """
+        vehicle_plate_data = []
+        self.class_names = ['car', 'bus', 'truck'] if self.is_vehicle_model else ['car', 'plate', 'truck']
+
+        results = self.model.track(frame, conf=0.25, persist=True, verbose=False)
+
+        try:
+            for r in results[0].boxes:
+                if r.id is not None and r.cls is not None and r.conf is not None:
+                    class_id = int(r.cls.item())
+                    object_id = int(r.id.item())
+                    bbox = r.xyxy[0].cpu().numpy().tolist()
+                    confidence = float(r.conf.item())
+                    class_name = self.class_names[class_id]
+
+                    # Collect vehicle data
+                    if class_name in ["car", "bus", "truck"] or (not self.is_vehicle_model and class_name == "car"):
+                        vehicle_plate_data.append({
+                            "object_id": object_id,
+                            "class_name": class_name,
+                            "confidence": confidence,
+                            "bbox": bbox,
+                            "type": "vehicle",
+                        })
+
+                    # Collect plate data
+                    elif class_name == "plate" and not self.is_vehicle_model:
+                        plate_bbox = r.xyxy[0].cpu().numpy().tolist()
+                        plate_x1, plate_y1, plate_x2, plate_y2 = map(int, plate_bbox)
+
+                        # Check if the plate is within a vehicle
+                        for car_box in vehicle_plate_data:
+                            if car_box["type"] == "vehicle":
+                                car_x1, car_y1, car_x2, car_y2 = map(int, car_box["bbox"])
+                                if (
+                                    car_x1 <= plate_x1 <= car_x2 and car_y1 <= plate_y1 <= car_y2 and
+                                    car_x1 <= plate_x2 <= car_x2 and car_y1 <= plate_y2 <= car_y2
+                                ):
+                                    plate_y1 = max(plate_y1 - self.num_add_plate_size, 0)
+                                    plate_y2 = min(plate_y2 + self.num_add_plate_size, frame.shape[0])
+                                    plate_x1 = max(plate_x1 - self.num_add_plate_size, 0)
+                                    plate_x2 = min(plate_x2 + self.num_add_plate_size, frame.shape[1])
+
+                                    cropped_plate = frame[plate_y1:plate_y2, plate_x1:plate_x2]
+                                    if cropped_plate.size > 0:
+                                        if is_save:
+                                            height, width = cropped_plate.shape[:2]
+                                            self.save_dimensions_to_excel(height, width, floor_id, cam_id)
+
+                                        vehicle_plate_data.append({
+                                            "object_id": object_id,
+                                            "class_name": class_name,
+                                            "confidence": confidence,
+                                            "bbox": plate_bbox,
+                                            "cropped_plate": cropped_plate,
+                                            "type": "plate",
+                                        })
+
+        except Exception as e:
+            print(f"Error in process_vehicle_plate: {e}")
+
+        return vehicle_plate_data
+
+    def vehicle_detect_v2(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
+        """
+        Detect vehicles and plates, process their information, and handle detection logic.
+        """
+        height, width = frame.shape[:2]
+        frame_size = (width, height)
+
+        area_selection = convert_normalized_to_pixel(tracking_points, (height, width))
+        cropped_frame = self.crop_frame_with_polygon(frame, area_selection)
+        cropped_frame_copy = cropped_frame.copy()
+        preprocessed_image = self.preprocess(cropped_frame)
+        vehicle_plate_data = self.process_vehicle_plate(preprocessed_image, floor_id, cam_id, is_save=False)
+
+        car_boxes = [obj["bbox"] for obj in vehicle_plate_data if obj["type"] == "vehicle"]
+        self.object_id = vehicle_plate_data[0]["object_id"] if vehicle_plate_data else None
+        car_info = [(obj["object_id"], obj["confidence"], obj["bbox"], obj["class_name"]) for obj in vehicle_plate_data if obj["type"] == "vehicle"]
+
+        for car_bbox in car_boxes:
+            self.centroids = self.get_centroid_object(car_bbox)
+
+        is_centroid_inside, direction = self.check_car_touch_line(frame_size, car_info, poly_bbox, floor_id, cam_id)
+
+        if direction is not None or self.car_direction is None:
+            self.car_direction = direction
+
+        if is_centroid_inside:
+            plate_data = [obj for obj in vehicle_plate_data if obj["type"] == "plate"]
+
+            if plate_data:
+                plate_frame = plate_data[0]["cropped_plate"]
+                self.plate_bbox = plate_data[0]["bbox"]
+            else:
+                self.plate_bbox = None
+
+            if self.object_id not in self.frame_count_per_object:
+                self.frame_count_per_object[self.object_id] = 0
+
+            if (
+                self.object_id != self.prev_object_id
+                or (self.prev_floor_id != floor_id or self.prev_cam_id != cam_id)
+            ):
+                self.frame_count_per_object[self.object_id] = 0
+
+            if self.frame_count_per_object[self.object_id] <= self.max_num_frame:
+                for obj in plate_data:
+
+                    plate_frame = obj["cropped_plate"]
+                    check_blur_img = self.check_blur(plate_frame)
+                    if check_blur_img == 1000:
+                        continue
+
+                    self.save_cropped_plate([plate_frame])
+
+                    gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
+                    bg_color = check_background(gray_plate, False)
+
+                    return {
+                        "object_id": self.object_id,
+                        "bbox": self.plate_bbox,
+                        "is_centroid_inside": is_centroid_inside,
+                        "bg_color": bg_color,
+                        "frame": plate_frame,
+                        "floor_id": floor_id,
+                        "cam_id": cam_id,
+                        "arduino_idx": arduino_idx,
+                        "car_direction": self.car_direction,
+                        "start_line": True,
+                        "end_line": True,
+                    }, cropped_frame_copy, is_centroid_inside, car_info
+
+                self.frame_count_per_object[self.object_id] += 1
+                self.prev_object_id = self.object_id
+                self.prev_floor_id = floor_id
+                self.prev_cam_id = cam_id
+
+        else:
+            print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
+
+        return {}, cropped_frame_copy, False, car_info
+
     def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
         height, width = frame.shape[:2]
         frame_size = (width, height)
@@ -464,15 +614,21 @@ class VehicleDetector:
 
         self.object_id = car_info[0][0] if car_info else None
 
-        is_centroid_inside, direction = self.check_car_touch_line(frame_size, car_info, poly_bbox, cam_id)
+        is_centroid_inside, direction = self.check_car_touch_line(frame_size, car_info, poly_bbox, floor_id, cam_id)
 
         if direction is not None or self.car_direction is None:
             self.car_direction = direction
 
-        # if direction is True:
-        #     print("Car is entering the area from Top to Bottom (Downwards)")
-        # elif direction is False:
-        #     print("Car is entering the area from Bottom to Top (Upwards)")
+        # if direction:
+        #     if cam_id == "IN":
+        #         print(f"Car is entering the area from Top to Bottom (Downwards), CAM_ID: {cam_id}")
+        #     else:
+        #         print(f"Car is entering the area from Bottom to Top (Upwards), CAM_ID: {cam_id}")
+        # else:
+        #     if cam_id == "IN":
+        #         print(f"Car is entering the area from Bottom to Top (Upwards), CAM_ID: {cam_id}")
+        #     else:
+        #         print(f"Car is entering the area from Top to Bottom (Downwards), CAM_ID: {cam_id}")
 
         if is_centroid_inside and not self.is_vehicle_model:
             self.plate_info, plate_frames = self.process_plate(results, cropped_frame_copy, self.car_bboxes, floor_id, cam_id)
@@ -482,27 +638,29 @@ class VehicleDetector:
             else:
                 self.plate_bbox = None
 
-            # Initialize `frame_count_per_object` and previous object check
             if self.object_id not in self.frame_count_per_object:
                 self.frame_count_per_object[self.object_id] = 0
 
-            # Check if the current floor and cam match the previous object
             if (self.object_id != self.prev_object_id or
                 (self.prev_floor_id != floor_id or self.prev_cam_id != cam_id)):
                 self.frame_count_per_object[self.object_id] = 0
 
             if self.frame_count_per_object[self.object_id] < self.max_num_frame:
                 for plate_frame in plate_frames:
-                    check_blur_img = self.check_blur(plate_frame)
+                    check_blur_img = self.check_blur(plate_frame) if plate_frame is not None else None
                     print("BLUR IMAGE VALUE: ", check_blur_img)
-                    if check_blur_img == 1000:
+
+                    if plate_frame is not None and check_blur_img == 1000:
                         continue
 
-                    print("PLATE_FRAME DETECTED")
-                    self.save_cropped_plate([plate_frame])
+                    print("PLATE_FRAME DETECTED" if plate_frame is not None else "NO PLATE_FRAME DETECTED")
+                    if plate_frame is not None:
+                        self.save_cropped_plate([plate_frame])
 
-                    gray_plate = cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY)
-                    bg_color = check_background(gray_plate, False)
+                    gray_plate = (
+                        cv2.cvtColor(plate_frame, cv2.COLOR_BGR2GRAY) if plate_frame is not None else None
+                    )
+                    bg_color = check_background(gray_plate, False) if gray_plate is not None else None
 
                     vehicle_plate_data = {
                         "object_id": self.object_id,
@@ -515,13 +673,13 @@ class VehicleDetector:
                         "arduino_idx": arduino_idx,
                         "car_direction": self.car_direction,
                         "start_line": True,
-                        "end_line": True
+                        "end_line": True,
                     }
 
                     self.frame_count_per_object[self.object_id] += 1
                     self.prev_object_id = self.object_id
                     self.prev_floor_id = floor_id
-                    self.prev_cam_id = cam_id  # Store the current floor and cam as the previous
+                    self.prev_cam_id = cam_id
 
                     return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
 
@@ -529,7 +687,6 @@ class VehicleDetector:
                 print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
 
         return {}, cropped_frame_copy, is_centroid_inside, car_info
-
 
     # def vehicle_detect(self, arduino_idx, frame, floor_id, cam_id, tracking_points, poly_bbox):
     #     height, width = frame.shape[:2]

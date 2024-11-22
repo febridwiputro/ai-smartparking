@@ -79,6 +79,9 @@ def response_post(res_post, arduino_devices):
 
 class Wrapper:
     def __init__(self) -> None:
+        self.IS_DEBUG = True
+        self.IS_VIDEO = self.IS_DEBUG
+        self.IS_PC = False
         self.previous_object_id = None
         self.num_processes = 1
         self.object_id_count = {}
@@ -115,12 +118,15 @@ class Wrapper:
         self._model_built_events = []
         self.vehicle_plate_result_queue = mp.Queue()
 
-        res_post = send_plate_data(floor_id="1", plate_no="BP1234BP", cam_position="in")
+        if not self.IS_DEBUG:
+            res_post = send_plate_data(floor_id="1", plate_no="BP1234BP", cam_position="in")
 
-        self.arduino_devices = [Arduino(baudrate=115200, com=com) for com in config.SERIAL_COM]
-        response_post(res_post, self.arduino_devices)
-        # for ard, com in zip(self.arduino_devices, config.SERIAL_COM):
-        #    ard.write(11, com)
+            self.arduino_devices = [Arduino(baudrate=115200, com=com) for com in config.SERIAL_COM]
+            response_post(res_post, self.arduino_devices)
+            # for ard, com in zip(self.arduino_devices, config.SERIAL_COM):
+            #    ard.write(11, com)
+        else:
+            self.arduino_devices = [Arduino(baudrate=115200, com=None) for com in config.SERIAL_COM]
 
     def start(self):
         print("[Thread] Starting result processing thread...")
@@ -249,13 +255,16 @@ class Wrapper:
                             "cam_id": cam_id
                         })
 
-                        print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
+                        print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
-                        response_api_counter = self.process_plate_data(
-                            floor_id, cam_id, arduino_idx, car_direction
-                        )
+                        if not self.IS_DEBUG:
+                            response_api_counter = self.process_plate_data(
+                                floor_id, cam_id, arduino_idx, car_direction
+                            )
 
-                        response_post(response_api_counter, self.arduino_devices)
+                            response_post(response_api_counter, self.arduino_devices)
+                        else:
+                            print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                     else:
                         if (object_id == previous_object_id and
@@ -270,14 +279,17 @@ class Wrapper:
                                 "cam_id": cam_id
                             })
 
-                            print(f'Queue {idx + 1}: plate_no: {plate_no}, object_id: {object_id}')
+                            print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
                             if object_id_count == self.max_num_frame:
-                                response_api_counter = self.process_plate_data(
-                                    floor_id, cam_id, arduino_idx, car_direction
-                                )
+                                if not self.IS_DEBUG:
+                                    response_api_counter = self.process_plate_data(
+                                        floor_id, cam_id, arduino_idx, car_direction
+                                    )
 
-                                response_post(response_api_counter, self.arduino_devices)
+                                    response_post(response_api_counter, self.arduino_devices)
+                                else:
+                                    print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                                 object_id_count = 0
 
@@ -296,7 +308,7 @@ class Wrapper:
                                 "cam_id": cam_id
                             })
 
-                            print(f'Queue {idx + 1}: New plate_no: {plate_no}, object_id: {object_id}')
+                            print(f"Queue {idx + 1}: NEW PLATE_NO: {plate_no}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
@@ -336,7 +348,7 @@ class Wrapper:
         while True:
             if self.stopped.is_set():
                 break
-                
+
             try:
                 vehicle_plate_data = self.vehicle_plate_result_queue.get()
  
@@ -348,16 +360,12 @@ class Wrapper:
                 print("Error at distribute_work_thread", e)
 
     def main(self):
-        IS_DEBUG = False
-        IS_VIDEO = IS_DEBUG
-        IS_PC = True
-
-        if IS_DEBUG:
+        if self.IS_DEBUG:
             ROWS_CONF, COLS_CONF = 1, 1
 
             FLOOR_CAM_CONF = {
-                2: {"IN": False, "OUT": False},
-                3: {"IN": True, "OUT": False},
+                2: {"IN": True, "OUT": False},
+                3: {"IN": False, "OUT": False},
                 4: {"IN": False, "OUT": False},
                 5: {"IN": False, "OUT": False},
             }
@@ -389,8 +397,8 @@ class Wrapper:
         }
         FRAME_SIZE_CONF = frame_size_options.get((ROWS_CONF, COLS_CONF), 640)
 
-        VIDEO_PATH = config.VIDEO_SOURCE_FLOOR_PC if IS_DEBUG and IS_PC else (
-            config.VIDEO_SOURCE_FLOOR_LAPTOP if IS_DEBUG else config.CAM_SOURCE_FLOOR
+        VIDEO_PATH = config.VIDEO_SOURCE_FLOOR_PC if self.IS_DEBUG and self.IS_PC else (
+            config.VIDEO_SOURCE_FLOOR_LAPTOP if self.IS_DEBUG else config.CAM_SOURCE_FLOOR
         )
 
         active_sources = [
@@ -438,7 +446,7 @@ class Wrapper:
             time.sleep(0.1)
             print("Loading detection models...")
 
-        caps = [CameraV1(source, is_video=IS_VIDEO) for _, _, source in active_sources]
+        caps = [CameraV1(source, is_video=self.IS_VIDEO) for _, _, source in active_sources]
         for cap in caps:
             print(f"Starting camera: {cap}")
             cap.start()

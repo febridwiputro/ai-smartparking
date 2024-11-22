@@ -40,7 +40,7 @@ class EasyOCRNet:
         Read text from the image.
         Returns text and bounding boxes.
         """
-        t0 = time.time()
+        t0 = time.time()        
         results = self.reader.readtext(image,
                                        text_threshold=0.7,
                                        low_text=0.4,

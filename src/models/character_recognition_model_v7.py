@@ -19,7 +19,7 @@ from src.config.logger import Logger
 from src.controllers.utils.util import (
     check_background
 )
-
+from src.models.text_detection_model_v7 import TextDetector
 
 # Set TF_CPP_MIN_LOG_LEVEL to suppress warnings
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -131,6 +131,7 @@ class CharacterRecognize:
         self.model = models
         self.labels = labels
         self.threshold = threshold
+        self.text_detector = TextDetector()
 
     def check_char_saved(self):
         folder_path = "char_saved"
@@ -307,9 +308,10 @@ class CharacterRecognize:
         return img_res, img_rgb_copy, img_rgb_copy
 
     def match_char(self, plate):
+        rm_whitespace = plate.replace(" ", "").upper()
         # Check if the first character is '8' and replace it with 'B' if so
-        if plate[0] == '8':
-            plate = 'B' + plate[1:]
+        if rm_whitespace[0] == '8':
+            plate = 'B' + rm_whitespace[1:]
 
         pattern = r"^(.{2})(.{0,4})(.*?)(.{2})$"
 
@@ -338,7 +340,6 @@ class CharacterRecognize:
 
             return modified_plate
 
-        # Apply the pattern replacement using the replace function
         result = re.sub(pattern, replace, plate)
         return result
 
@@ -509,6 +510,10 @@ class CharacterRecognize:
                     img = cv2.resize(img, (img.shape[1], min_height))
 
                 concatenated_image = cv2.hconcat([concatenated_image, color_separator, img])
+
+            text_detected_result, _, text_detected = self.text_detector.easyocr_readtext(image=concatenated_image)
+
+            print("text_detected char: ", text_detected)
 
             final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:

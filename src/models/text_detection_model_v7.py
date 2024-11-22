@@ -5,6 +5,7 @@ from easyocr import Reader
 import time
 from datetime import datetime
 import gc
+import re
 
 from src.config.config import config
 from src.config.logger import Logger
@@ -59,7 +60,7 @@ def text_detection(stopped, model_built_event, plate_result_queue, text_detectio
             if restored_image is None:
                 continue
 
-            text_detected_result, _ = detector.easyocr_readtext(image=restored_image)
+            text_detected_result, _, text_detected = detector.easyocr_readtext(image=restored_image)
 
             result = {
                 "object_id": object_id,
@@ -122,6 +123,27 @@ class EasyOCRNet:
 class TextDetector:
     def __init__(self):
         self.ocr_net = EasyOCRNet(use_cuda=True)
+        self.dict_char_to_int = {'O': '0',
+                            'B': '8',
+                            'I': '1',
+                            'J': '3',
+                            'A': '4',
+                            'G': '6',
+                            'S': '5'}
+
+        self.dict_int_to_char = {'0': 'O',
+                            '1': 'I',
+                            '8': 'O',
+                            '3': 'J',
+                            '4': 'A',
+                            '6': 'G',
+                            '5': 'S'}
+        
+        self.dict_3_7_to_1 = {
+            '3' : "1",
+            '7' : '1'
+        }
+
 
     def easyocr_detect(self, image, is_save=False):
         bounding_boxes = self.ocr_net.detect(image)
@@ -162,10 +184,12 @@ class TextDetector:
         return cropped_images, image
 
     def easyocr_readtext(self, image):
-
+        """
+        Read text from the image and return cropped images, processed frame, and detected text.
+        """
         bounding_boxes = self.ocr_net.readtext(image)
-
         cropped_images = []
+        detected_texts = []
         filtered_heights = filter_readtext_frame(bounding_boxes, False)
 
         for t in bounding_boxes:
@@ -176,9 +200,6 @@ class TextDetector:
 
             height_f = bottom_left[1] - top_left[1]
             width_f = top_right[0] - top_left[0]
-
-            # logging.write('=' * 25 + f' BORDER: EASYOCR READTEXT' + '=' * 25, logging.DEBUG)
-            # logging.write(f'height: {height_f}, width: {width_f}', logging.DEBUG)
 
             if height_f not in filtered_heights:
                 continue
@@ -194,7 +215,150 @@ class TextDetector:
 
             cropped_images.append(cropped_image)
 
-        return cropped_images, image
+            if len(t) > 1 and t[1]:
+                detected_texts.append(t[1])
+                detect_plate = self.match_char(t[1])
+
+        print("detect_plate: ", detect_plate)
+
+        return cropped_images, image, detect_plate
+
+    def apply_mapping(self, text, mapping):
+        """
+        Replace characters in `text` based on the provided `mapping`.
+        """
+        return ''.join([mapping.get(char, char) for char in text])
+
+    def match_char(self, plate):
+        self.middle_char_mapping = {
+            'T': '1', 
+            'I': '1', 
+            'D': '0', 
+            'B': '8',
+            'Q': '0', 
+            'J': '1', 
+            'Z': '7'
+        }
+
+        self.suffix_char_mapping = {
+            '0': 'Q', 
+            '8': 'O'
+        }
+
+        plate = plate.replace(" ", "").upper()
+
+        if plate.startswith('8'):
+            plate = 'B' + plate[1:]
+
+        pattern = r"^(.{2})(.{0,4})(.*?)(.{2})$"
+
+        def replace(match):
+            prefix = match.group(1)
+            middle = match.group(2)
+            body = match.group(3)
+            suffix = match.group(4)
+
+            # Apply middle and suffix mappings
+            modified_middle = self.apply_mapping(middle, self.middle_char_mapping)
+
+            # Modify suffix only if certain conditions are met
+            if re.match(r"^[A-Z]{2}\d{4}$", f"{prefix}{modified_middle}"):
+                modified_suffix = self.apply_mapping(suffix, self.suffix_char_mapping)
+            else:
+                modified_suffix = suffix
+
+            # Construct the modified plate
+            modified_plate = f"{prefix}{modified_middle}{body}{modified_suffix}"
+
+            # Special case check for pattern "xxxx...BP"
+            match_special_case = re.match(r"(\d{4})(.*)(BP)$", modified_plate)
+            if match_special_case:
+                return f"BP{match_special_case.group(1)}{match_special_case.group(2)}"
+
+            return modified_plate
+
+        # Apply the pattern and replacement function
+        result = re.sub(pattern, replace, plate)
+        return result
+
+    def filter_text(self, text):
+        if text == "":
+            return
+        text_asli = text
+        
+        pattern = r'[^a-zA-Z0-9]'
+        text = re.sub(pattern, '', text)
+        
+        if len(text) >= 8:
+            text = text[:8]
+            
+        clean_text = text.replace(" ", "").upper()
+        license_plate_ = ""
+        mapping = {
+            0: self.dict_int_to_char,
+            1: self.dict_int_to_char,
+            2: self.dict_char_to_int,
+            3: self.dict_char_to_int,
+            4: self.dict_char_to_int,
+            5: self.dict_char_to_int,
+            6: self.dict_int_to_char,
+            7: self.dict_int_to_char
+        }
+
+        for j in range(len(clean_text)):
+            if j in mapping and clean_text[j] in mapping[j]:
+                license_plate_ += mapping[j][clean_text[j]]
+            else:
+                license_plate_ += clean_text[j]
+        
+        # print(f"text_asli: {text_asli},clean_text: {clean_text}, mapping: {license_plate_}")
+        if not self.filter_plat(license_plate_):
+            return ""
+        
+        
+        return license_plate_
+
+    def filter_plat(self, text) -> bool:
+      pattern = r'^BP(\d{1,4})([a-zA-Z]{1,2})$'
+      match = re.match(pattern, text)
+      if match:
+          return True
+      return False
+
+    # def easyocr_readtext(self, image):
+
+    #     bounding_boxes = self.ocr_net.readtext(image)
+
+    #     cropped_images = []
+    #     filtered_heights = filter_readtext_frame(bounding_boxes, False)
+
+    #     for t in bounding_boxes:
+    #         (top_left, top_right, bottom_right, bottom_left) = t[0]
+    #         top_left = tuple([int(val) for val in top_left])
+    #         bottom_left = tuple([int(val) for val in bottom_left])
+    #         top_right = tuple([int(val) for val in top_right])
+
+    #         height_f = bottom_left[1] - top_left[1]
+    #         width_f = top_right[0] - top_left[0]
+
+    #         # logging.write('=' * 25 + f' BORDER: EASYOCR READTEXT' + '=' * 25, logging.DEBUG)
+    #         # logging.write(f'height: {height_f}, width: {width_f}', logging.DEBUG)
+
+    #         if height_f not in filtered_heights:
+    #             continue
+
+    #         top_left_y, bottom_right_y = int(max(top_left[1], 0)), int(min(bottom_right[1], image.shape[0]))
+    #         top_left_x, bottom_right_x = int(max(top_left[0], 0)), int(min(bottom_right[0], image.shape[1]))
+
+    #         cropped_image = image[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+
+    #         if cropped_image.shape[0] == 0 or cropped_image.shape[1] == 0:
+    #             logging.write(f"Skipped empty cropped image with shape: {cropped_image.shape}", logging.DEBUG)
+    #             continue
+
+    #         cropped_images.append(cropped_image)
+
+    #     return cropped_images, image
 
     def filter_height_bbox(self, bounding_boxes):
         heights = [box[3] - box[2] for group in bounding_boxes for box in group if len(box) == 4]

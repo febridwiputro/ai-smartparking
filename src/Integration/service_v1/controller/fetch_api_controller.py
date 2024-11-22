@@ -9,9 +9,12 @@ from requests.packages.urllib3.util.retry import Retry
 
 class FetchAPIController:
     def __init__(self):
-        # self.url = "http://192.168.88.60:7005/api/v2/smartParking/fetchData"
-        # self.url = "http://webapi.satnusa.com:7005/api/v2/smartParking/fetchData"
-        self.url = "https://webapi.satnusa.com/api/v2/smartParking/fetchData"
+        self.IS_DEBUG = True
+        if self.IS_DEBUG:
+            # self.url = "http://192.168.88.60:7005/api/v2/smartParking/fetchData"
+            self.url = "http://webapi.satnusa.com:7005/api/v2/smartParking/fetchData"
+        else:
+            self.url = "https://webapi.satnusa.com/api/v2/smartParking/fetchData"
 
         # self.url = "http://127.0.0.1:8086/api/v1/plate_data"
         self.headers = {'Content-Type': 'application/json'}
