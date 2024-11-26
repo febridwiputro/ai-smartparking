@@ -42,9 +42,9 @@ logger = Logger("main", is_save=True)
 
 class Wrapper:
     def __init__(self) -> None:
-        self.IS_DEBUG = True
+        self.IS_DEBUG = False
         self.IS_VIDEO = self.IS_DEBUG
-        self.IS_PC = False
+        self.IS_PC = True
         self.previous_object_id = None
         self.num_processes = 1
         self.object_id_count = {}
@@ -326,6 +326,7 @@ class Wrapper:
             return (matches / total_length) * 100
 
         res_plate_no = ""
+        similarity = 0
         len_plate_no = len(plate_no)
         plate_no_list = self.db_plate.get_all_plat()
 
@@ -378,21 +379,21 @@ class Wrapper:
                             if similarity >= 90:
                                 print(f"Matching plate in database with {similarity}% similarity: {plate_db}")
                                 # res_plate_no = f"Matched: {plate_db} ({similarity:.2f}% similarity)"
-                                res_plate_no = plate_no
+                                plate_no, similarity
                                 break
                             else:
                                 if similarity >= 80:
                                     print(f"No match: {plate_db} has {similarity:.2f}% similarity.")
-                                    res_plate_no = plate_no
+                                    plate_no, similarity
                         else:
                             print("Plate number in database does not match the expected format.")
-                            res_plate_no = plate_no
+                            plate_no, similarity
                 else:
-                    res_plate_no = plate_no
+                    plate_no, similarity
                     print("Plate number format is invalid.")
 
             elif len_plate_no == 6:
-                pass
+                plate_no, similarity
                 # BP1768
 
         else:
@@ -417,13 +418,12 @@ class Wrapper:
                             if similarity >= 90:
                                 print(f"Matching plate in database with {similarity}% similarity: {plate_db}")
                                 # res_plate_no = f"Matched: {plate_db} ({similarity:.2f}% similarity)"
-                                res_plate_no = plate_no
+                                plate_no, similarity
                                 break
                             else:
                                 if similarity >= 80:
                                     print(f"No match: {plate_db} has {similarity:.2f}% similarity.")
-
-                                    res_plate_no = plate_no
+                                    plate_no, similarity
 
                             # if group2 == plate_db_group2:
                             #     if group3 == plate_db_group3:
@@ -435,10 +435,10 @@ class Wrapper:
                             # else:
                             #     print(f"Group2 mismatch: {group2} != {plate_db_group2}")
                 else:
-                    res_plate_no = plate_no
+                    plate_no, similarity
                     print("Invalid format: First 4 characters are not integers.")
 
-        return res_plate_no
+        return plate_no, similarity
 
     def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction, is_debug=True):
         """
@@ -455,29 +455,49 @@ class Wrapper:
         status_plate_no = check_db(plate_no_max)
         status_plate_no_easyocr = check_db(plate_no_easyocr_max)
 
-        res_plate_no = self.match_plate_no(plate_no=plate_no_max)
-        res_plate_no_easyocr = self.match_plate_no(plate_no=plate_no_easyocr_max)
+        res_plate_no, plate_no_perc = self.match_plate_no(plate_no=plate_no_max)
+        res_plate_no_easyocr, plate_no_easyocr_perc = self.match_plate_no(plate_no=plate_no_easyocr_max)
 
         if res_plate_no and res_plate_no_easyocr:
-            if res_plate_no == res_plate_no_easyocr:
+            if plate_no_perc == 100 and plate_no_easyocr_perc == 100:
                 res_plate_no = res_plate_no
+            elif plate_no_perc >= plate_no_easyocr_perc:
+                res_plate_no = res_plate_no
+            else:
+                res_plate_no = res_plate_no_easyocr
+
+        elif res_plate_no and not res_plate_no_easyocr:
+            if plate_no_perc >= 87:
+                res_plate_no = res_plate_no
+            else:
+                res_plate_no = plate_no_max
+
+        elif res_plate_no_easyocr and not res_plate_no:
+            if plate_no_easyocr_perc >= 87:
+                res_plate_no = res_plate_no_easyocr
+            else:
+                res_plate_no = plate_no_easyocr_max
+
+        else:
+            res_plate_no = plate_no_max
 
         print("res_plate_no: ", res_plate_no)
         print("res_plate_no_easyocr: ", res_plate_no_easyocr)
 
         plate_no_is_registered = True
-        if not status_plate_no or not status_plate_no_easyocr:
+        if status_plate_no:
+            last_plate_no = res_plate_no
+
+        elif status_plate_no_easyocr:
+            last_plate_no = res_plate_no
+
+        elif not status_plate_no or not status_plate_no_easyocr:
             logger.write(
                 f"Warning, plate is unregistered, reading container text!! : {res_plate_no}",
                 logger.WARN
             )
             last_plate_no = res_plate_no
             plate_no_is_registered = False
- 
-        elif status_plate_no:
-            last_plate_no = res_plate_no
-        elif status_plate_no_easyocr:
-            last_plate_no = res_plate_no
 
         if not is_debug:
             response_counter = parking_space_vehicle_counter(

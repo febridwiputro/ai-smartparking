@@ -129,13 +129,14 @@ class Arduino:
             print("Reconnected to Arduino.")
         except serial.SerialException as e:
             logger.write(f"Failed to reconnect: {e}", logger.ERROR)
-    
+
     @staticmethod
-    def find_serial_port(driver: str, serial_number: str = None):
+    def find_serial_port(driver: str = None, serial_number: str = None):
         ports = stl.comports()
         if serial_number is None:
             for port in ports:
-                if driver in port.description.upper():
+                # Skip checking driver if it's None
+                if driver and driver in port.description.upper():
                     print("Found driver port:", port.device)
                     return port.device
         else:
@@ -143,13 +144,10 @@ class Arduino:
                 if serial_number == str(port.serial_number):
                     print("Found serial number port:", port.device)
                     return port.device
-        
+
         print("Serial number not found".center(50, "-"))
         return None
     
-    # def init_write(self, )
-    
-
     def write(self, count, com):
 
         if self.com != com:
