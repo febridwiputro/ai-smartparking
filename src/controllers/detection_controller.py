@@ -8,22 +8,22 @@ tf.get_logger().setLevel('ERROR')
 
 import threading
 import multiprocessing as mp
-import cv2
-import numpy as np
 from ultralytics import YOLO
 
 from src.config.config import config
-from src.config.logger import logger
-from src.models.vehicle_plate_model_v7 import VehicleDetector
+from src.config.logger import Logger
+from src.models.vehicle_plate_model import VehicleDetector
 from utils.multiprocessing_util import put_queue_none, clear_queue
 
 from src.utils.util import (
     define_tracking_polygon
 )
 
+logger = Logger("detection_controller", is_save=True)
 
 class DetectionController:
-    def __init__(self, vehicle_plate_result_queue=None, arduino_matrix=None):
+    def __init__(self, vehicle_plate_result_queue=None, arduino_matrix=None, base_dir=None):
+        self.BASE_DIR = base_dir
         self.arduino_matrix = arduino_matrix
         self.vehicle_plate_result_queue = vehicle_plate_result_queue
         self.stopped = mp.Event()
@@ -31,6 +31,7 @@ class DetectionController:
         self._current_frame = None
         self.lock_frame = threading.Lock()
         self._model_built_event = mp.Event()
+        self.MODEL_VEHICLE_PLATE_PATH = os.path.join(self.BASE_DIR, config.MODEL_VEHICLE_PLATE_PATH)
 
     def start(self):
         print("[Thread] Starting vehicle detection thread...")
@@ -41,8 +42,8 @@ class DetectionController:
         self._current_frame = frame_bundle
 
     def detect_vehicle_work_thread(self):
-        vehicle_plate_model = YOLO(config.MODEL_VEHICLE_PLATE_PATH)
-        vehicle_detector = VehicleDetector(vehicle_plate_model, is_vehicle_model=False)
+        vehicle_plate_model = YOLO(self.MODEL_VEHICLE_PLATE_PATH)
+        vehicle_detector = VehicleDetector(vehicle_plate_model, is_vehicle_model=False, base_dir=self.BASE_DIR)
         self._model_built_event.set()
 
         prev_qsize = None

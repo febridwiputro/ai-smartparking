@@ -14,7 +14,7 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.centroid_tracking import CentroidTracker
-from src.controllers.utils.util import check_background
+from src.utils.util import check_background
 
 def show_cam(text, image, max_width=1080, max_height=720):
     res_img = resize_image(image, max_width, max_height)

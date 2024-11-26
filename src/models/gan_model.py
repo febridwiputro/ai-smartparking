@@ -83,10 +83,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #             self.model = self.model.half()
 
 class GanModel:
-    def __init__(self):
-        self.base = config.BASE_DIR
-        model_name = "RealESRGAN_x4plus"
-        model_path = os.path.join(self.base, 'weights', model_name + '.pth')
+    def __init__(self, base_dir):
+        model_path = os.path.join(base_dir, 'weights', 'RealESRGAN_x4plus.pth')
         model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
         self.upsampler = RealESRGANer(
             scale=4,

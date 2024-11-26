@@ -6,10 +6,6 @@ from datetime import datetime
 
 from src.config.config import config
 
-BASE_DIR = config.BASE_DIR
-DATASET_DIR = os.path.join(BASE_DIR, "dataset")
-DATASET_GRID_CHARACTER_RECOGNITION_DIR = os.path.join(DATASET_DIR, "5_grid_character_recognition", datetime.now().strftime('%Y-%m-%d-%H'))
-
 def display_character_segments(char, char_resized, is_show=False):
     fig = plt.figure(figsize=(10, 4.5))
     grid = gridspec.GridSpec(2, 2, figure=fig)
@@ -32,7 +28,7 @@ def display_character_segments(char, char_resized, is_show=False):
     else:
         plt.close(fig)  # Ensure the figure is closed
 
-def display_results(rgb, inv, segmented_image, crop_characters, final_string, result_string, is_save=False, is_show=False):
+def display_results(rgb, inv, segmented_image, crop_characters, final_string, result_string, dataset_grid_character_recognition_dir, is_save=False, is_show=False):
     fig = plt.figure(figsize=(10, 7.5))
     grid = gridspec.GridSpec(3, 2, figure=fig)
 
@@ -77,9 +73,9 @@ def display_results(rgb, inv, segmented_image, crop_characters, final_string, re
     plt.tight_layout()
 
     if is_save:
-        os.makedirs(DATASET_GRID_CHARACTER_RECOGNITION_DIR, exist_ok=True)
+        os.makedirs(dataset_grid_character_recognition_dir, exist_ok=True)
         timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-        filename = f"{DATASET_GRID_CHARACTER_RECOGNITION_DIR}/{timestamp}.jpg"
+        filename = f"{dataset_grid_character_recognition_dir}/{timestamp}.jpg"
         plt.savefig(filename)  # Save the image
 
     if is_show:

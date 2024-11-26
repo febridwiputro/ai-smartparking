@@ -2,8 +2,9 @@ import os
 import cv2
 from datetime import datetime
 
-from src.config.logger import logger
+from src.config.logger import Logger
 
+logger = Logger("main/parking_space_vehicle_counter", is_save=True)
 
 def filter_height_bbox(bounding_boxes, verbose=False):
     converted_bboxes = []
@@ -24,7 +25,7 @@ def filter_height_bbox(bounding_boxes, verbose=False):
                 if height_bbox >= 10:
                     w_h.append(height_bbox)
 
-def filter_readtext_frame(texts: list, verbose=False) -> list:
+def filter_readtext_frame(texts: list, verbose=False, base_dir=None) -> list:
     w_h = []
     sorted_heights = []
     avg_height = ""

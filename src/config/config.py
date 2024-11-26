@@ -15,31 +15,50 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = False
+    IS_DEBUG = True
+    IS_PC = False
 
-    if IS_DEBUG:
-        BASE_DIR = r"D:\engine\smart_parking\repository\github"
-        BASE_OCR_MODEL_DIR = 'weights/ocr_model/new_model/20241114-07-08-24/'
-        # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
-    else:
-        BASE_DIR = r"D:\documents\febri"
-        BASE_OCR_MODEL_DIR = "weights/ocr_model/new_model/20241114-07-08-24/"
-        # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
-    # BASE_DIR = "D:/engine/smart_parking/repository/github"
-    # BASE_DIR = Path(_file_).parent.parent.resolve()
-    
-    VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
-    MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
-    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
-    MODEL_VEHICLE_PLATE_PATH = os.path.join(BASE_DIR, "weights/vehicle_plate_model.pt")
-    MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
-    MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
-    MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
+    BASE_LAPTOP_DIR = r"D:\engine\smart_parking\repository\github"
+    BASE_OCR_MODEL_DIR = 'weights/ocr_model/new_model/20241114-07-08-24/'
+    # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
+    BASE_PC_DIR = r"D:\documents\febri"
+
+    VEHICLE_DETECTION_MODEL_PATH = "weights/multiple-vehicle.pt"
+    MODEL_YOLOV8_PATH = "weights/yolov8n.pt"
+    MODEL_YOLOV11_PATH = "weights/yolo11n.pt"
+    MODEL_VEHICLE_PLATE_PATH = "weights/vehicle_plate_model.pt"
+    MODEL_PATH_PLAT = "weights/license_plate_detector.pt"
+    MODEL_PATH_PLAT_v2 = "weights/license_plat.pt"
+    MODEL_PATH_PLAT_YOLOV8X = "weights/yolov8x-supervision-license-plate-recognition.pt"
 
     # CHARACTER RECOGNITION MODEL
-    MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_recognition.json')
-    WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'models_cnn.h5')
-    LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_classes.npy')
+    MODEL_CHAR_RECOGNITION_PATH = 'character_recognition.json'
+    WEIGHT_CHAR_RECOGNITION_PATH = 'models_cnn.h5'
+    LABEL_CHAR_RECOGNITION_PATH = 'character_classes.npy'
+
+    # if IS_DEBUG:
+    #     BASE_DIR = r"D:\engine\smart_parking\repository\github"
+    #     BASE_OCR_MODEL_DIR = 'weights/ocr_model/new_model/20241114-07-08-24/'
+    #     # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
+    # else:
+    #     BASE_DIR = r"D:\documents\febri"
+    #     BASE_OCR_MODEL_DIR = "weights/ocr_model/new_model/20241114-07-08-24/"
+    #     # BASE_OCR_MODEL_DIR = f'weights/ocr_model/new_model/20240925-11-01-14'
+    # BASE_DIR = "D:/engine/smart_parking/repository/github"
+    # BASE_DIR = Path(_file_).parent.parent.resolve()
+
+    # VEHICLE_DETECTION_MODEL_PATH = os.path.join(BASE_DIR, "weights/multiple-vehicle.pt")
+    # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolov8n.pt")
+    # # MODEL_PATH = os.path.join(BASE_DIR, "weights/yolo11n.pt")
+    # MODEL_VEHICLE_PLATE_PATH = os.path.join(BASE_DIR, "weights/vehicle_plate_model.pt")
+    # MODEL_PATH_PLAT = os.path.join(BASE_DIR, "weights/license_plate_detector.pt")
+    # MODEL_PATH_PLAT_v2 = os.path.join(BASE_DIR, "weights/license_plat.pt")
+    # MODEL_PATH_PLAT_YOLOV8X = os.path.join(BASE_DIR, "weights/yolov8x-supervision-license-plate-recognition.pt")
+
+    # # CHARACTER RECOGNITION MODEL
+    # MODEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_recognition.json')
+    # WEIGHT_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'models_cnn.h5')
+    # LABEL_CHAR_RECOGNITION_PATH = os.path.join(BASE_DIR, BASE_OCR_MODEL_DIR, 'character_classes.npy')
 
     LINK_CAM_PREFIX = os.getenv("CAMERA_RTSP")
 
@@ -92,11 +111,7 @@ class Config:
     SERIAL_COM = [
         "COM5", 
         "COM6"
-        # "", "",
-        # "", "",
     ]
-
-    
 
     SERIALS = [
         SERIAL_NUMBER_MATRIX_TEXT_LT2, SERIAL_NUMBER_MATRIX_NUM_LT2,
@@ -145,9 +160,10 @@ class Config:
     VIDEO_SOURCE_LT5_IN = fr'D:\engine\smart_parking\dataset\cctv\z.mp4'
     VIDEO_SOURCE_LT5_OUT = fr'D:\engine\smart_parking\dataset\cctv\keluar_lt_2_out.mp4'
 
-    # VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\dataset\cctv\z.mp4"
-    VIDEO_SOURCE_LAPTOP_F2_IN = fr"C:\Users\febri.dwi\Documents\dataset\2024-11-08\split_video_2024-11-08\F2_IN\192.168.1.10_01_20241108083438670.mp4_1409.mp4"
+    VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\dataset\cctv\z.mp4"
+    # VIDEO_SOURCE_LAPTOP_F2_IN = fr"C:\Users\febri.dwi\Documents\dataset\2024-11-08\split_video_2024-11-08\F2_IN\192.168.1.10_01_20241108083438670.mp4_1409.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_IN = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\light\split_video\F2_IN_192.168.1.10_01_20241022185355918.mp4_7145.mp4"
+    # VIDEO_SOURCE_LAPTOP_F2_IN = fr"C:\Users\febri.dwi\Documents\dataset\2024-11-08\split_video_2024-11-08\F2_IN\192.168.1.10_01_20241108073307866_1.mp4_8549.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\2024-10-22\day\F2_OUT_192.168.1.11_01_2024102217293382.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\192.168.1.11_01_20241031145445633.mp4"
     VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031185859282.mp4_3533.mp4"
@@ -159,7 +175,6 @@ class Config:
     VIDEO_SOURCE_LAPTOP_F4_IN = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\2024-10-22\day\F4_IN_192.168.1.14_01_20241022165025380.mp4"
     # VIDEO_SOURCE_LAPTOP_F4_OUT = fr"D:\engine\smart_parking\repository\github\dataset\split_video-20241106T024733Z-001\192.168.1.15_01_20241105154733226.mp4_9845.mp4"
     VIDEO_SOURCE_LAPTOP_F4_OUT = fr"D:\engine\smart_parking\repository\github\dataset\split_video-20241106T024733Z-001\192.168.1.15_01_20241105154733226.mp4_2468.mp4"
-
 
     VIDEO_SOURCE_LAPTOP_F5_IN = fr"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\split_video\192_clip.mp4"
     VIDEO_SOURCE_LAPTOP_F5_OUT = fr"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\split_video\192_clip.mp4"

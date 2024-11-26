@@ -4,6 +4,7 @@ import threading
 import multiprocessing as mp
 import numpy as np
 import time
+import re
 
 from src.Integration.arduino import Arduino
 from src.Integration.newArduino import *
@@ -16,11 +17,11 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from src.utils.multiprocessing_util import put_queue_none, clear_queue
-from src.models.image_restoration_model_v7 import image_restoration
-from src.models.text_detection_model_v7 import text_detection
-from src.models.character_recognition_model_v7 import character_recognition, ModelAndLabelLoader
+from src.models.image_restoration_model import image_restoration, ImageRestoration
+from src.models.text_detection_model import text_detection
+from src.models.character_recognition_model import character_recognition, ModelAndLabelLoader
 
-from src.config.logger import logger
+from src.config.logger import Logger
 from src.utils.util import (
     most_freq, 
     check_db, 
@@ -28,44 +29,22 @@ from src.utils.util import (
     most_freq, 
     draw_tracking_points,
     define_tracking_polygon,
-    send_plate_data
+    send_plate_data,
+    response_post
 )
 from src.view.display import (
     add_overlay,
     create_grid
 )
 
-def response_post(res_post, arduino_devices):
-    for response in res_post:
-        floor = response["floor_name"]
-        if floor == "Floor 2":
-            floor_res = 2
-        elif floor == "Floor 3":
-            floor_res = 3
-        elif floor == "Floor 4":
-            floor_res = 4
-        elif floor == "Floor 5":
-            floor_res = 5
-
-        unoccupied = response["unoccupied"]
-
-        if floor_res == 2:
-            com = "COM5"
-        elif floor_res == 3:
-            com = "COM6"
-        else:
-            com = "E"
-
-        if com != "E":
-            for ard in arduino_devices:
-                ard.write(unoccupied, com)
+logger = Logger("main", is_save=True)
 
 
 class Wrapper:
     def __init__(self) -> None:
-        self.IS_DEBUG = False
+        self.IS_DEBUG = True
         self.IS_VIDEO = self.IS_DEBUG
-        self.IS_PC = True
+        self.IS_PC = False
         self.previous_object_id = None
         self.num_processes = 1
         self.object_id_count = {}
@@ -102,6 +81,9 @@ class Wrapper:
         self._model_built_events = []
         self.vehicle_plate_result_queue = mp.Queue()
 
+        self.BASE_DIR = config.BASE_PC_DIR if self.IS_PC else config.BASE_LAPTOP_DIR
+        self.MODEL_VEHICLE_PLATE_PATH = os.path.join(self.BASE_DIR, config.MODEL_VEHICLE_PLATE_PATH)
+
         if not self.IS_DEBUG:
             res_post = send_plate_data(floor_id="1", plate_no="BP1234BP", cam_position="in")
 
@@ -128,7 +110,7 @@ class Wrapper:
         model_built_event1 = mp.Event()
         image_restoration_process = mp.Process(
             target=image_restoration,
-            args=(self.stopped, model_built_event1, self.vehicle_plate_result_queue_list[idx], self.img_restoration_result_queues[idx])
+            args=(self.stopped, self.BASE_DIR, model_built_event1, self.vehicle_plate_result_queue_list[idx], self.img_restoration_result_queues[idx])
         )
         image_restoration_process.start()
         self.image_restoration_processes.append(image_restoration_process)
@@ -148,7 +130,7 @@ class Wrapper:
         model_built_event3 = mp.Event()
         char_recognition_process = mp.Process(
             target=character_recognition,
-            args=(self.stopped, model_built_event3, self.text_detection_result_queues[idx], self.char_recognize_result_queues[idx])
+            args=(self.stopped, self.BASE_DIR, model_built_event3, self.text_detection_result_queues[idx], self.char_recognize_result_queues[idx])
         )
         char_recognition_process.start()
         self.char_recognition_processes.append(char_recognition_process)
@@ -241,17 +223,11 @@ class Wrapper:
                             "cam_id": cam_id
                         })
 
-                        logger.write(
-                            f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
-                            logger.DEBUG
+                        response_api_counter = self.process_plate_data(
+                            floor_id, cam_id, arduino_idx, car_direction, is_debug=self.IS_DEBUG
                         )
-                        print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
 
                         if not self.IS_DEBUG:
-                            response_api_counter = self.process_plate_data(
-                                floor_id, cam_id, arduino_idx, car_direction
-                            )
-
                             response_post(response_api_counter, self.arduino_devices)
                         else:
                             print("SEND DATA IS SUCCESS - IS_DEBUG")
@@ -270,19 +246,12 @@ class Wrapper:
                                 "cam_id": cam_id
                             })
 
-                            logger.write(
-                                f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
-                                logger.DEBUG
-                            )
-
-                            print(f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
-
                             if object_id_count == self.max_num_frame:
-                                if not self.IS_DEBUG:
-                                    response_api_counter = self.process_plate_data(
-                                        floor_id, cam_id, arduino_idx, car_direction
-                                    )
+                                response_api_counter = self.process_plate_data(
+                                    floor_id, cam_id, arduino_idx, car_direction, is_debug=self.IS_DEBUG
+                                )
 
+                                if not self.IS_DEBUG:
                                     response_post(response_api_counter, self.arduino_devices)
                                 else:
                                     print("SEND DATA IS SUCCESS - IS_DEBUG")
@@ -310,17 +279,174 @@ class Wrapper:
                                 logger.DEBUG
                             )
 
-                            print(f"Queue {idx + 1}: NEW PLATE_NO: {plate_no}, NEW PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}")
+                    logger.write(
+                        f"Queue {idx + 1}: PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, object_id: {object_id}, {'TAMBAH' if not car_direction else 'KURANG'}",
+                        logger.DEBUG
+                    )
 
             except Exception as e:
                 print(f"Error in post-process work thread: {e}")
 
-    def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction):
+    def correct_similar_characters(self, input_char, similar_characters_mapping):
+        """
+        Check if a character has visually similar alternatives.
+        Return the list of potential matches, including the original character.
+        """
+        return similar_characters_mapping.get(input_char, [input_char])
+
+    def match_plate_no(self, plate_no):
+        """
+        Match plate_no with a like method in the database.
+        """
+        similar_characters_mapping = {
+            "0": ["O", "Q", "D"],
+            "1": ["I", "l"],
+            "2": ["Z"],
+            "5": ["S"],
+            "6": ["G"],
+            "8": ["B"],
+
+            "O": ["0"],
+            "Q": ["0"],
+            "D": ["0"],
+            "I": ["1"],
+            "S": ["5"],
+            "G": ["6"],
+            "B": ["8"],
+        }
+
+        def calculate_similarity(input_plate, db_plate):
+            matches = 0
+            total_length = len(input_plate)
+            for i in range(total_length):
+                if input_plate[i] == db_plate[i]:
+                    matches += 1
+                elif input_plate[i] in similar_characters_mapping and db_plate[i] in similar_characters_mapping[input_plate[i]]:
+                    matches += 1
+            return (matches / total_length) * 100
+
+        res_plate_no = ""
+        len_plate_no = len(plate_no)
+        plate_no_list = self.db_plate.get_all_plat()
+
+        if not plate_no[:2].isdigit():
+            if len_plate_no == 8:
+                match = re.match(r"^([A-Z]{2})(\d{4})([A-Z]{2})$", plate_no)
+
+                if match:
+                    group1 = match.group(1)  # First 2 characters (e.g., "BP")
+                    group2 = int(match.group(2))  # Middle 4 digits (e.g., 7062)
+                    group3 = match.group(3)  # Last 2 characters (e.g., "MF")
+
+                    # res_plate_no = f"Group 1: {group1}, Group 2: {group2}, Group 3: {group3}"
+
+                    for plate_db in plate_no_list:
+                        match_plate_db = re.match(r"^([A-Z]{2})(\d{4})([A-Z]{2})$", plate_db)
+
+                        if match_plate_db:
+                            plate_db_group1 = match_plate_db.group(1)
+                            plate_db_group2 = int(match_plate_db.group(2))
+                            plate_db_group3 = match_plate_db.group(3)
+
+                            db_plate_combined = f"{plate_db_group1}{plate_db_group2}{plate_db_group3}"
+                            input_plate_combined = f"{group1}{group2}{group3}"
+
+                            similarity = calculate_similarity(input_plate_combined, db_plate_combined)
+
+                            # if group3_0 == plate_db_group3_0:
+                            #     print("plate_db match == ", plate_db)
+                            #     if group3_1 == plate_db_group3_1:
+                            #         print("Matching plate in database:", plate_db)
+                            #         res_plate_no = f"Matched: {plate_db}"
+                            #         break
+                            #     else:
+
+                            #         print(f"Partial match: Group3_1 mismatch ({group3_1} != {plate_db_group3_1})")
+
+                            # # Check group1 using similar characters
+                            # if all(
+                            #     db_char in self.correct_similar_characters(user_char, similar_characters_mapping)
+                            #     for user_char, db_char in zip(group1, plate_db_group1)
+                            # ) and group2 == plate_db_group2:
+                            #     if all(
+                            #         db_char in self.correct_similar_characters(user_char, similar_characters_mapping)
+                            #         for user_char, db_char in zip(group3, plate_db_group3)
+                            #     ):
+                            #         res_plate_no = f"Matched: {plate_db}"
+                            #         break
+
+                            if similarity >= 90:
+                                print(f"Matching plate in database with {similarity}% similarity: {plate_db}")
+                                # res_plate_no = f"Matched: {plate_db} ({similarity:.2f}% similarity)"
+                                res_plate_no = plate_no
+                                break
+                            else:
+                                if similarity >= 80:
+                                    print(f"No match: {plate_db} has {similarity:.2f}% similarity.")
+                                    res_plate_no = plate_no
+                        else:
+                            print("Plate number in database does not match the expected format.")
+                            res_plate_no = plate_no
+                else:
+                    res_plate_no = plate_no
+                    print("Plate number format is invalid.")
+
+            elif len_plate_no == 6:
+                pass
+                # BP1768
+
+        else:
+            if len_plate_no == 6:
+                # Check if the first 4 characters are integers
+                if plate_no[:4].isdigit():
+                    group2 = int(plate_no[:4])  # First 4 characters as integer
+                    group3 = plate_no[4:]      # Last 2 characters as string
+
+                    for plate_db in plate_no_list:
+                        match_plate_db = re.match(r"^([A-Z]{2})(\d{4})([A-Z]{2})$", plate_db)
+
+                        if match_plate_db:
+                            plate_db_group2 = int(match_plate_db.group(2))
+                            plate_db_group3 = match_plate_db.group(3)
+
+                            db_plate_combined = f"{plate_db_group2}{plate_db_group3}"
+                            input_plate_combined = f"{group2}{group3}"
+
+                            similarity = calculate_similarity(input_plate_combined, db_plate_combined)
+
+                            if similarity >= 90:
+                                print(f"Matching plate in database with {similarity}% similarity: {plate_db}")
+                                # res_plate_no = f"Matched: {plate_db} ({similarity:.2f}% similarity)"
+                                res_plate_no = plate_no
+                                break
+                            else:
+                                if similarity >= 80:
+                                    print(f"No match: {plate_db} has {similarity:.2f}% similarity.")
+
+                                    res_plate_no = plate_no
+
+                            # if group2 == plate_db_group2:
+                            #     if group3 == plate_db_group3:
+                            #         print(f"Exact match found for 6-character plate: {plate_no}")
+                            #         res_plate_no = plate_no
+                            #         break
+                            #     else:
+                            #         print(f"Group3 mismatch: {group3} != {plate_db_group3}")
+                            # else:
+                            #     print(f"Group2 mismatch: {group2} != {plate_db_group2}")
+                else:
+                    res_plate_no = plate_no
+                    print("Invalid format: First 4 characters are not integers.")
+
+        return res_plate_no
+
+    def process_plate_data(self, floor_id, cam_id, arduino_idx, car_direction, is_debug=True):
         """
         Processes plate number data and updates the parking status.
         """
 
         last_plate_no = ""
+        response_counter = {}
 
         plate_no_list = [data["plate_no"] for data in self.container_plate_no]
         plate_no_easyocr_list = [data["plate_no_easyocr"] for data in self.container_plate_no]
@@ -329,29 +455,40 @@ class Wrapper:
         status_plate_no = check_db(plate_no_max)
         status_plate_no_easyocr = check_db(plate_no_easyocr_max)
 
+        res_plate_no = self.match_plate_no(plate_no=plate_no_max)
+        res_plate_no_easyocr = self.match_plate_no(plate_no=plate_no_easyocr_max)
+
+        if res_plate_no and res_plate_no_easyocr:
+            if res_plate_no == res_plate_no_easyocr:
+                res_plate_no = res_plate_no
+
+        print("res_plate_no: ", res_plate_no)
+        print("res_plate_no_easyocr: ", res_plate_no_easyocr)
+
         plate_no_is_registered = True
         if not status_plate_no or not status_plate_no_easyocr:
             logger.write(
-                f"Warning, plate is unregistered, reading container text!! : {plate_no_max}",
+                f"Warning, plate is unregistered, reading container text!! : {res_plate_no}",
                 logger.WARN
             )
-            last_plate_no = plate_no_max
+            last_plate_no = res_plate_no
             plate_no_is_registered = False
-
+ 
         elif status_plate_no:
-            last_plate_no = plate_no_max
+            last_plate_no = res_plate_no
         elif status_plate_no_easyocr:
-            last_plate_no = plate_no_easyocr_max
+            last_plate_no = res_plate_no
 
-        response_counter = parking_space_vehicle_counter(
-            floor_id=floor_id,
-            cam_id=cam_id,
-            arduino_idx=arduino_idx,
-            car_direction=car_direction,
-            plate_no=last_plate_no,
-            container_plate_no=self.container_plate_no,
-            plate_no_is_registered=plate_no_is_registered
-        )
+        if not is_debug:
+            response_counter = parking_space_vehicle_counter(
+                floor_id=floor_id,
+                cam_id=cam_id,
+                arduino_idx=arduino_idx,
+                car_direction=car_direction,
+                plate_no=last_plate_no,
+                container_plate_no=self.container_plate_no,
+                plate_no_is_registered=plate_no_is_registered
+            )
 
         self.container_plate_no = []
         print("Processed plate data and cleared the container.")
@@ -453,7 +590,7 @@ class Wrapper:
             # self.matrix_controller = MatrixController(arduino_matrix, max_car=18, total_car=total_slots[idx])
             # self.matrix_controller.start(self.matrix_controller.get_total())
             
-            plat_detects[i] = DetectionController(arduino_matrix="", vehicle_plate_result_queue=self.vehicle_plate_result_queue)
+            plat_detects[i] = DetectionController(arduino_matrix="", vehicle_plate_result_queue=self.vehicle_plate_result_queue, base_dir=self.BASE_DIR)
             plat_detects[i].start()
         
         while not all([m.is_model_built() for m in plat_detects]):

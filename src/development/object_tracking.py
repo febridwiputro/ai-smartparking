@@ -14,10 +14,10 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.centroid_tracking import CentroidTracker
-from src.controllers.utils.util import (
+from src.utils.util import (
     check_background,
 )
-from src.controllers.utils.display import (
+from src.view.display import (
     show_polygon_area
 )
 

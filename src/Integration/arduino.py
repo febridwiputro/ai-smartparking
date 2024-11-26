@@ -7,8 +7,9 @@ this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # print("this_path: ", this_path)
 sys.path.append(this_path)
 
-from config.logger import logger
+from config.logger import Logger
 
+logger = Logger("Arduino", is_save=True)
 
 class Arduino:
     def __init__(self, baudrate: int, driver: str = None, com: str = None, serial_number: str = None,count = 0, is_send=False):

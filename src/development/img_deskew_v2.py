@@ -3,12 +3,8 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-# this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-# sys.path.append(this_path)
-
-# from src.controllers.utils.util import (
-#     check_background
-# )
+this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.append(this_path)
 
 def shi_tomashi(image, is_show=False):
     """
@@ -294,9 +290,6 @@ def example_two(img_path, is_show=False):
         print("Image not found.")
         return
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # bg_color = check_background(image, verbose=False, is_save=True)
-    # print(bg_color)
 
     if is_show:
         plt.imshow(image)

@@ -1,5 +1,7 @@
+import os, sys
 import logging
 from datetime import datetime
+from config.config import config
 
 class Logger:
     CRITICAL = 50
@@ -10,33 +12,33 @@ class Logger:
     INFO = 20
     DEBUG = 10
     NOTSET = 0
-    
+
     def __init__(self, name: str, is_save: bool = False):
         """
         Initialize the logger.
         If is_save=True, log to file. Otherwise, log only to the console.
         """
 
-        for handler in logging.root.handlers[:]:
-            logging.root.removeHandler(handler)
+        IS_PC = False
+        self.BASE_DIR = config.BASE_PC_DIR if IS_PC else config.BASE_LAPTOP_DIR
+        self.DATASET_DIR = os.path.join(self.BASE_DIR, "dataset", "log", "log")
+        os.makedirs(self.DATASET_DIR, exist_ok=True)
 
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.DEBUG)  # Capture all levels
-        
-        # Create a formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%d-%b-%y %H:%M:%S')
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
 
-        # Create handlers
-        console_handler = logging.StreamHandler()  # Always log to the console
-        console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', '%d-%b-%y %H:%M:%S')
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(formatter)
+            self.logger.addHandler(console_handler)
 
-        if is_save:
-            # Log to file with daily log file name
-            log_filename = f'logging-{datetime.now().strftime("%Y%m%d")}.log'
-            file_handler = logging.FileHandler(log_filename)
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
+            if is_save:
+                log_filename = f'logging-{datetime.now().strftime("%Y%m%d")}.log'
+                log_filename = os.path.join(self.DATASET_DIR, log_filename)
+                file_handler = logging.FileHandler(log_filename)
+                file_handler.setFormatter(formatter)
+                self.logger.addHandler(file_handler)
 
     def write(self, message, level):
         # Map level to the appropriate logging method
@@ -55,8 +57,9 @@ class Logger:
         else:
             raise ValueError(f"Unknown level: {level}")
 
-# Example usage:
-logger = Logger("main", is_save=True)  # Logs only to the console
+# logger = Logger("main", is_save=True)
+
+# logger = Logger("main", is_save=True)  # Logs only to the console
 # logger_console.write("This is a debug message on console only.", Logger.DEBUG)
 
 # logger_file = Logger("main", is_save=True)  # Logs to both file and console

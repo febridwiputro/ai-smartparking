@@ -20,11 +20,11 @@ from src.Integration.service_v1.controller.floor_controller import FloorControll
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
 from utils.centroid_tracking import CentroidTracker
-from src.controllers.utils.util import check_background
+from src.utils.util import check_background
 
-from src.models.image_restoration_model_v7 import ImageRestoration
-from src.models.text_detection_model_v7 import TextDetector
-from src.models.character_recognition_model_v7 import ModelAndLabelLoader, CharacterRecognize
+from src.models.image_restoration_model import ImageRestoration
+from src.models.text_detection_model import TextDetector
+from src.models.character_recognition_model import ModelAndLabelLoader, CharacterRecognize
 
 
 def show_cam(text, image, max_width=1080, max_height=720):

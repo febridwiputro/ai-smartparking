@@ -1,40 +1,51 @@
+import os, sys
 import cv2
 import numpy as np
 import Levenshtein as lev
 import logging
 import uuid
 from datetime import datetime
-import random
-import os, sys
 
 from src.config.config import config
-from src.config.logger import logger
+from src.config.logger import Logger
 from src.Integration.service_v1.controller.plat_controller import PlatController
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
-from src.view.show_cam import show_cam, show_text, show_line
 from src.controllers.matrix_controller import MatrixController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
-
 
 db_plate = PlatController()
 db_floor = FloorController()
 db_mysn = FetchAPIController()
 db_vehicle_history = VehicleHistoryController()
 
-import cv2
-import numpy as np
-import logging
-from colorama import Fore, Style, init
+logger = Logger("util", is_save=False)
 
-init(autoreset=True)
+def response_post(res_post, arduino_devices):
+    for response in res_post:
+        floor = response["floor_name"]
+        if floor == "Floor 2":
+            floor_res = 2
+        elif floor == "Floor 3":
+            floor_res = 3
+        elif floor == "Floor 4":
+            floor_res = 4
+        elif floor == "Floor 5":
+            floor_res = 5
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        unoccupied = response["unoccupied"]
 
-BASE_DIR = config.BASE_DIR
-DATASET_DIR = os.path.join(BASE_DIR, "dataset")
-DATASET_PLATE_BACKGROUND_DIR = os.path.join(DATASET_DIR, "3_plate_background", datetime.now().strftime('%Y-%m-%d-%H'))
+        if floor_res == 2:
+            com = "COM5"
+        elif floor_res == 3:
+            com = "COM6"
+        else:
+            com = "E"
+
+        if com != "E":
+            for ard in arduino_devices:
+                ard.write(unoccupied, com)
 
 def get_centroid(results, line_pos):
     """Calculate centroids from detection results and determine tracking information."""
@@ -151,7 +162,11 @@ def convert_normalized_to_pixel_lines(point, frame_size):
     width, height = frame_size
     return int(x_norm * width), int(y_norm * height)
 
-def check_background(gray_image, verbose=False, is_save=False):
+def check_background(gray_image, base_dir, verbose=False, is_save=False):
+    DATASET_DIR = os.path.join(base_dir, "dataset", "log")
+    os.makedirs(DATASET_DIR, exist_ok=True)
+    DATASET_PLATE_BACKGROUND_DIR = os.path.join(DATASET_DIR, "3_plate_background", datetime.now().strftime('%Y-%m-%d-%H'))
+
     white_threshold = 50
     _, white_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY)
     _, black_mask = cv2.threshold(gray_image, white_threshold, 255, cv2.THRESH_BINARY_INV)
@@ -170,7 +185,7 @@ def check_background(gray_image, verbose=False, is_save=False):
         cv2.imwrite(filename, gray_image)
 
     if verbose:
-        logging.info(f"Dominant background color detected: {dominant_color.upper()}")
+        logger.info(f"Dominant background color detected: {dominant_color.upper()}")
 
     return dominant_color
 
@@ -349,6 +364,7 @@ def print_normalized_points(normalized_points):
 #         print(convert_bbox_to_decimal((height, width), [[[x, y]]]))
 
 def check_db(text):
+    # print("db_plate.get_all_plat(): ", db_plate.get_all_plat())
     if not db_plate.check_exist_plat(license_no=text):
         closest_text = find_closest_strings_dict(text, db_plate.get_all_plat())
         if len(closest_text) == 1 and list(closest_text.values())[0] <= 2:
@@ -658,3 +674,36 @@ def parking_space_vehicle_counter(floor_id, cam_id, arduino_idx, car_direction, 
         )
 
     return response_api_counter
+
+def process_images_from_folder(input_folder):
+    for filename in os.listdir(input_folder):
+        file_path = os.path.join(input_folder, filename)
+
+        if os.path.isfile(file_path) and filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            gray_image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+            
+            if gray_image is None:
+                print(f"Error: Gambar {filename} tidak ditemukan atau gagal dibaca.")
+                continue
+
+            dominant_color = check_background(gray_image, verbose=True)
+            print(f"Warna latar belakang dominan untuk {filename}: {dominant_color}")
+
+
+def process_single_image(image_path):
+    gray_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    
+    if gray_image is None:
+        print(f"Error: Gambar {image_path} tidak ditemukan atau gagal dibaca.")
+        return
+    
+    dominant_color = check_background(gray_image, verbose=True)
+    print(f"Warna latar belakang dominan yang terdeteksi: {dominant_color}")
+
+def main():
+    # input_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\gray_images"
+    input_folder = r"D:\engine\smart_parking\repository\github\ai-smartparking\gray_image\selection"
+    process_images_from_folder(input_folder)
+
+if __name__ == "__main__":
+    main()

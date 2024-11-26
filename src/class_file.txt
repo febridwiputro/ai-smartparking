@@ -1,3 +1,0 @@
-0: "char_Q"
-1: "char_O"
-2: "char_D"
