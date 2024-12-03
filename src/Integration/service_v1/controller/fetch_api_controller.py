@@ -9,7 +9,7 @@ from requests.packages.urllib3.util.retry import Retry
 
 class FetchAPIController:
     def __init__(self):
-        self.IS_DEBUG = True
+        self.IS_DEBUG = False
         if self.IS_DEBUG:
             # self.url = "http://192.168.88.60:7005/api/v2/smartParking/fetchData"
             self.url = "http://webapi.satnusa.com:7005/api/v2/smartParking/fetchData"

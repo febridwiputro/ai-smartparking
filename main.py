@@ -46,7 +46,7 @@ logger = Logger("main", is_save=True)
 
 class Wrapper:
     def __init__(self) -> None:
-        self.IS_DEBUG = True
+        self.IS_DEBUG = False
         self.IS_VIDEO = self.IS_DEBUG
         self.IS_PC = True
         self.previous_object_id = None
