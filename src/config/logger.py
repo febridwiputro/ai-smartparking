@@ -1,7 +1,12 @@
 import os, sys
 import logging
 from datetime import datetime
-from config.config import config
+
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(src_path)
+# print("this_path: ", src_path)
+
+from src.config.config import config
 
 class Logger:
     CRITICAL = 50

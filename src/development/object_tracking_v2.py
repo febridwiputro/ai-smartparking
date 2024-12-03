@@ -9,23 +9,27 @@ import pandas as pd
 import time 
 import multiprocessing as mp
 
-this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-sys.path.append(this_path)
-
-print("this_path: ", this_path)
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(src_path)
+# print("this_path: ", src_path)
 
 from src.config.config import config
 from src.Integration.service_v1.controller.plat_controller import PlatController
 from src.Integration.service_v1.controller.floor_controller import FloorController
 from src.Integration.service_v1.controller.fetch_api_controller import FetchAPIController
 from src.Integration.service_v1.controller.vehicle_history_controller import VehicleHistoryController
-from utils.centroid_tracking import CentroidTracker
+
 from src.utils.util import check_background
 
 from src.models.image_restoration_model import ImageRestoration
 from src.models.text_detection_model import TextDetector
 from src.models.character_recognition_model import ModelAndLabelLoader, CharacterRecognize
 
+this_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(this_path)
+
+
+from utils.centroid_tracking import CentroidTracker
 
 def show_cam(text, image, max_width=1080, max_height=720):
     res_img = resize_image(image, max_width, max_height)
@@ -288,16 +292,17 @@ class VehicleDetector:
 
         print("Load model.........")
 
-        self.img_restore = ImageRestoration()
+        self.img_restore = ImageRestoration(base_dir=config.BASE_PC_DIR)
         self.detector = TextDetector()
-        char_model_path = config.MODEL_CHAR_RECOGNITION_PATH
-        char_weight_path = config.WEIGHT_CHAR_RECOGNITION_PATH
-        label_path = config.LABEL_CHAR_RECOGNITION_PATH
+        BASE_OCR_MODEL_DIR = config.BASE_OCR_MODEL_DIR
+        char_model_path = os.path.join(config.BASE_PC_DIR, BASE_OCR_MODEL_DIR, config.MODEL_CHAR_RECOGNITION_PATH)
+        char_weight_path = os.path.join(config.BASE_PC_DIR, BASE_OCR_MODEL_DIR, config.WEIGHT_CHAR_RECOGNITION_PATH)
+        label_path = os.path.join(config.BASE_PC_DIR, BASE_OCR_MODEL_DIR, config.LABEL_CHAR_RECOGNITION_PATH)
 
         char_model = ModelAndLabelLoader.load_model(char_model_path, char_weight_path)
         char_label = ModelAndLabelLoader.load_labels(label_path)
 
-        self.cr = CharacterRecognize(models=char_model, labels=char_label)
+        self.cr = CharacterRecognize(base_dir=config.BASE_PC_DIR, models=char_model, labels=char_label)
         self.model_built_event = mp.Event()
         self.model_built_event.set()
 
@@ -1093,20 +1098,24 @@ class VehicleDetector:
 
 if __name__ == "__main__":
     FLOOR_ID = 2
-    CAM_ID = "IN"
+    CAM_ID = "OUT"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = False
+    IS_CAMERA = True
     IS_PC = False
 
     if IS_CAMERA:
-        model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
+        # BASE_PATH = config.BASE_PC_DIR
+        # model_path = os.path.join(BASE_PATH, config.MODEL_YOLOV8_PATH)
+        model_path = r"D:\documents\febri\weights\vehicle_plate_model.pt"
+
+        # model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
         # model_path = r"C:\Users\DOT\Documents\febri\weights\vehicle_plate_model.pt"
         CAM_SOURCE_LT = {
             2: {
                 # "IN": 'rtsp://admin:Passw0rd@192.168.1.18',
-                # "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
-                "IN": 'rtsp://admin:Admin123@192.168.18.234',
-                "OUT": 'rtsp://admin:Passw0rd@192.168.1.11'
+                "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
+                # "IN": 'rtsp://admin:Admin123@192.168.18.234',
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.17'
             },
             3: {
                 "IN": 'rtsp://admin:Passw0rd@192.168.1.12',

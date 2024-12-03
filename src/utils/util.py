@@ -20,6 +20,8 @@ db_floor = FloorController()
 db_mysn = FetchAPIController()
 db_vehicle_history = VehicleHistoryController()
 
+from src.utils.message_broker.mqtt_handling import Mqtt_Handling
+
 logger = Logger("util", is_save=False)
 
 def response_post(res_post, arduino_devices):
@@ -27,25 +29,31 @@ def response_post(res_post, arduino_devices):
         floor = response["floor_name"]
         if floor == "Floor 2":
             floor_res = 2
+            topic_pub = "SMARTPARKINGLT02"
         elif floor == "Floor 3":
             floor_res = 3
+            topic_pub = "SMARTPARKINGLT03"
         elif floor == "Floor 4":
             floor_res = 4
+            topic_pub = "SMARTPARKINGLT04"
         elif floor == "Floor 5":
             floor_res = 5
+            topic_pub = "SMARTPARKINGLT05"
 
         unoccupied = response["unoccupied"]
 
-        if floor_res == 2:
-            com = "COM5"
-        elif floor_res == 3:
-            com = "COM6"
-        else:
-            com = "E"
+        Mqtt_Handling("broker.emqx.io", port=1883, publish=True, topic_pub=topic_pub, msg=unoccupied)
 
-        if com != "E":
-            for ard in arduino_devices:
-                ard.write(unoccupied, com)
+        # if floor_res == 2:
+        #     com = "COM5"
+        # elif floor_res == 3:
+        #     com = "COM6"
+        # else:
+        #     com = "E"
+
+        # if com != "E":
+        #     for ard in arduino_devices:
+        #         ard.write(unoccupied, com)
 
 def get_centroid(results, line_pos):
     """Calculate centroids from detection results and determine tracking information."""

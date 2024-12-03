@@ -1,0 +1,73 @@
+import paho.mqtt.client as mqtt
+import time
+import sys
+
+class mqtt_handling:
+    
+    def on_message(self, client, userdata, message):
+        print(f"Pesan diterima di topik {message.topic}: {message.payload.decode('utf-8')}")
+
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            print(f"Code error: {rc}")
+            print("Terhubung ke broker")
+            # Subscribe ke topik yang ditentukan
+            if self.subscribe:
+                self.client.subscribe(self.topik_subs)
+                print(f"Subscribed to topic {self.topik_subs}")
+        else:
+            print(f"Gagal terhubung, kode: {rc}")
+    
+    def __init__(self, broker, port, topik_subs= None, msg=None, publish=None, subscribe=None):
+        self.client = mqtt.Client()
+        self.broker = broker
+        self.port = port
+        self.msg = msg
+        self.publish = publish
+        self.subscribe = subscribe
+        self.topik_subs = topik_subs
+        self.client.on_message = self.on_message
+        self.client.on_connect = self.on_connect
+        
+        try:
+            # Memulai koneksi MQTT dengan broker
+            self.client.connect(host=self.broker, port=self.port, keepalive=60)
+            self.client.loop_start()
+            time.sleep(1)
+            
+            # Jika publish == True, menjalankan fungsi publish_message
+            if self.publish:
+                self.publish_message()
+            
+            # Jika subscribe == True, menjalankan fungsi subscribe_message
+            if self.subscribe:
+                self.subscribe_message()
+                
+        except Exception as e:
+            print(f"MQTT Connection Failed: {e}")
+            
+    # Fungsi untuk mengirim pesan melalui MQTT    
+    def publish_message(self):
+        topic = input("Silakan masukkan topik Anda: ")
+        pesan = input("Silakan ketikkan pesan Anda: ")
+        result = self.client.publish(topic=topic, payload=pesan, qos=0)
+        if result.rc == 0:
+            print("Pesan sukses dikirim")
+        else:
+            print(f"Pesan gagal dikirim. Error code: {result.rc}")
+    
+    # Fungsi untuk menerima pesan masuk melalui MQTT
+    def subscribe_message(self):
+        print(f"Menunggu pesan masuk di topik {self.topik_subs}... Tekan CTRL+C untuk keluar")
+        try:
+            while True:
+                time.sleep(0)  
+        except KeyboardInterrupt:
+            print("Menghentikan subscription dan keluar.")
+        finally:
+            self.client.loop_stop()
+            self.client.disconnect()
+
+# Menjalankan kelas mqtt_handling
+if __name__ == "__main__":
+    mqtt_hand = mqtt_handling("broker.emqx.io", port=1883, subscribe=True, topik_subs="SMARTPARKING")

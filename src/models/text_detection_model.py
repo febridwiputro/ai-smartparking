@@ -188,6 +188,8 @@ class TextDetector:
         detected_texts = []
         filtered_heights = filter_readtext_frame(bounding_boxes, False)
 
+        detect_plate = ""
+
         for t in bounding_boxes:
             (top_left, top_right, bottom_right, bottom_left) = t[0]
             top_left = tuple([int(val) for val in top_left])

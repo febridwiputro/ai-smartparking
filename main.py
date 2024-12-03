@@ -6,6 +6,10 @@ import numpy as np
 import time
 import re
 
+# src_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+# sys.path.append(src_path)
+# print("this_path: ", src_path)
+
 from src.Integration.arduino import Arduino
 from src.Integration.newArduino import *
 from src.config.config import config
@@ -42,7 +46,7 @@ logger = Logger("main", is_save=True)
 
 class Wrapper:
     def __init__(self) -> None:
-        self.IS_DEBUG = False
+        self.IS_DEBUG = True
         self.IS_VIDEO = self.IS_DEBUG
         self.IS_PC = True
         self.previous_object_id = None
@@ -227,10 +231,14 @@ class Wrapper:
                             floor_id, cam_id, arduino_idx, car_direction, is_debug=self.IS_DEBUG
                         )
 
-                        if not self.IS_DEBUG:
-                            response_post(response_api_counter, self.arduino_devices)
-                        else:
-                            print("SEND DATA IS SUCCESS - IS_DEBUG")
+                        print("response_api_counter: ", response_api_counter)
+
+                        response_post(response_api_counter, self.arduino_devices)
+
+                        # if not self.IS_DEBUG:
+                        #     response_post(response_api_counter, self.arduino_devices)
+                        # else:
+                        #     print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                     else:
                         if (object_id == previous_object_id and
@@ -499,7 +507,7 @@ class Wrapper:
             last_plate_no = res_plate_no
             plate_no_is_registered = False
 
-        if not is_debug:
+        if is_debug:
             response_counter = parking_space_vehicle_counter(
                 floor_id=floor_id,
                 cam_id=cam_id,
@@ -535,8 +543,8 @@ class Wrapper:
             ROWS_CONF, COLS_CONF = 1, 1
 
             FLOOR_CAM_CONF = {
-                2: {"IN": True, "OUT": False},
-                3: {"IN": False, "OUT": False},
+                2: {"IN": False, "OUT": False},
+                3: {"IN": True, "OUT": False},
                 4: {"IN": False, "OUT": False},
                 5: {"IN": False, "OUT": False},
             }
