@@ -91,7 +91,7 @@ class Wrapper:
         if not self.IS_DEBUG:
             res_post = send_plate_data(floor_id="1", plate_no="BP1234BP", cam_position="in")
 
-            self.arduino_devices = [Arduino(baudrate=115200, com=com) for com in config.SERIAL_COM]
+            self.arduino_devices = [Arduino(baudrate=115200, com=None) for com in config.SERIAL_COM]
             response_post(res_post, self.arduino_devices)
             # for ard, com in zip(self.arduino_devices, config.SERIAL_COM):
             #    ard.write(11, com)
