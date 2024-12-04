@@ -6,10 +6,6 @@ import numpy as np
 import time
 import re
 
-# src_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-# sys.path.append(src_path)
-# print("this_path: ", src_path)
-
 from src.Integration.arduino import Arduino
 from src.Integration.newArduino import *
 from src.config.config import config
@@ -25,17 +21,12 @@ from src.models.character_recognition_model import character_recognition, ModelA
 
 from src.config.logger import Logger
 from src.utils.util import (
-    most_freq, 
-    check_db, 
-    parking_space_vehicle_counter,
-    most_freq, 
     draw_tracking_points,
     define_tracking_polygon,
     send_plate_data,
     response_post
 )
 from src.utils.plate_util import (
-    match_plate_no,
     process_plate_data
 )
 from src.view.display import (
@@ -295,7 +286,7 @@ class Wrapper:
                             })
 
                     logger.write(
-                        f"Queue {idx + 1}, ID: {object_id}, PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, SEND_PLATE_NO: {send_plate_no}, {'TAMBAH' if not car_direction else 'KURANG'}, FLOOR : {floor_id}, CAMERA : {cam_id}, UNOCCUPIED: {unoccupied}",
+                        f"Queue {idx + 1}, ID: {object_id}, PLATE_NO: {plate_no}, PLATE_NO_EASYOCR: {plate_no_easyocr}, SEND_PLATE_NO: {send_plate_no}, {'TAMBAH' if not car_direction else 'KURANG'}, FLOOR : {floor_id}, CAMERA : {cam_id}",
                         logger.DEBUG
                     )
 

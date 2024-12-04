@@ -15,9 +15,9 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = True
-    IS_PC = False
-    IS_VIDEO = True
+    IS_DEBUG = False
+    IS_PC = True
+    IS_VIDEO = False
     IS_UAT_DB = False
 
     BASE_LAPTOP_DIR = r"D:\engine\smart_parking\repository\github"
