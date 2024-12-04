@@ -6,10 +6,11 @@ import requests
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from src.config.config import config
 
 class FetchAPIController:
     def __init__(self):
-        self.IS_DEBUG = False
+        self.IS_DEBUG = config.IS_UAT_DB
         if self.IS_DEBUG:
             # self.url = "http://192.168.88.60:7005/api/v2/smartParking/fetchData"
             self.url = "http://webapi.satnusa.com:7005/api/v2/smartParking/fetchData"

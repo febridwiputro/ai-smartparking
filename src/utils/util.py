@@ -56,6 +56,8 @@ def response_post(res_post, arduino_devices):
             #     for ard in arduino_devices:
             #         ard.write(unoccupied, com)
 
+    return unoccupied
+
 def get_centroid(results, line_pos):
     """Calculate centroids from detection results and determine tracking information."""
     # Extract bounding boxes from the results

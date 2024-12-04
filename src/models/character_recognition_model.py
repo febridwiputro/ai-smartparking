@@ -310,7 +310,7 @@ class CharacterRecognize:
                     os.makedirs(output_dir)
 
                 cv2.imwrite(output_path, char_binary_resized)
-                logging.write(f'Saved {output_path}', logging.DEBUG)
+                # logging.write(f'Saved {output_path}', logging.DEBUG)
 
         return img_res, img_rgb_copy, img_rgb_copy
 

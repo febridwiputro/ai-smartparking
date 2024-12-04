@@ -29,7 +29,7 @@ class Mqtt_Handling:
             # Jika subscribe == True, menjalankan fungsi subscribe_message
             if self.subscribe:
                 self.subscribe_message()
-                
+
         except Exception as e:
             print(f"MQTT Connection Failed: {e}")
 
@@ -38,12 +38,12 @@ class Mqtt_Handling:
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            print(f"Code RC: {rc}")
-            print("Terhubung ke broker")
+            # print(f"Code RC: {rc}")
+            # print("Terhubung ke broker")
             # Subscribe ke topik yang ditentukan
             if self.publish:
                 self.client.publish(f"{self.topic_pub}") 
-                print(f"Publish to topic {self.topic_pub}")
+                # print(f"Publish to topic {qqself.topic_pub}")
         else:
             print(f"Gagal terhubung, kode: {rc}")
             

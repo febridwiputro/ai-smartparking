@@ -15,8 +15,10 @@ class Config:
     GET_URL = "/slot/"
     GET_SLOT_URL = "/slot"
 
-    IS_DEBUG = False
+    IS_DEBUG = True
     IS_PC = False
+    IS_VIDEO = True
+    IS_UAT_DB = False
 
     BASE_LAPTOP_DIR = r"D:\engine\smart_parking\repository\github"
     BASE_OCR_MODEL_DIR = 'weights/ocr_model/new_model/20241114-07-08-24/'
@@ -168,7 +170,8 @@ class Config:
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\192.168.1.11_01_20241031145445633.mp4"
     VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031185859282.mp4_3533.mp4"
     # VIDEO_SOURCE_LAPTOP_F2_OUT = fr"D:\hikvision_record\2024-10-31\CAR\split_video\F5_OUT_192.168.1.17_01_20241031190044193.mp4_2772.mp4"
-    VIDEO_SOURCE_LAPTOP_F3_IN = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\day\split_video\F3_IN_192.168.1.12_01_20241022164946751.mp4_3364.mp4"
+    VIDEO_SOURCE_LAPTOP_F3_IN = fr"D:\engine\smart_parking\dataset\cctv\z.mp4"
+    # VIDEO_SOURCE_LAPTOP_F3_IN = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\day\split_video\F3_IN_192.168.1.12_01_20241022164946751.mp4_3364.mp4"
     # VIDEO_SOURCE_LAPTOP_F3_OUT = fr"D:\engine\smart_parking\repository\github\dataset\2024-10-22\2024-10-22\day\F3_OUT_192.168.1.13_01_20241022171830589.mp4"
     VIDEO_SOURCE_LAPTOP_F3_OUT = fr"D:\engine\smart_parking\repository\github\dataset\split_video-20241106T024733Z-001\192.168.1.13_01_20241105154736470.mp4_7575.mp4"
 

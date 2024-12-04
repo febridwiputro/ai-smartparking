@@ -694,8 +694,8 @@ class VehicleDetector:
 
                     return vehicle_plate_data, cropped_frame_copy, is_centroid_inside, car_info
 
-            else:
-                print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
+            # else:
+            #     print(f"Skipping saving for object_id: {self.object_id}, frame_count: {self.frame_count_per_object[self.object_id]}")
 
         return {}, cropped_frame_copy, is_centroid_inside, car_info
 
