@@ -1071,8 +1071,8 @@ class VehicleDetector:
 
                 if len(vehicle_plate_data) > 0:
                     restored_image = self.img_restore.process_image(vehicle_plate_data["frame"]) if vehicle_plate_data["frame"] is not None else ""
-                    text_detected_result, _ = self.detector.easyocr_readtext(image=restored_image)
-                    plate_no = self.cr.process_image(text_detected_result) if text_detected_result is not None else ""
+                    text_detected_result, _, _ = self.detector.easyocr_readtext(image=restored_image)
+                    plate_no, _ = self.cr.process_image(text_detected_result) if text_detected_result is not None else ""
 
                     print(plate_no)
 
@@ -1097,11 +1097,11 @@ class VehicleDetector:
 
 
 if __name__ == "__main__":
-    FLOOR_ID = 2
-    CAM_ID = "OUT"
+    FLOOR_ID = 5
+    CAM_ID = "IN"
     IS_VEHICLE_MODEL = False
-    IS_CAMERA = True
-    IS_PC = False
+    IS_CAMERA = False
+    IS_PC = True
 
     if IS_CAMERA:
         # BASE_PATH = config.BASE_PC_DIR
@@ -1115,7 +1115,8 @@ if __name__ == "__main__":
                 # "IN": 'rtsp://admin:Passw0rd@192.168.1.18',
                 "IN": 'rtsp://admin:Passw0rd@192.168.1.10',
                 # "IN": 'rtsp://admin:Admin123@192.168.18.234',
-                "OUT": 'rtsp://admin:Passw0rd@192.168.1.17'
+                # "OUT": 'rtsp://admin:Passw0rd@192.168.1.17'
+                "OUT": 'rtsp://admin:Passw0rd@192.168.1.16'
             },
             3: {
                 "IN": 'rtsp://admin:Passw0rd@192.168.1.12',
@@ -1148,6 +1149,7 @@ if __name__ == "__main__":
         model_path = r"D:\engine\cv\car-plate-detection\kendaraan.v1i.yolov8\runs\detect\vehicle-plate-model-n\weights\best.pt"
 
         if IS_PC:
+            model_path = r"D:\documents\febri\weights\vehicle_plate_model.pt"
             if FLOOR_ID == 2:
                 if CAM_ID == "IN":
                     # video_path = r"C:\Users\DOT\Documents\ai-smartparking\src\Assets\ocr_assets\z.mp4"
@@ -1180,7 +1182,14 @@ if __name__ == "__main__":
                 if CAM_ID == "IN":
                     # video_path = r"C:\Users\DOT\Documents\febri\video\sequence\LT_5_IN.mp4"
                     # video_path = r"D:\hikvision_record\2024-10-30\192.168.1.16_01_20241030154403344.mp4"
-                    video_path = r"D:\engine\smart_parking\repository\github\dataset\2024-10-30-video\192.168.1.16_01_20241030181737752.mp4"
+                    # video_path = r"D:\engine\smart_parking\repository\github\dataset\2024-10-30-video\192.168.1.16_01_20241030181737752.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-12-11\192.168.1.16_01_20241211141214776.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-12-11\192.168.1.16_01_20241211142503621.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-12-11\192.168.1.16_01_20241211154715792.mp4"
+                    video_path = r"C:\Users\DOT\Web\RecordFiles\2024-12-11\192.168.1.16_01_20241211154803579.mp4"
+                    # video_path = r"C:\Users\DOT\Web\RecordFiles\2024-12-11\192.168.1.16_01_20241211142607426.mp4"
+
+
                     # video_path = r"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\split_video\192_clip.mp4"
                     # video_path = r"D:\engine\smart_parking\repository\github\dataset\video\2024-10-25\192.168.1.17_01_20241025121925138.mp4"
                 else:

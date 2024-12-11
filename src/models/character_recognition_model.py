@@ -315,10 +315,11 @@ class CharacterRecognize:
         return img_res, img_rgb_copy, img_rgb_copy
 
     def match_char(self, plate):
-        rm_whitespace = plate.replace(" ", "").upper()
+        plate = plate.replace(" ", "").upper()
         # Check if the first character is '8' and replace it with 'B' if so
-        if rm_whitespace[0] == '8':
-            plate = 'B' + rm_whitespace[1:]
+        # if rm_whitespace[0] == '8':
+        #     plate = 'B' + rm_whitespace[1:]
+
 
         pattern = r"^(.{2})(.{0,4})(.*?)(.{2})$"
 
@@ -516,11 +517,11 @@ class CharacterRecognize:
 
             text_detected_result, _, final_plate_easyocr = self.text_detector.easyocr_readtext(image=concatenated_image)
 
-            print("final_plate_easyocr: ", final_plate_easyocr)
-
             final_plate = self.process_character(concatenated_image, selected_bg_color)
         else:
             logging.write("No valid images to merge.", logging.DEBUG)
+
+        print(f"FINAL_PLATE: {final_plate}, FINAL_PLATE_EASYOCR: {final_plate_easyocr}")
 
         return final_plate, final_plate_easyocr
 
