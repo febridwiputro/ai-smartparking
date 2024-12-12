@@ -226,23 +226,21 @@ class Wrapper:
                             container_plate_no=self.container_plate_no
                         )
 
-                        if not response_api_counter:
-                            print("response_api_counter: ", response_api_counter)
+                        # if not response_api_counter:
+                        #     print("response_api_counter: ", response_api_counter)
 
-                        unoccupied = response_post(response_api_counter, self.arduino_devices)
+                        if not self.IS_DEBUG:
+                            response_post(response_api_counter, self.arduino_devices)
+                        else:
+                            print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                         self.container_plate_no = []
-
-                        # if not self.IS_DEBUG:
-                        #     response_post(response_api_counter, self.arduino_devices)
-                        # else:
-                        #     print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                     else:
                         if (object_id == previous_object_id and
                             floor_id == prev_floor_id and
                             cam_id == prev_cam_id):
-                            
+
                             object_id_count += 1
 
                             self.container_plate_no.append({
@@ -261,10 +259,10 @@ class Wrapper:
                                     container_plate_no=self.container_plate_no
                                 )
 
-                                if not response_api_counter:
-                                    print("response_api_counter: ", response_api_counter)
-
-                                unoccupied = response_post(response_api_counter, self.arduino_devices)
+                                if not self.IS_DEBUG:
+                                    response_post(response_api_counter, self.arduino_devices)
+                                else:
+                                    print("SEND DATA IS SUCCESS - IS_DEBUG")
 
                                 self.container_plate_no = []
                                 object_id_count = 0

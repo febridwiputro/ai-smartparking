@@ -52,6 +52,8 @@ def match_plate_no(plate_no):
     len_plate_no = len(plate_no)
     plate_no_list = db_plate.get_all_plat()
 
+    # print("plate_no_list: ", plate_no_list)
+
     if not plate_no[:2].isdigit():
         if len_plate_no == 8:
             match = re.match(r"^([A-Z]{2})(\d{4})([A-Z]{2})$", plate_no)
